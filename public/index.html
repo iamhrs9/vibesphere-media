@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeSphere Media</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<div id="chat-icon" onclick="toggleChat()">
+    <span style="font-size: 24px;">🤖</span>
+</div>
+
+<div id="chat-box">
+    <div class="chat-header">
+        <span>VibeSphere Support</span>
+        <button onclick="toggleChat()">×</button>
+    </div>
+    <div class="chat-body" id="chat-body">
+        <div class="bot-msg">Hello! Main VibeSphere AI hoon. Website ya Price ke baare mein kuch bhi puchiye! 👇</div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="user-input" placeholder="Type here..." onkeypress="handleEnter(event)">
+        <button onclick="sendMessage()">➤</button>
+    </div>
+</div>
+<body>
+
+    <nav>
+      <a href="/" class="logo-link">
+
+    <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
+</a>
+        
+ <ul class="nav-links" id="nav-menu">
+    <li><a href="/#home">Home</a></li>
+    <li><a href="/#about">About</a></li>
+    <li><a href="/#services">Services</a></li>
+    <li><a href="/packages">Packages</a></li>
+    <li><a href="/contact">Contact</a></li>
+</ul>
+
+        <div class="nav-right">
+            <a href="/contact" class="btn-primary">Get In Touch</a>
+
+            <div class="menu-icon" id="hamburger-btn">
+                <i class="ri-menu-3-line"></i>
+            </div>
+        </div>
+    </nav>
+
+    <section class="home" id="home">
+        <div class="home-content">
+            <h1>We Grow Brands With <br> <span>Smart Digital Strategies.</span></h1>
+            <p>VibeSphere Media helps brands scale through design, data & performance.</p>
+            
+            <div class="buttons">
+                <a href="/packages" class="btn-primary">Get Started</a>
+
+                <a href="#services" class="btn-secondary">View Services</a>
+            </div>
+
+            <div class="scroll-down">
+                <span>Scroll Down</span>
+                <i class="ri-arrow-down-line"></i>
+            </div>
+        </div>
+
+        <div class="home-image">
+            <div class="gradient-orb"></div> 
+        </div>
+    </section>
+
+    <section class="about" id="about">
+        <div class="about-text">
+            <h2>We Don't Follow Trends. <br> We Build Them.</h2>
+            <div class="divider"></div>
+        </div>
+
+        <div class="about-card">
+            <h3>Founded in 2022</h3>
+            <ul>
+                <li><i class="ri-checkbox-circle-fill"></i> Results-Driven Approach</li>
+                <li><i class="ri-checkbox-circle-fill"></i> Your Success is Our Mission</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="services" id="services">
+        <h4 class="section-title">SERVICES SECTION</h4>
+        
+        <div class="services-container">
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-bar-chart-grouped-line"></i></div>
+                <h3>Performance Marketing</h3>
+                <p>Boost your sales with data-driven agility.</p>
+            </div>
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-rocket-line"></i></div>
+                <h3>Social Media Growth</h3>
+                <p>Preventing pageting and products.</p>
+            </div>
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-brush-line"></i></div>
+                <h3>Branding & Identity</h3>
+                <p>Destination media and design complement.</p>
+            </div>
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-computer-line"></i></div>
+                <h3>Website Development</h3>
+                <p>Optimal areas in seo helps agreement.</p>
+            </div>
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-video-add-line"></i></div>
+                <h3>Content Creation</h3>
+                <p>Brand is image for your To the marketing.</p>
+            </div>
+            <div class="service-box">
+                <div class="icon-bg"><i class="ri-line-chart-line"></i></div>
+                <h3>Analytics & CRO</h3>
+                <p>Profit is over here get digital.</p>
+            </div>
+        </div>
+    </section>
+
+  <section class="pricing-preview" style="display: flex; flex-wrap: wrap; gap: 60px; justify-content: center; align-items: center; padding: 80px 20px; background: #f9f9f9;">
+    
+    <div class="pricing-cards" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+        
+        <div class="price-card" style="background: white; padding: 30px; border-radius: 12px; width: 280px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+            <h4>Silver Package</h4>
+            <div class="price" id="home-price-silver" style="font-size: 24px; font-weight: bold; color: #333; margin: 10px 0;">₹399 <span style="font-size: 14px; font-weight: normal; color: #666;">/ Total</span></div>
+            <ul style="list-style: none; padding: 0; margin: 20px 0; color: #555; font-size: 14px; line-height: 1.6;">
+                <li><i class="ri-check-line"></i> 2 Story for 2 Days</li>
+                <li><i class="ri-check-line"></i> 1000+ Followers Growth</li>
+            </ul>
+            <a href="packages" class="btn-outline" style="display: block; text-align: center; padding: 10px; border: 1px solid #6B46C1; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">View Details</a>
+        </div>
+
+        <div class="price-card popular" style="background: #6B46C1; color: white; padding: 30px; border-radius: 12px; width: 300px; box-shadow: 0 15px 40px rgba(107, 70, 193, 0.4); transform: scale(1.05); position: relative; z-index: 2;">
+            <span style="background: #FFD700; color: #333; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; position: absolute; top: -12px; right: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">MOST POPULAR</span>
+            <h4 style="color: white;">Platinum Package</h4>
+            <div class="price" id="home-price-platinum" style="font-size: 28px; font-weight: bold; margin: 10px 0;">₹1199 <span style="font-size: 14px; font-weight: normal; opacity: 0.8;">/ Total</span></div>
+            <ul style="list-style: none; padding: 0; margin: 20px 0; font-size: 14px; line-height: 1.6;">
+                <li><i class="ri-check-double-line"></i> 3 Permanent Posts</li>
+                <li><i class="ri-check-double-line"></i> 5k-5.5k Followers Growth</li>
+                <li><i class="ri-check-double-line"></i> 2 Story for 4 Days</li>
+            </ul>
+            <a href="packages" class="btn-filled" style="display: block; text-align: center; padding: 12px; background: white; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">Get Started</a>
+        </div>
+
+        <div class="price-card" style="background: white; padding: 30px; border-radius: 12px; width: 280px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+            <h4>Business Package</h4>
+            <div class="price" id="home-price-business" style="font-size: 24px; font-weight: bold; color: #333; margin: 10px 0;">₹2699 <span style="font-size: 14px; font-weight: normal; color: #666;">/ Total</span></div>
+            <ul style="list-style: none; padding: 0; margin: 20px 0; color: #555; font-size: 14px; line-height: 1.6;">
+                <li><i class="ri-vip-crown-line"></i> 7 Permanent Posts</li>
+                <li><i class="ri-user-add-line"></i> 13k-14k Followers Growth</li>
+            </ul>
+            <a href="packages" class="btn-outline" style="display: block; text-align: center; padding: 10px; border: 1px solid #6B46C1; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">View Details</a>
+        </div>
+
+    </div>
+
+    <div class="pricing-text" style="max-width: 400px; padding: 20px;">
+        <h2 style="font-size: 48px; line-height: 1.2; color: #333; margin-bottom: 20px;">Let's Talk <br><span style="color: #6B46C1;">Growth.</span></h2>
+        <p style="color: #666; font-size: 16px; margin-bottom: 30px;">
+            Ready to explode your reach? Choose a plan or connect with us directly on your favorite platform.
+        </p>
+        
+        <a href="/packages" style="display: inline-block; background: #1a202c; color: white; padding: 15px 35px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: transform 0.3s;">
+            View All Packages &rarr;
+        </a>
+        
+        <p style="margin-top: 30px; font-size: 14px; font-weight: bold; color: #888;">OR CHAT WITH US:</p>
+
+        <div style="display: flex; gap: 15px; margin-top: 15px;">
+            
+            <a href="https://wa.me/918302485826" target="_blank" style="width: 50px; height: 50px; background: #25D366; color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3); transition: transform 0.2s;">
+                <i class="ri-whatsapp-fill"></i>
+            </a>
+
+            <a href="https://t.me/YOUR_TELEGRAM_ID" target="_blank" style="width: 50px; height: 50px; background: #0088cc; color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3); transition: transform 0.2s;">
+                <i class="ri-telegram-fill"></i>
+            </a>
+
+            <a href="https://instagram.com/YOUR_INSTA_ID" target="_blank" style="width: 50px; height: 50px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(220, 39, 67, 0.3); transition: transform 0.2s;">
+                <i class="ri-instagram-fill"></i>
+            </a>
+
+        </div>
+    </div>
+
+</section>
+
+    <script src="script.js"></script>
+    <div id="detailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+    <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h3 style="margin-bottom: 20px; color: #333;">Enter Service Details</h3>
+        
+        <input type="hidden" id="selectedPackage">
+        <input type="hidden" id="selectedPrice">
+
+        <input type="text" id="instaId" placeholder="Your Instagram ID Link (e.g. instagram.com/user)" 
+               style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px;">
+      
+
+        <button onclick="goToCheckout()" style="background: #6B46C1; color: white; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">
+            Proceed to Checkout
+        </button>
+        
+        <button onclick="closeModal()" style="margin-top: 10px; background: transparent; border: none; color: #666; cursor: pointer;">Cancel</button>
+    </div>
+</div>
+<footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+    
+    <div style="margin-bottom: 20px;">
+        <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
+        <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
+    </div>
+    
+    <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+        <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
+        <a href="/terms&condition" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+        <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+        <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
+    </div>
+
+    <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
+        <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.</p>
+    </div>
+
+</footer>
+<style>
+    footer a:hover {
+        color: #6c63ff !important; /* Brand Color on Hover */
+    }
+</style>
+</body>
+</html>

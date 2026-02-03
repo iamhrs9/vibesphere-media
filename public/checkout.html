@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - VibeSphere</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #f7fafc; padding: 40px 20px; display: flex; justify-content: center; }
+        .checkout-box { background: white; width: 100%; max-width: 500px; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .summary { background: #F3E8FF; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 5px solid #6B46C1; }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        label { font-weight: 600; color: #555; font-size: 14px; margin-top: 10px; display: block; }
+        .btn-pay { width: 100%; margin-top: 20px; border:none; padding: 15px; font-size: 16px; border-radius: 6px; background: #6B46C1; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-pay:hover { background: #553C9A; }
+        .btn-pay:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div class="checkout-box">
+        <h2>Finalize Your Order</h2>
+        
+        <div class="summary">
+            <h4 style="margin: 0 0 10px 0;">📦 Plan: <span id="dispPkg" style="color: #6B46C1;">Loading...</span></h4>
+            <h4 style="margin: 0;">💰 Price: <span id="dispPrice">0</span></h4>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">Instagram: <span id="dispInsta">...</span></p>
+        </div>
+
+        <form id="orderForm">
+            <label>Full Name</label>
+            <input type="text" id="name" placeholder="Enter your name" required>
+
+            <label>WhatsApp Number</label>
+            <input type="tel" id="phone" placeholder="Your WhatsApp Number" required>
+
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="name@example.com" required>
+
+            <button type="submit" class="btn-pay">Pay Now & Place Order</button>
+        </form>
+    </div>
+
+    <script>
+       // --- REPLACE INSIDE <script> TAG in checkout.html ---
+        // 1. DATA LOAD KARO
+        const params = new URLSearchParams(window.location.search);
+        const pkg = params.get('package');
+        const price = params.get('price');
+        const currencyFromURL = params.get('currency'); 
+        const insta = params.get('insta');
+        // const post = params.get('post'); <-- YE LINE HATA DI
+
+        if(pkg) {
+            document.getElementById('dispPkg').innerText = pkg;
+            document.getElementById('dispPrice').innerText = price; 
+            document.getElementById('dispInsta').innerText = insta || "Not Provided";
+        }
+
+        // 2. PAYMENT LOGIC
+        document.getElementById('orderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            
+            const rawPrice = document.getElementById('dispPrice').innerText;
+            const finalAmount = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
+            const finalCurrency = currencyFromURL || "INR";
+
+            const btn = document.querySelector('.btn-pay');
+            btn.innerText = "Processing Payment...";
+            btn.disabled = true;
+
+            try {
+                // Step A: Server Request
+                const orderResponse = await fetch('/api/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: finalAmount, 
+                        currency: finalCurrency 
+                    }) 
+                });
+                
+                if (!orderResponse.ok) throw new Error("Server Error");
+                const orderData = await orderResponse.json();
+
+                // Step B: Razorpay Popup
+                const options = {
+                    "key": "rzp_test_SBZFOiJlLqveni", // <--- APNI KEY WAPAS DAALO
+                    "amount": orderData.amount,
+                    "currency": orderData.currency,
+                    "name": "VibeSphere Media",
+                    "description": `Payment for ${pkg}`,
+                    "order_id": orderData.id,
+                    "handler": async function (response) {
+                        // Step C: Payment Success
+                        const verifyResponse = await fetch('/api/verify-payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                                orderDetails: {
+                                    package: pkg,
+                                    price: rawPrice,
+                                    currency: finalCurrency,
+                                    instaLink: insta,
+                                    // postLink: post, <-- YE BHI HATA DIYA
+                                    customerName: name,
+                                    phone: phone,
+                                    email: email
+                                }
+                            })
+                        });
+
+                        const result = await verifyResponse.json();
+                        if(result.success) {
+                            alert("Order Placed Successfully! 🎉");
+                            window.location.href = 'index.html';
+                        } else {
+                            alert("Payment Verified Failed! Contact Admin.");
+                            btn.disabled = false;
+                        }
+                    },
+                    "prefill": { "name": name, "email": email, "contact": phone },
+                    "theme": { "color": "#6B46C1" }
+                };
+
+                const rzp1 = new Razorpay(options);
+                rzp1.on('payment.failed', function (response){
+                    alert("Payment Failed!");
+                    btn.disabled = false;
+                });
+
+                rzp1.open();
+
+            } catch (error) {
+                console.error(error);
+                alert("Something went wrong!");
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
