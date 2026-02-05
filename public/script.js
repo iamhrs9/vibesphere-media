@@ -35,26 +35,35 @@ function closeModal() {
 }
 
 // --- CHECKOUT LOGIC ---
+// --- script.js ---
+
+function openModal(packageName, priceText) {
+    document.getElementById('detailsModal').style.display = 'flex';
+    document.getElementById('selectedPackage').value = packageName;
+    document.getElementById('selectedPrice').value = priceText; // e.g. "19 USD" or "₹399"
+}
+
+function closeModal() {
+    document.getElementById('detailsModal').style.display = 'none';
+}
+
 function goToCheckout() {
-    const pkgInput = document.getElementById('selectedPackage');
-    const priceInput = document.getElementById('selectedPrice');
-    const instaId = document.getElementById('instaId').value;
+    const pkg = document.getElementById('selectedPackage').value;
+    const priceStr = document.getElementById('selectedPrice').value;
+    const insta = document.getElementById('instaId').value;
 
-    if (!instaId) {
-        alert("Please enter your Instagram ID!");
-        return;
-    }
+    if (!insta) return alert("Please enter Instagram ID");
 
-    const pkg = pkgInput ? pkgInput.value : "Unknown";
-    const price = priceInput ? priceInput.value : "0";
+    // 🧠 SMART LOGIC: Price string me se Currency nikalna
+    let currency = "INR"; // Default
+    
+    if (priceStr.includes("USD") || priceStr.includes("$")) currency = "USD";
+    else if (priceStr.includes("NPR")) currency = "NPR";
+    else if (priceStr.includes("EUR") || priceStr.includes("€")) currency = "EUR";
+    // Aur bhi add kar sakte ho
 
-    let currency = "INR";
-    if (price.includes("USD") || price.includes("$")) {
-        currency = "USD";
-    }
-
-    const url = `checkout.html?package=${encodeURIComponent(pkg)}&price=${price}&currency=${currency}&insta=${encodeURIComponent(instaId)}`;
-    window.location.href = url;
+    // URL banate waqt Currency bhi saath bhejo
+    window.location.href = `checkout.html?package=${encodeURIComponent(pkg)}&price=${encodeURIComponent(priceStr)}&currency=${currency}&insta=${encodeURIComponent(insta)}`;
 }
 
 // ==========================================
@@ -127,4 +136,67 @@ async function sendMessage() {
     }
 
     chatBody.scrollTop = chatBody.scrollHeight;
-}
+}// ==========================================
+// 🌟 REVIEW SYSTEM (UPDATED)
+// ==========================================
+
+// 1. Schema (Added Avatar Field)
+const reviewSchema = new mongoose.Schema({
+    name: String,
+    instaId: String,
+    message: String,
+    rating: { type: Number, default: 5 },
+    avatar: { type: String, default: "" }, // Base64 Image String
+    date: { type: Date, default: Date.now }
+});
+const Review = mongoose.model('Review', reviewSchema);
+
+// 2. API: Get Reviews + Dynamic Stats
+app.get('/api/reviews', async (req, res) => {
+    try {
+        // Saare reviews lao (Latest first)
+        const reviews = await Review.find().sort({ date: -1 }).limit(50);
+        
+        // --- 🧮 Calculate Average Rating ---
+        const allReviews = await Review.find(); // Stats ke liye saare chahiye
+        let totalStars = 0;
+        
+        allReviews.forEach(r => totalStars += r.rating);
+        
+        // Agar koi review nahi hai to default 4.9, warna calculate karo
+        const avgRating = allReviews.length > 0 ? (totalStars / allReviews.length).toFixed(1) : "4.9";
+        const totalCount = allReviews.length > 0 ? allReviews.length : "1200+"; // 1200 Fake start base
+
+        res.json({
+            reviews: reviews,
+            stats: {
+                average: avgRating,
+                count: totalCount
+            }
+        });
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+});
+
+// 3. API: Add Review (With Image)
+app.post('/api/add-review', async (req, res) => {
+    try {
+        const { name, instaId, message, rating, avatar } = req.body;
+        
+        const newReview = new Review({
+            name,
+            instaId,
+            message,
+            rating: rating || 5,
+            avatar: avatar || "" // Image string (Compressed)
+        });
+
+        await newReview.save();
+        res.json({ success: true, message: "Review Saved!" });
+    } catch (err) {
+        console.error("Save Error:", err);
+        res.status(500).json({ success: false, error: "Failed to add review" });
+    }
+});
