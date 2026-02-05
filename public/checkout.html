@@ -42,16 +42,22 @@
         </form>
     </div>
 
-    <script>
-       // --- REPLACE INSIDE <script> TAG in checkout.html ---
-        // 1. DATA LOAD KARO
-        const params = new URLSearchParams(window.location.search);
-        const pkg = params.get('package');
-        const price = params.get('price');
-        const currencyFromURL = params.get('currency'); 
-        const insta = params.get('insta');
-        // const post = params.get('post'); <-- YE LINE HATA DI
+   <script>
+       // ==========================================
+       // 💳 SMART CHECKOUT SYSTEM (Updated)
+       // ==========================================
 
+        // 1. URL SE DATA NIKALO
+        const params = new URLSearchParams(window.location.search);
+        
+        const pkg = params.get('package');
+        const price = params.get('price'); // e.g., "$19" or "640 NPR"
+        const insta = params.get('insta');
+        
+        // Agar URL me currency hai toh wo lo, nahi toh INR default
+        const currencyFromURL = params.get('currency') || "INR"; 
+
+        // Screen par dikhao
         if(pkg) {
             document.getElementById('dispPkg').innerText = pkg;
             document.getElementById('dispPrice').innerText = price; 
@@ -66,38 +72,40 @@
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
             
+            // Amount Clean Karo (sirf numbers bacha ke rakho)
             const rawPrice = document.getElementById('dispPrice').innerText;
             const finalAmount = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
-            const finalCurrency = currencyFromURL || "INR";
-
+            
+            // Button Update
             const btn = document.querySelector('.btn-pay');
             btn.innerText = "Processing Payment...";
             btn.disabled = true;
 
             try {
-                // Step A: Server Request
+                // Step A: Server ko Order Create karne bolo
                 const orderResponse = await fetch('/api/create-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         amount: finalAmount, 
-                        currency: finalCurrency 
+                        currency: currencyFromURL // ✅ Ab sahi currency jayegi (USD/INR/NPR)
                     }) 
                 });
                 
                 if (!orderResponse.ok) throw new Error("Server Error");
                 const orderData = await orderResponse.json();
 
-                // Step B: Razorpay Popup
+                // Step B: Razorpay Popup Open Karo
                 const options = {
-                    "key": "rzp_live_SBZ3O1RXMGtguq", // <--- APNI KEY WAPAS DAALO
-                    "amount": orderData.amount,
-                    "currency": orderData.currency,
+                    "key": "rzp_live_SBZ3O1RXMGtguq", // 🔑 APNI KEY CHECK KAR LENA
+                    "amount": orderData.amount, // Server se aaya hua amount (paise me)
+                    "currency": orderData.currency, // Server se aayi hui currency
                     "name": "VibeSphere Media",
                     "description": `Payment for ${pkg}`,
-                    "order_id": orderData.id,
+                    "order_id": orderData.id, // Razorpay Order ID
                     "handler": async function (response) {
-                        // Step C: Payment Success
+                        
+                        // Step C: Payment Success hone par Verify karo
                         const verifyResponse = await fetch('/api/verify-payment', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -107,10 +115,9 @@
                                 razorpay_signature: response.razorpay_signature,
                                 orderDetails: {
                                     package: pkg,
-                                    price: rawPrice,
-                                    currency: finalCurrency,
+                                    price: rawPrice, // Display price (e.g. $19)
+                                    currency: currencyFromURL,
                                     instaLink: insta,
-                                    // postLink: post, <-- YE BHI HATA DIYA
                                     customerName: name,
                                     phone: phone,
                                     email: email
@@ -121,10 +128,11 @@
                         const result = await verifyResponse.json();
                         if(result.success) {
                             alert("Order Placed Successfully! 🎉");
-                            window.location.href = 'index.html';
+                            window.location.href = '/'; // Home page par bhej do
                         } else {
-                            alert("Payment Verified Failed! Contact Admin.");
+                            alert("Payment Verification Failed! Contact Support.");
                             btn.disabled = false;
+                            btn.innerText = "Pay Now & Place Order";
                         }
                     },
                     "prefill": { "name": name, "email": email, "contact": phone },
@@ -132,17 +140,20 @@
                 };
 
                 const rzp1 = new Razorpay(options);
+                
                 rzp1.on('payment.failed', function (response){
-                    alert("Payment Failed!");
+                    alert("Payment Failed! Please try again.");
                     btn.disabled = false;
+                    btn.innerText = "Pay Now & Place Order";
                 });
 
                 rzp1.open();
 
             } catch (error) {
                 console.error(error);
-                alert("Something went wrong!");
+                alert("Something went wrong. Check console.");
                 btn.disabled = false;
+                btn.innerText = "Pay Now & Place Order";
             }
         });
     </script>
