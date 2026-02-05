@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | VibeSphere</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            width: 350px;
+        }
+        .logo-area { font-size: 50px; margin-bottom: 10px; }
+        h2 { color: #fff; margin-bottom: 30px; font-weight: 600; letter-spacing: 1px; }
+        
+        .input-group { position: relative; margin-bottom: 25px; }
+        input {
+            width: 100%;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #6B46C1;
+            outline: none;
+            color: #fff;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        input:focus { border-bottom-color: #00ff88; }
+        ::placeholder { color: rgba(255,255,255,0.5); }
+        
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #6B46C1, #8e44ad);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(107, 70, 193, 0.4);
+        }
+        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(107, 70, 193, 0.6); }
+        .login-btn:active { transform: translateY(1px); }
+        
+        .error-msg {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-area">🚀</div>
+        <h2>Admin Access</h2>
+        <div class="error-msg" id="errorMsg">❌ Incorrect Password!</div>
+        <div class="input-group">
+            <input type="password" id="password" placeholder="Enter Secure Password" required>
+        </div>
+        <button class="login-btn" onclick="login()" id="loginBtn">Unlock Panel</button>
+    </div>
+
+    <script>
+        if(localStorage.getItem("adminToken")) window.location.href = "admin.html";
+
+        async function login() {
+            const pwdInput = document.getElementById('password');
+            const btn = document.getElementById('loginBtn');
+            const errorMsg = document.getElementById('errorMsg');
+
+            btn.innerText = "Verifying...";
+            btn.disabled = true;
+            errorMsg.style.display = "none";
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwdInput.value })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem("adminToken", data.token);
+                    btn.innerText = "Success! Redirecting...";
+                    btn.style.background = "#00ff88";
+                    setTimeout(() => window.location.href = "admin.html", 1000);
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                errorMsg.style.display = "block";
+                btn.innerText = "Unlock Panel";
+                btn.disabled = false;
+                pwdInput.value = '';
+            }
+        }
+        // Enter button se login
+        document.getElementById('password').addEventListener('keypress', (e) => { if(e.key === 'Enter') login(); });
+    </script>
+</body>
+</html>
