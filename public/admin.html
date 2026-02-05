@@ -6,6 +6,9 @@
     <title>Admin Dashboard - VibeSphere</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <script src="https://cdn.tiny.cloud/1/1w8pckp2kybf64f8g1fr4374ima09gr8xgr0ru01fecpzd0i/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
     <style>
         * { font-family: 'Poppins', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #f4f6f9; color: #333; }
@@ -56,6 +59,9 @@
         .btn-publish:hover { background: #5a52d5; transform: translateY(-2px); }
         
         .btn-cancel { background: #64748b; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; display: none; margin-left: 10px; }
+
+        /* 🟢 Editor Style Fix */
+        .tox-tinymce { border-radius: 8px !important; border: 1px solid #ddd !important; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -112,7 +118,7 @@
 
                     <div class="form-group">
                         <label>Blog Title</label>
-                        <input type="text" id="bTitle" placeholder="e.g. How to Grow (Likho jo dikhana hai)" required onkeyup="generateSlug()">
+                        <input type="text" id="bTitle" placeholder="e.g. How to Grow" required onkeyup="generateSlug()">
                     </div>
 
                     <div class="form-group">
@@ -127,7 +133,7 @@
 
                     <div class="form-group">
                         <label>Content (Full Article)</label>
-                        <textarea id="bContent" rows="10" placeholder="Yahan apna pura blog likho..." required></textarea>
+                        <textarea id="bContent" rows="15" placeholder="Yahan apna pura blog likho..."></textarea>
                     </div>
                     
                     <div style="display: flex;">
@@ -151,7 +157,17 @@
     <script>
         const API_URL = '/api';
         let AUTH_TOKEN = localStorage.getItem('adminToken');
-        let allBlogs = []; // Global variable to store blogs
+        let allBlogs = []; 
+
+        // 🟢 2. Initialize TinyMCE (Simple & Clean)
+        tinymce.init({
+            selector: '#bContent',
+            height: 400,
+            plugins: 'link image lists table wordcount',
+            toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image',
+            menubar: false,
+            branding: false
+        });
 
         // Check Login on Load
         if(AUTH_TOKEN) {
@@ -252,7 +268,7 @@
             fetchOrders();
         }
 
-        // --- 3. BLOGS (FIXED SINGLE LOGIC) ---
+        // --- 3. BLOGS ---
         async function fetchBlogs() {
             try {
                 const res = await fetch('/api/blogs');
@@ -262,7 +278,6 @@
                 if(allBlogs.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No blogs found.</td></tr>'; return; }
 
                 allBlogs.forEach(blog => {
-                    // Title check: Fallback for old blogs
                     const displayTitle = blog.title || blog.titleHinglish || blog.titleHindi || "Untitled";
                     tbody.innerHTML += `
                         <tr>
@@ -284,17 +299,19 @@
             document.getElementById('bSlug').value = title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
         }
 
-        // Edit Mode
+        // Edit Mode (Modified for TinyMCE)
         window.prepareEdit = function(id) {
             const blog = allBlogs.find(b => b._id === id);
             if(!blog) return;
 
             document.getElementById('editBlogId').value = blog._id;
-            // Load whatever title/content exists
             document.getElementById('bTitle').value = blog.title || blog.titleHinglish || blog.titleHindi;
             document.getElementById('bSlug').value = blog.slug;
             document.getElementById('bImage').value = blog.image;
-            document.getElementById('bContent').value = blog.content || blog.contentHinglish || blog.contentHindi;
+            
+            // 🟢 Set Data in Editor
+            const content = blog.content || blog.contentHinglish || blog.contentHindi;
+            tinymce.get('bContent').setContent(content || "");
 
             document.getElementById('formTitle').innerText = "Edit Blog Post ✏️";
             document.getElementById('submitBtn').innerText = "Update Blog 🔄";
@@ -305,6 +322,7 @@
         // Reset Form
         window.resetForm = function() {
             document.getElementById('blogForm').reset();
+            tinymce.get('bContent').setContent(""); // 🟢 Clear Editor
             document.getElementById('editBlogId').value = "";
             document.getElementById('formTitle').innerText = "Create New Blog Post";
             document.getElementById('submitBtn').innerText = "Publish Blog 🚀";
@@ -317,11 +335,14 @@
             const id = document.getElementById('editBlogId').value;
             const isEdit = id ? true : false;
 
+            // 🟢 Get Data from Editor
+            const richContent = tinymce.get('bContent').getContent();
+
             const blogData = {
                 title: document.getElementById('bTitle').value,
                 slug: document.getElementById('bSlug').value,
                 image: document.getElementById('bImage').value,
-                content: document.getElementById('bContent').value
+                content: richContent // Use rich text
             };
 
             const url = isEdit ? `/api/edit-blog/${id}` : `/api/add-blog`;
