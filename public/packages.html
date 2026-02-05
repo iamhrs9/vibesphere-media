@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packages - VibeSphere Media</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo-link">
+            <img src="logo.png" alt="VibeSphere Media" class="logo-img">
+        </a>
+        <ul class="nav-links">
+            <li><a href="./">Home</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="#" class="active">Packages</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
+        <div class="nav-right">
+            <div class="menu-icon"><i class="ri-menu-3-line"></i></div>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <h1>Transparent Pricing for <br><span>Every Goal.</span></h1>
+    </section>
+
+    <section class="full-packages">
+        <h3 class="category-title">Social Media Growth</h3>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span id="currency-label" style="font-weight: bold; color: #666; font-size: 0.9rem;">
+                Detecting Location... 🌍
+            </span>
+        </div>
+
+        <div class="pricing-grid-full">
+            
+            <div class="price-card">
+                <h4>Silver Package</h4>
+                <div class="price" id="price-silver">₹399 <span>/ Total</span></div>
+                <ul>
+                    <li><i class="ri-history-line"></i> 2 Story for 2 Days</li>
+                    <li><i class="ri-user-add-line"></i> 1000-1200 Followers Growth</li>
+                </ul>
+                <button class="btn-outline" id="btn-silver" onclick="openModal('Silver Package', 399)">Choose Plan</button>
+            </div>
+
+            <div class="price-card">
+                <h4>Gold Package</h4>
+                <div class="price" id="price-gold">₹669 <span>/ Total</span></div>
+                <ul>
+                    <li><i class="ri-history-line"></i> 2 Story for 2 Days</li>
+                    <li><i class="ri-gallery-upload-line"></i> 1 Permanent Post</li>
+                    <li><i class="ri-user-add-line"></i> 2000-2200 Followers Growth</li>
+                </ul>
+                <button class="btn-outline" id="btn-gold" onclick="openModal('Gold Package', 669)">Choose Plan</button>
+            </div>
+
+            <div class="price-card popular">
+                <span class="badge">Most Popular</span>
+                <h4>Platinum Package</h4>
+                <div class="price" id="price-platinum">₹1199 <span>/ Total</span></div>
+                <ul>
+                    <li><i class="ri-gallery-upload-line"></i> 3 Permanent Posts</li>
+                    <li><i class="ri-history-line"></i> 2 Story for 4 Days</li>
+                    <li><i class="ri-user-add-line"></i> 5k-5.5k Followers Growth</li>
+                </ul>
+                <button class="btn-filled" id="btn-platinum" onclick="openModal('Platinum Package', 1199)">Choose Plan</button>
+            </div>
+
+            <div class="price-card">
+                <h4>Influencer Package</h4>
+                <div class="price" id="price-influencer">₹1889 <span>/ Total</span></div>
+                <ul>
+                    <li><i class="ri-star-line"></i> Face of the Week</li>
+                    <li><i class="ri-gallery-upload-line"></i> 5 Permanent Posts</li>
+                    <li><i class="ri-shake-hands-line"></i> 1 Post Collab</li>
+                    <li><i class="ri-user-add-line"></i> 7k-8k Followers Growth</li>
+                </ul>
+                <button class="btn-outline" id="btn-influencer" onclick="openModal('Influencer Package', 1889)">Choose Plan</button>
+            </div>
+
+            <div class="price-card">
+                <h4>Business Package</h4>
+                <div class="price" id="price-business">₹2699 <span>/ Total</span></div>
+                <ul>
+                    <li><i class="ri-gallery-upload-line"></i> 7 Permanent Posts</li>
+                    <li><i class="ri-shake-hands-line"></i> 2 Collabs</li>
+                    <li><i class="ri-history-line"></i> Daily Story (2 Weeks)</li>
+                    <li><i class="ri-user-add-line"></i> 13k-14k Followers Growth</li>
+                </ul>
+                <button class="btn-outline" id="btn-business" onclick="openModal('Business Package', 2699)">Choose Plan</button>
+            </div>
+
+            <div class="price-card">
+                <h4>Special Package</h4>
+                <div class="price" id="price-special">₹4690 <span>/ Month</span></div>
+                <ul>
+                    <li><i class="ri-vip-crown-line"></i> All Services (1 Month)</li>
+                    <li><i class="ri-bar-chart-line"></i> 3k-4k Reach on New Posts</li>
+                    <li><i class="ri-user-add-line"></i> 26k-27k Followers Growth</li>
+                </ul>
+                <button class="btn-outline" id="btn-special" onclick="openModal('Special Package', 4690)">Choose Plan</button>
+            </div>
+        </div>
+        <section class="web-dev-section">
+    
+    <div class="web-header">
+        <span class="badge-pill">NEW SERVICE</span>
+        <h3>Website Development 🚀</h3>
+        <p>Fast, SEO-Optimized & Mobile Ready Websites.</p>
+    </div>
+
+    <div class="web-grid">
+        
+        <div class="web-card basic">
+            <div class="card-icon"><i class="ri-layout-2-line"></i></div>
+            <h4>Portfolio / Landing</h4>
+            <div class="web-price" id="price-webBasic">₹4,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-check-line"></i> 1-5 Page Website</li>
+                <li><i class="ri-check-line"></i> Mobile Responsive</li>
+                <li><i class="ri-whatsapp-line"></i> WhatsApp Chat Button</li>
+                <li><i class="ri-server-line"></i> Free Hosting (1 Year)</li>
+            </ul>
+            <button class="btn-web outline" id="btn-webBasic" onclick="openModal('Web Dev - Basic', 4999)">Choose Plan</button>
+        </div>
+
+        <div class="web-card business">
+            <span class="popular-tag">BEST VALUE</span>
+            <div class="card-icon"><i class="ri-briefcase-4-line"></i></div>
+            <h4>Business / Corporate</h4>
+            <div class="web-price" id="price-webBusiness">₹14,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-check-double-line"></i> 8-12 Pages Design</li>
+                <li><i class="ri-search-eye-line"></i> SEO Setup (Google Ranking)</li>
+                <li><i class="ri-admin-line"></i> Admin Panel (Easy Edit)</li>
+                <li><i class="ri-mail-send-line"></i> Professional Email</li>
+            </ul>
+            <button class="btn-web filled" id="btn-webBusiness" onclick="openModal('Web Dev - Business', 14999)">Get Started</button>
+        </div>
+
+        <div class="web-card store">
+            <div class="card-icon"><i class="ri-store-2-line"></i></div>
+            <h4>E-commerce Store</h4>
+            <div class="web-price" id="price-webStore">₹24,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-shopping-cart-2-line"></i> Online Store (50 Products)</li>
+                <li><i class="ri-secure-payment-line"></i> Payment Gateway Setup</li>
+                <li><i class="ri-truck-line"></i> Order Tracking System</li>
+                <li><i class="ri-customer-service-2-line"></i> 1 Month Free Support</li>
+            </ul>
+            <button class="btn-web outline" id="btn-webStore" onclick="openModal('Web Dev - Store', 24999)">Choose Plan</button>
+        </div>
+
+    </div>
+</section>
+    </section>
+    
+
+    <div id="detailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-bottom: 20px; color: #333;">Enter Service Details</h3>
+            
+            <input type="hidden" id="selectedPackage">
+            <input type="hidden" id="selectedPrice">
+
+            <input type="text" id="instaId" placeholder="Your Instagram ID Link (e.g. instagram.com/user)" 
+                   style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px;">
+            
+            <button onclick="goToCheckout()" class="btn-primary" style="width: 100%; padding: 12px; background: #6c63ff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                Proceed to Checkout
+            </button>
+            
+            <button onclick="closeModal()" style="background: transparent; border: none; color: #666; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+
+   <footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
+            <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+            <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
+            
+            <a href="/blog.html" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a>
+            
+            <a href="/terms&conditions" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+            <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
+        </div>
+        <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
+            <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <style>
+        footer a:hover { color: #6c63ff !important; }
+    </style>
+
+    <script src="script.js"></script>
+    
+   <script>
+        // ==========================================
+        // 🌍 SMART GEO-PRICING (Social + Web Plans)
+        // ==========================================
+
+        // Group A: South Asia (INR Base - Affordable)
+        const pricesINR = {
+            // Social Media
+            silver: 399,
+            gold: 669,
+            platinum: 1199,
+            influencer: 1889,
+            business: 2699,
+            special: 4690,
+
+            // 👇 Web Development (New Added)
+            webBasic: 4999,
+            webBusiness: 14999,
+            webStore: 24999
+        };
+
+        // Group B: International (USD Base - Premium)
+        const pricesUSD = {
+            // Social Media
+            silver: 19,
+            gold: 29,
+            platinum: 39,
+            influencer: 69,
+            business: 139,
+            special: 259,
+
+            // 👇 Web Development (New Added)
+            webBasic: 199,
+            webBusiness: 499,
+            webStore: 899
+        };
+
+        // Helper: Format Money
+        function formatMoney(amount, currency) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                maximumFractionDigits: 0
+            }).format(Math.ceil(amount));
+        }
+
+        // Helper: Update UI (Prices & Buttons)
+        function updateUI(basePrices, exchangeRate, localCurrency) {
+            for (const [plan, basePrice] of Object.entries(basePrices)) {
+                
+                // 1. Calculate Final Price
+                const finalPrice = basePrice * exchangeRate;
+                const roundedPrice = Math.ceil(finalPrice);
+                const displayPrice = formatMoney(finalPrice, localCurrency);
+                
+                // Suffix Logic: Social vs Web vs Monthly
+                let suffix = '/ Total';
+                if (plan === 'special') suffix = '/ Month';
+                else if (plan.includes('web')) suffix = '/ One Time';
+
+                // 2. Update Display Text
+                const priceEl = document.getElementById(`price-${plan}`);
+                if (priceEl) {
+                    priceEl.innerHTML = `${displayPrice} <span style="font-size: 14px; font-weight: normal; color: #666;">${suffix}</span>`;
+                }
+
+                // 3. Update Button Action
+                const btnEl = document.getElementById(`btn-${plan}`);
+                if (btnEl) {
+                    // Smart Naming for Modal
+                    let packageTitle = plan;
+                    if(plan === 'webBasic') packageTitle = 'Portfolio Website';
+                    else if(plan === 'webBusiness') packageTitle = 'Business Website';
+                    else if(plan === 'webStore') packageTitle = 'E-commerce Store';
+                    else packageTitle = plan.charAt(0).toUpperCase() + plan.slice(1) + ' Package';
+
+                    // Modal ko string bhejo: e.g. "640 NPR"
+                    const priceParam = `'${roundedPrice} ${localCurrency}'`; 
+                    btnEl.setAttribute('onclick', `openModal('${packageTitle}', ${priceParam})`);
+                }
+            }
+            
+            // Debugging Label (Optional)
+            const label = document.getElementById('currency-label');
+            if(label) label.innerText = `Pricing Region: ${localCurrency}`;
+        }
+
+        // Main Logic
+        async function initPricing() {
+            try {
+                // Step A: Detect Country
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+                
+                const userCountry = ipData.country_code; 
+                const userCurrency = ipData.currency || 'USD';    
+                
+                console.log(`📍 User: ${ipData.country_name} (${userCurrency})`);
+
+                const southAsia = ['IN', 'NP', 'PK', 'BD', 'LK'];
+                let baseData, fromCurrency;
+
+                // Step B: Choose Base Price
+                if (southAsia.includes(userCountry)) {
+                    baseData = pricesINR;
+                    fromCurrency = 'INR';
+                } else {
+                    baseData = pricesUSD;
+                    fromCurrency = 'USD';
+                }
+
+                // Step C: Convert Currency
+                if (userCurrency === fromCurrency) {
+                    updateUI(baseData, 1, userCurrency);
+                } else {
+                    // Live Exchange Rate
+                    const rateRes = await fetch(`https://open.er-api.com/v6/latest/${fromCurrency}`);
+                    const rateData = await rateRes.json();
+                    const rate = rateData.rates[userCurrency];
+                    
+                    if (rate) {
+                        updateUI(baseData, rate, userCurrency);
+                    } else {
+                        updateUI(baseData, 1, fromCurrency); // Fallback
+                    }
+                }
+
+            } catch (error) {
+                console.error("Pricing Error:", error);
+                // Agar sab fail ho jaye toh INR dikhao
+                updateUI(pricesINR, 1, 'INR');
+            }
+        }
+
+        window.onload = initPricing;
+
+    </script>
+</body>
+</html>

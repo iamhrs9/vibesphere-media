@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reading Article | VibeSphere</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL RESET --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body {
+            width: 100%; max-width: 100vw; overflow-x: hidden !important;
+            margin: 0; padding: 0; background-color: #ffffff !important;
+            color: #1e293b !important; font-family: 'Outfit', sans-serif;
+        }
+
+        /* --- NAVBAR --- */
+        header {
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; padding: 15px 20px;
+        }
+        .nav-inner {
+            max-width: 800px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;
+        }
+        .back-btn {
+            text-decoration: none; color: #64748b; font-weight: 500;
+            display: flex; align-items: center; gap: 5px; transition: 0.3s;
+        }
+        .back-btn:hover { color: #8b5cf6; gap: 8px; }
+
+        /* --- ARTICLE CONTAINER --- */
+        .article-container { max-width: 800px; margin: 40px auto 100px; padding: 0 20px; }
+
+        /* --- IMAGE --- */
+        .featured-img {
+            width: 100%; height: auto; max-height: 400px; object-fit: cover;
+            border-radius: 20px; margin-bottom: 30px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1 {
+            font-size: 2.2rem; font-weight: 700; color: #1e293b; margin-bottom: 10px;
+            line-height: 1.3; text-align: center;
+        }
+        
+        .date {
+            text-align: center; color: #94a3b8; font-size: 0.9rem;
+            margin-bottom: 40px; display: block; font-weight: 500;
+        }
+
+        .content-body {
+            font-size: 1.15rem; line-height: 1.8; color: #334155;
+            white-space: pre-wrap; /* Paragraphs maintain karega */
+        }
+        
+        /* Loading State */
+        .loader { text-align: center; padding: 50px; color: #cbd5e1; }
+
+        /* Mobile Fixes */
+        @media screen and (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .content-body { font-size: 1rem; }
+            .article-container { margin-top: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="nav-inner">
+            <a href="/blog" class="back-btn"><i class="ri-arrow-left-line"></i> Back</a>
+            <span style="font-weight: 700; color: #1e293b;">VibeSphere<span style="color:#8b5cf6">.</span></span>
+        </div>
+    </header>
+
+    <div class="article-container">
+        
+        <div id="loading" class="loader">
+            <i class="ri-loader-4-line ri-spin" style="font-size: 2rem;"></i>
+        </div>
+
+        <div id="blogContent" style="display: none;">
+            
+            <img id="bImg" class="featured-img" src="" alt="Blog Cover" onerror="this.style.display='none'">
+
+            <h1 id="bTitle">Loading Title...</h1>
+            <span class="date" id="bDate"></span>
+
+            <div id="bContent" class="content-body"></div>
+
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 40px; color: #94a3b8; font-size: 0.9rem; border-top: 1px solid #f1f5f9;">
+        &copy; 2026 VibeSphere Media.
+    </footer>
+
+    <script>
+        const slug = window.location.pathname.split('/').pop();
+
+        fetch(`/api/blog/${slug}`)
+            .then(res => res.json())
+            .then(blog => {
+                document.getElementById('loading').style.display = 'none';
+
+                if(blog.error) {
+                    document.querySelector('.article-container').innerHTML = `<h2 style="text-align:center; margin-top:50px; color:#64748b;">Blog not found 😕</h2>`;
+                    return;
+                }
+
+                document.getElementById('blogContent').style.display = 'block';
+
+                // 1. Set Image
+                const imgEl = document.getElementById('bImg');
+                if(blog.image) imgEl.src = blog.image;
+                else imgEl.style.display = 'none';
+
+                // 2. Set Date
+                let dateStr = "Recent";
+                try {
+                    dateStr = new Date(blog.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                } catch(e) {}
+                document.getElementById('bDate').innerText = "Published on " + dateStr;
+
+                // 3. Set Title & Content (Direct - No Logic)
+                // Hum fallback check kar lete hain taaki purane blogs bhi dikh jayein
+                document.getElementById('bTitle').innerText = blog.title || blog.titleHinglish || blog.titleHindi || "Untitled Post";
+                document.getElementById('bContent').innerText = blog.content || blog.contentHinglish || blog.contentHindi || "No content available.";
+            })
+            .catch(err => {
+                document.getElementById('loading').innerHTML = "Error loading article.";
+            });
+            
+    </script>
+</body>
+</html>
