@@ -47,7 +47,27 @@ const orderSchema = new mongoose.Schema({
     status: { type: String, default: 'Pending' }
 });
 const Order = mongoose.model('Order', orderSchema);
+// --- Blog Schema ---
+// --- Blog Schema (UPDATED) ---
+// --- Blog Schema (UPDATED FOR MULTI-TITLE) ---
+const blogSchema = new mongoose.Schema({
+    slug: String,
+    image: String,
+    date: { type: Date, default: Date.now },
+    
+    // 🇬🇧 English Data
+    title: String,
+    content: String,
 
+    // 😎 Hinglish Data
+    titleHinglish: String,
+    contentHinglish: String,
+
+    // 🇮🇳 Hindi Data
+    titleHindi: String,
+    contentHindi: String
+});
+const Blog = mongoose.model('Blog', blogSchema);
 // --- 3. Razorpay Setup ---
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID, 
@@ -327,6 +347,40 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false }); }
 });
 
+// --- BLOG API ROUTES ---
+
+// 1. Save New Blog (Admin Only)
+app.post('/api/add-blog', async (req, res) => {
+    try {
+        const { title, image, content, slug } = req.body;
+        const newBlog = new Blog({ title, image, content, slug });
+        await newBlog.save();
+        res.json({ success: true, message: "Blog Posted Successfully!" });
+    } catch (error) {
+        res.status(500).json({ success: false, error: "Error saving blog" });
+    }
+});
+
+// 2. Get All Blogs (For Blog Page)
+app.get('/api/blogs', async (req, res) => {
+    const blogs = await Blog.find().sort({ date: -1 }); // Newest first
+    res.json(blogs);
+});
+
+// 3. Get Single Blog (For Reading)
+app.get('/api/blog/:slug', async (req, res) => {
+    const blog = await Blog.findOne({ slug: req.params.slug });
+    if (blog) {
+        res.json(blog);
+    } else {
+        res.status(404).json({ error: "Blog not found" });
+    }
+});
+
+// 4. Serve Single Blog Page (Frontend)
+app.get('/blog/:slug', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'read-blog.html'));
+});
 // Delete Review API
 app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
     try {
@@ -336,7 +390,28 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
         res.status(500).json({ success: false, error: "Failed to delete review" });
     }
 });
+// --- BLOG MANAGEMENT APIS (NEW) ---
 
+// 1. Delete Blog
+app.delete('/api/delete-blog/:id', async (req, res) => {
+    try {
+        await Blog.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Blog Deleted!" });
+    } catch (error) {
+        res.status(500).json({ success: false, error: "Delete failed" });
+    }
+});
+
+// 2. Edit (Update) Blog
+app.put('/api/edit-blog/:id', async (req, res) => {
+    try {
+        // req.body mein naya data aayega (title, content etc.)
+        await Blog.findByIdAndUpdate(req.params.id, req.body);
+        res.json({ success: true, message: "Blog Updated Successfully!" });
+    } catch (error) {
+        res.status(500).json({ success: false, error: "Update failed" });
+    }
+});
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao
