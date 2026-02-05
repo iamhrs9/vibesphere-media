@@ -8,42 +8,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 </head>
-<div id="chat-icon" onclick="toggleChat()">
-    <span style="font-size: 24px;">🤖</span>
-</div>
-
-<div id="chat-box">
-    <div class="chat-header">
-        <span>VibeSphere Support</span>
-        <button onclick="toggleChat()">×</button>
-    </div>
-    <div class="chat-body" id="chat-body">
-        <div class="bot-msg">Hello! Main VibeSphere AI hoon. Website ya Price ke baare mein kuch bhi puchiye! 👇</div>
-    </div>
-    <div class="chat-input">
-        <input type="text" id="user-input" placeholder="Type here..." onkeypress="handleEnter(event)">
-        <button onclick="sendMessage()">➤</button>
-    </div>
-</div>
 <body>
 
-    <nav>
-      <a href="/" class="logo-link">
+    <div class="glass-ai-btn" onclick="toggleChat()">
+        <i class="ri-robot-2-line"></i>
+    </div>
 
-    <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
-</a>
+    <div id="chat-box">
+        <div class="chat-header">
+            <span>VibeSphere AI</span>
+            <button onclick="toggleChat()">×</button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="bot-msg">Hello! Main VibeSphere AI hoon. Website ya Price ke baare mein kuch bhi puchiye! 👇</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Type here..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <nav>
+        <a href="/" class="logo-link">
+            <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
+        </a>
         
- <ul class="nav-links" id="nav-menu">
-    <li><a href="/#home">Home</a></li>
-    <li><a href="/#about">About</a></li>
-    <li><a href="/#services">Services</a></li>
-    <li><a href="/packages">Packages</a></li>
-    <li><a href="/contact">Contact</a></li>
-</ul>
+        <ul class="nav-links" id="nav-menu">
+            <li><a href="/#home">Home</a></li>
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/packages">Packages</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
 
         <div class="nav-right">
             <a href="/contact" class="btn-primary">Get In Touch</a>
-
             <div class="menu-icon" id="hamburger-btn">
                 <i class="ri-menu-3-line"></i>
             </div>
@@ -57,7 +56,6 @@
             
             <div class="buttons">
                 <a href="/packages" class="btn-primary">Get Started</a>
-
                 <a href="#services" class="btn-secondary">View Services</a>
             </div>
 
@@ -109,134 +107,473 @@
             <div class="service-box">
                 <div class="icon-bg"><i class="ri-computer-line"></i></div>
                 <h3>Website Development</h3>
-                <p>Optimal areas in seo helps agreement.</p>
+                <p>Modern, fast, and clean code solutions.</p>
             </div>
             <div class="service-box">
                 <div class="icon-bg"><i class="ri-video-add-line"></i></div>
                 <h3>Content Creation</h3>
-                <p>Brand is image for your To the marketing.</p>
+                <p>High retention editing for Reels & Ads.</p>
             </div>
             <div class="service-box">
                 <div class="icon-bg"><i class="ri-line-chart-line"></i></div>
                 <h3>Analytics & CRO</h3>
-                <p>Profit is over here get digital.</p>
+                <p>Profit focused digital optimization.</p>
             </div>
         </div>
     </section>
 
-  <section class="pricing-preview" style="display: flex; flex-wrap: wrap; gap: 60px; justify-content: center; align-items: center; padding: 80px 20px; background: #f9f9f9;">
+   <section class="web-dev-section" style="background: #ffffff; padding-top: 80px;">
     
-    <div class="pricing-cards" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+    <div class="web-header">
+        <span class="badge-pill" style="background: #ede9fe; color: #6B46C1;">MOST POPULAR</span>
+        <h2 style="font-size: 2.5rem; color: #333; margin: 15px 0 10px 0; font-weight: 700;">
+            Let's Talk <span style="color: #6B46C1;">Growth.</span>
+        </h2>
+        <p style="color: #666; font-size: 1.1rem; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Ready to explode your reach? Choose a plan that fits your goal.
+        </p>
+    </div>
+
+    <div class="web-grid">
         
-        <div class="price-card" style="background: white; padding: 30px; border-radius: 12px; width: 280px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+        <div class="web-card basic">
+            <div class="card-icon"><i class="ri-user-smile-line"></i></div>
             <h4>Silver Package</h4>
-            <div class="price" id="home-price-silver" style="font-size: 24px; font-weight: bold; color: #333; margin: 10px 0;">₹399 <span style="font-size: 14px; font-weight: normal; color: #666;">/ Total</span></div>
-            <ul style="list-style: none; padding: 0; margin: 20px 0; color: #555; font-size: 14px; line-height: 1.6;">
+            <div class="web-price" id="price-silver">₹399 <span class="duration">/ Total</span></div>
+            <ul class="features">
                 <li><i class="ri-check-line"></i> 2 Story for 2 Days</li>
-                <li><i class="ri-check-line"></i> 1000+ Followers Growth</li>
+                <li><i class="ri-group-line"></i> 1000+ Followers Growth</li>
             </ul>
-            <a href="packages" class="btn-outline" style="display: block; text-align: center; padding: 10px; border: 1px solid #6B46C1; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">View Details</a>
+            <button class="btn-web outline" onclick="window.location.href='packages.html'">View Details</button>
         </div>
 
-        <div class="price-card popular" style="background: #6B46C1; color: white; padding: 30px; border-radius: 12px; width: 300px; box-shadow: 0 15px 40px rgba(107, 70, 193, 0.4); transform: scale(1.05); position: relative; z-index: 2;">
-            <span style="background: #FFD700; color: #333; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; position: absolute; top: -12px; right: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">MOST POPULAR</span>
-            <h4 style="color: white;">Platinum Package</h4>
-            <div class="price" id="home-price-platinum" style="font-size: 28px; font-weight: bold; margin: 10px 0;">₹1199 <span style="font-size: 14px; font-weight: normal; opacity: 0.8;">/ Total</span></div>
-            <ul style="list-style: none; padding: 0; margin: 20px 0; font-size: 14px; line-height: 1.6;">
+        <div class="web-card business">
+            <span class="popular-tag">BEST SELLER</span>
+            <div class="card-icon"><i class="ri-vip-diamond-line"></i></div>
+            <h4>Platinum Package</h4>
+            <div class="web-price" id="price-platinum">₹1199 <span class="duration">/ Total</span></div>
+            <ul class="features">
                 <li><i class="ri-check-double-line"></i> 3 Permanent Posts</li>
-                <li><i class="ri-check-double-line"></i> 5k-5.5k Followers Growth</li>
-                <li><i class="ri-check-double-line"></i> 2 Story for 4 Days</li>
+                <li><i class="ri-rocket-2-line"></i> 5k-5.5k Followers Growth</li>
+                <li><i class="ri-history-line"></i> 2 Story for 4 Days</li>
             </ul>
-            <a href="packages" class="btn-filled" style="display: block; text-align: center; padding: 12px; background: white; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">Get Started</a>
+            <button class="btn-web filled" onclick="window.location.href='packages.html'">Get Started</button>
         </div>
 
-        <div class="price-card" style="background: white; padding: 30px; border-radius: 12px; width: 280px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+        <div class="web-card store">
+            <div class="card-icon"><i class="ri-briefcase-4-line"></i></div>
             <h4>Business Package</h4>
-            <div class="price" id="home-price-business" style="font-size: 24px; font-weight: bold; color: #333; margin: 10px 0;">₹2699 <span style="font-size: 14px; font-weight: normal; color: #666;">/ Total</span></div>
-            <ul style="list-style: none; padding: 0; margin: 20px 0; color: #555; font-size: 14px; line-height: 1.6;">
-                <li><i class="ri-vip-crown-line"></i> 7 Permanent Posts</li>
+            <div class="web-price" id="price-business">₹2699 <span class="duration">/ Total</span></div>
+            <ul class="features">
+                <li><i class="ri-gallery-upload-line"></i> 7 Permanent Posts</li>
                 <li><i class="ri-user-add-line"></i> 13k-14k Followers Growth</li>
             </ul>
-            <a href="packages" class="btn-outline" style="display: block; text-align: center; padding: 10px; border: 1px solid #6B46C1; color: #6B46C1; text-decoration: none; border-radius: 6px; font-weight: bold;">View Details</a>
+            <button class="btn-web outline" onclick="window.location.href='packages.html'">View Details</button>
         </div>
 
     </div>
 
-    <div class="pricing-text" style="max-width: 400px; padding: 20px;">
-        <h2 style="font-size: 48px; line-height: 1.2; color: #333; margin-bottom: 20px;">Let's Talk <br><span style="color: #6B46C1;">Growth.</span></h2>
-        <p style="color: #666; font-size: 16px; margin-bottom: 30px;">
-            Ready to explode your reach? Choose a plan or connect with us directly on your favorite platform.
-        </p>
-        
-        <a href="/packages" style="display: inline-block; background: #1a202c; color: white; padding: 15px 35px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: transform 0.3s;">
-            View All Packages &rarr;
+    <div style="margin-top: 50px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+        <a href="/packages" style="text-decoration: none;">
+            <button style="background: #333; color: white; border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; cursor: pointer;">
+                View All Packages &rarr;
+            </button>
         </a>
-        
-        <p style="margin-top: 30px; font-size: 14px; font-weight: bold; color: #888;">OR CHAT WITH US:</p>
-
-        <div style="display: flex; gap: 15px; margin-top: 15px;">
-            
-            <a href="https://wa.me/918302485826" target="_blank" style="width: 50px; height: 50px; background: #25D366; color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3); transition: transform 0.2s;">
-                <i class="ri-whatsapp-fill"></i>
-            </a>
-
-            <a href="https://t.me/YOUR_TELEGRAM_ID" target="_blank" style="width: 50px; height: 50px; background: #0088cc; color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3); transition: transform 0.2s;">
-                <i class="ri-telegram-fill"></i>
-            </a>
-
-            <a href="https://instagram.com/YOUR_INSTA_ID" target="_blank" style="width: 50px; height: 50px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; display: flex; justify-content: center; align-items: center; border-radius: 50%; text-decoration: none; font-size: 24px; box-shadow: 0 5px 15px rgba(220, 39, 67, 0.3); transition: transform 0.2s;">
-                <i class="ri-instagram-fill"></i>
-            </a>
-
-        </div>
     </div>
 
 </section>
 
-    <script src="script.js"></script>
+
+<section class="web-dev-section" style="background: #f8fafc; border-top: 1px solid #eee;">
+    
+    <div class="web-header">
+        <span class="badge-pill" style="background: #e0f2fe; color: #0284c7;">HIGH DEMAND</span>
+        <h2 style="font-size: 2.5rem; color: #333; margin: 15px 0 10px 0; font-weight: 700;">
+            Website <span style="color: #0284c7;">Development</span>
+        </h2>
+        <p style="color: #666; font-size: 1.1rem; margin-bottom: 40px;">
+            Fast, SEO-Optimized & Mobile Ready Websites.
+        </p>
+    </div>
+
+    <div class="web-grid">
+        
+        <div class="web-card basic">
+            <div class="card-icon"><i class="ri-layout-2-line"></i></div>
+            <h4>Portfolio / Landing</h4>
+            <div class="web-price" id="price-webBasic">₹4,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-check-line"></i> 1-5 Page Website</li>
+                <li><i class="ri-smartphone-line"></i> Mobile Responsive</li>
+                <li><i class="ri-whatsapp-line"></i> WhatsApp Chat Button</li>
+                <li><i class="ri-server-line"></i> Free Hosting (1 Year)</li>
+            </ul>
+            <button class="btn-web outline" onclick="window.location.href='packages.html'">Choose Plan</button>
+        </div>
+
+        <div class="web-card business">
+            <span class="popular-tag">BEST VALUE</span>
+            <div class="card-icon"><i class="ri-briefcase-4-line"></i></div>
+            <h4>Business / Corporate</h4>
+            <div class="web-price" id="price-webBusiness">₹14,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-check-double-line"></i> 8-12 Pages Design</li>
+                <li><i class="ri-search-eye-line"></i> SEO Setup (Google Ranking)</li>
+                <li><i class="ri-admin-line"></i> Admin Panel (Easy Edit)</li>
+                <li><i class="ri-mail-send-line"></i> Professional Email</li>
+            </ul>
+            <button class="btn-web filled" onclick="window.location.href='packages.html'">Get Started</button>
+        </div>
+
+        <div class="web-card store">
+            <div class="card-icon"><i class="ri-store-2-line"></i></div>
+            <h4>E-commerce Store</h4>
+            <div class="web-price" id="price-webStore">₹24,999 <span class="duration">/ One Time</span></div>
+            <ul class="features">
+                <li><i class="ri-shopping-cart-2-line"></i> Online Store (50 Products)</li>
+                <li><i class="ri-secure-payment-line"></i> Payment Gateway Setup</li>
+                <li><i class="ri-truck-line"></i> Order Tracking System</li>
+                <li><i class="ri-customer-service-2-line"></i> 1 Month Free Support</li>
+            </ul>
+            <button class="btn-web outline" onclick="window.location.href='packages.html'">Choose Plan</button>
+        </div>
+
+    </div>
+</section>
+
+    
+
+    <section class="reviews" id="reviews">
+        <div class="review-header">
+            <span class="badge-pill">WALL OF LOVE</span>
+            <h2>Trusted by <span class="highlight">Creators Like You.</span></h2>
+            <p>See what the community is saying in real-time!</p>
+            
+            <button onclick="openReviewModal()" class="btn-primary" style="margin-top: 10px;">
+                <i class="ri-edit-box-line"></i> Write a Review
+            </button>
+        </div>
+
+        <div class="marquee-container">
+            <div class="marquee-track" id="reviewTrack">
+                <div class="loading-text">Loading Reviews...</div>
+            </div>
+        </div>
+
+        <div class="trust-bar">
+            <div class="trust-item">
+                <h2 id="dynamicAvg">4.9/5</h2> <p>Average Rating</p>
+            </div>
+            <div class="trust-item">
+                <h2 id="dynamicCount">1200+</h2> <p>Happy Clients</p>
+            </div>
+            <div class="trust-item">
+                <h2>24/7</h2>
+                <p>WhatsApp Support</p>
+            </div>
+        </div>
+    </section>
+
+    <div id="reviewModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Experience ⭐</h3>
+                <button onclick="closeReviewModal()" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="text-align: center;">
+                <div class="avatar-upload">
+                    <label for="reviewFile">
+                        <img src="https://cdn-icons-png.flaticon.com/512/847/847969.png" id="previewImg" alt="Upload">
+                        <span>Tap to Upload Photo (Optional)</span>
+                    </label>
+                    <input type="file" id="reviewFile" accept="image/*" onchange="compressImage(this)">
+                </div>
+
+                <input type="text" id="revName" placeholder="Your Name" required>
+                <input type="text" id="revInsta" placeholder="Instagram ID (e.g. @rahul_ok)" required>
+                
+                <div class="star-rating" id="starContainer">
+                    <span onclick="setRating(1)">★</span>
+                    <span onclick="setRating(2)">★</span>
+                    <span onclick="setRating(3)">★</span>
+                    <span onclick="setRating(4)">★</span>
+                    <span onclick="setRating(5)">★</span>
+                </div>
+                
+                <div style="position: relative;">
+                    <textarea id="revMsg" 
+                        placeholder="Share your experience (Max 200 chars)..." 
+                        rows="3" 
+                        maxlength="200" 
+                        oninput="updateCharCount(this)"
+                        required></textarea>
+                    <div id="charCounter" style="text-align: right; font-size: 0.75rem; color: #888; margin-top: -5px; margin-bottom: 10px;">
+                        0 / 200
+                    </div>
+                </div>
+
+                <button onclick="submitReview()" class="btn-primary" style="width: 100%; margin-top: 5px;">Submit Review 🚀</button>
+            </div>
+        </div>
+    </div>
+
     <div id="detailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-    <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-        <h3 style="margin-bottom: 20px; color: #333;">Enter Service Details</h3>
-        
-        <input type="hidden" id="selectedPackage">
-        <input type="hidden" id="selectedPrice">
-
-        <input type="text" id="instaId" placeholder="Your Instagram ID Link (e.g. instagram.com/user)" 
-               style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px;">
-      
-
-        <button onclick="goToCheckout()" style="background: #6B46C1; color: white; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">
-            Proceed to Checkout
-        </button>
-        
-        <button onclick="closeModal()" style="margin-top: 10px; background: transparent; border: none; color: #666; cursor: pointer;">Cancel</button>
-    </div>
-</div>
-<footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
-    
-    <div style="margin-bottom: 20px;">
-        <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
-        <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
-    </div>
-    
-    <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
-        <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
-        <a href="/terms&condition" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
-        <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
-        <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
-        <a href="/login" style="color: #666; font-size: 11px; text-decoration: none; opacity: 0.5;">
-        Admin Access
+        <div style="background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-bottom: 20px; color: #333;">Enter Service Details</h3>
+            <input type="hidden" id="selectedPackage">
+            <input type="hidden" id="selectedPrice">
+            <input type="text" id="instaId" placeholder="Your Instagram ID Link (e.g. instagram.com/user)" style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            <button onclick="goToCheckout()" style="background: #6B46C1; color: white; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">Proceed to Checkout</button>
+            <button onclick="closeModal()" style="margin-top: 10px; background: transparent; border: none; color: #666; cursor: pointer;">Cancel</button>
+        </div>
     </div>
 
-    <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
-        <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.</p>
-    </div>
+    <footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
+            <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+            <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
+            <a href="/terms&conditions" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+            <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
+        </div>
+        <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
+            <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.</p>
+        </div>
+    </footer>
 
-</footer>
-<style>
-    footer a:hover {
-        color: #6c63ff !important; /* Brand Color on Hover */
-    }
-</style>
+   <script>
+        // ==========================================
+        // 🌍 SMART GEO-PRICING (Social + Web Dev)
+        // ==========================================
+
+        // Group A: South Asia (INR Base - Sasta)
+        const pricesINR = {
+            // Social Media Plans
+            silver: 399,
+            gold: 669,
+            platinum: 1199,
+            business: 2699,
+            special: 4690,
+
+            // 👇 Web Development Plans (Added)
+            webBasic: 4999,
+            webBusiness: 14999,
+            webStore: 24999
+        };
+
+        // Group B: Rest of World (USD Base - Premium)
+        const pricesUSD = {
+            // Social Media Plans
+            silver: 19,
+            gold: 29,
+            platinum: 39,
+            business: 139,
+            special: 259,
+
+            // 👇 Web Development Plans (Added)
+            webBasic: 199,      // $199 (~16,000 INR) -> Good Profit
+            webBusiness: 499,   // $499 (~41,000 INR) -> Huge Profit
+            webStore: 899       // $899 (~75,000 INR) -> Jackpot 🤑
+        };
+
+        function formatMoney(amount, currency) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                maximumFractionDigits: 0
+            }).format(Math.ceil(amount));
+        }
+
+        function updateUI(basePrices, exchangeRate, localCurrency) {
+            for (const [plan, basePrice] of Object.entries(basePrices)) {
+                
+                // 1. Text Update (Price on Card)
+                const priceEl = document.getElementById(`price-${plan}`);
+                if (priceEl) {
+                    const finalPrice = basePrice * exchangeRate;
+                    const display = formatMoney(finalPrice, localCurrency);
+                    
+                    // Web Dev ke liye "One Time" likhenge, Social ke liye "Total"
+                    const suffix = plan.includes('web') ? "/ One Time" : "/ Total";
+                    
+                    priceEl.innerHTML = `${display} <span style="font-size: 14px; font-weight: normal; color: #666;">${suffix}</span>`;
+                }
+            }
+        }
+
+        async function initPricing() {
+            try {
+                // Step A: Detect Country (Free API)
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+                
+                const userCountry = ipData.country_code; 
+                const userCurrency = ipData.currency || 'USD';    
+                
+                console.log(`📍 User: ${ipData.country_name} (${userCurrency})`);
+
+                const southAsia = ['IN', 'NP', 'PK', 'BD', 'LK'];
+                let baseData, fromCurrency;
+
+                // Step B: Choose Pricing Group
+                if (southAsia.includes(userCountry)) {
+                    baseData = pricesINR;
+                    fromCurrency = 'INR';
+                } else {
+                    baseData = pricesUSD;
+                    fromCurrency = 'USD';
+                }
+
+                // Step C: Apply Conversion
+                if (userCurrency === fromCurrency) {
+                    updateUI(baseData, 1, userCurrency);
+                } else {
+                    const rateRes = await fetch(`https://open.er-api.com/v6/latest/${fromCurrency}`);
+                    const rateData = await rateRes.json();
+                    const rate = rateData.rates[userCurrency] || 1;
+                    
+                    updateUI(baseData, rate, userCurrency);
+                }
+
+            } catch (error) {
+                console.error("Pricing Error:", error);
+                // Error aane par Default INR dikhao
+                updateUI(pricesINR, 1, 'INR');
+            }
+        }
+
+        // ==========================================
+        // 🌟 REVIEW SYSTEM (Same as before)
+        // ==========================================
+        let selectedRating = 5;
+        let compressedAvatar = "";
+
+        function compressImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 100; canvas.height = 100;
+                    ctx.drawImage(img, 0, 0, 100, 100);
+                    compressedAvatar = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('previewImg').src = compressedAvatar;
+                }
+            }
+        }
+
+        function setRating(n) {
+            selectedRating = n;
+            const stars = document.querySelectorAll('.star-rating span');
+            stars.forEach((star, index) => {
+                star.classList.toggle('active', index < n);
+            });
+        }
+
+        async function submitReview() {
+            const name = document.getElementById('revName').value;
+            const message = document.getElementById('revMsg').value;
+            if(!name || !message) return alert("Please fill details!");
+
+            try {
+                const res = await fetch('/api/add-review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, instaId: document.getElementById('revInsta').value, message, rating: selectedRating, avatar: compressedAvatar })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Thank you! Review Added. 🎉");
+                    closeReviewModal();
+                    loadReviews(); 
+                    document.getElementById('revName').value = '';
+                    document.getElementById('revMsg').value = '';
+                    compressedAvatar = "";
+                }
+            } catch (error) { alert("Error submitting review."); }
+        }
+
+        async function loadReviews() {
+            const track = document.getElementById('reviewTrack');
+            try {
+                const res = await fetch('/api/reviews');
+                const data = await res.json(); 
+                const reviews = data.reviews || []; 
+
+                if(data.stats) {
+                    document.getElementById('dynamicAvg').innerText = data.stats.average + "/5";
+                    document.getElementById('dynamicCount').innerText = data.stats.count + "+";
+                }
+
+                if (reviews.length === 0) {
+                    track.innerHTML = '<div class="live-review-card"><p>No reviews yet.</p></div>';
+                    return;
+                }
+
+                let cardsHTML = reviews.map(review => `
+                    <div class="live-review-card">
+                        <div class="live-review-top">
+                            <div class="live-user" style="display:flex; gap:10px; align-items:center;">
+                                ${review.avatar ? `<img src="${review.avatar}" class="user-avatar-small">` : `<div class="default-avatar">${review.name.charAt(0).toUpperCase()}</div>`}
+                                <div><h4>${review.name}</h4><span>${review.instaId}</span></div>
+                            </div>
+                            <div style="font-size: 0.8rem;">${'⭐'.repeat(review.rating || 5)}</div>
+                        </div>
+                        <p class="live-msg">"${review.message}"</p>
+                    </div>`).join('');
+
+                track.innerHTML = cardsHTML.repeat(reviews.length < 5 ? 10 : 3); 
+                track.style.animation = "scroll 40s linear infinite";
+            } catch (error) { track.innerHTML = '<div style="color:red; padding:20px;">Loading Reviews...</div>'; }
+        }
+
+        function updateCharCount(field) {
+            document.getElementById('charCounter').innerText = `${field.value.length} / 200`;
+        }
+        function openReviewModal() { document.getElementById('reviewModal').style.display = 'flex'; }
+        function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
+        function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
+
+        // --- 🤖 CHAT BOT ---
+        function toggleChat() {
+            const box = document.getElementById('chat-box');
+            box.style.display = box.style.display === 'flex' ? 'none' : 'flex';
+        }
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const msg = input.value.trim();
+            const body = document.getElementById('chat-body');
+            if (!msg) return;
+
+            body.innerHTML += `<div class="user-msg" style="background:#6c63ff; color:white; padding:10px; border-radius:15px; align-self:flex-end; margin:5px; max-width:80%;">${msg}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+
+            try {
+                const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) });
+                const data = await res.json();
+                body.innerHTML += `<div class="bot-msg" style="background:#f1f1f1; color:#333; padding:10px; border-radius:15px; align-self:flex-start; margin:5px; max-width:80%;">${data.reply}</div>`;
+                body.scrollTop = body.scrollHeight;
+            } catch (error) { body.innerHTML += `<div class="bot-msg">Error.</div>`; }
+        }
+        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+
+        window.onload = function() {
+            initPricing(); 
+            setRating(5); 
+            loadReviews(); 
+        };
+    </script>
 </body>
 </html>
