@@ -337,12 +337,14 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
     }
 });
 
-// 404 Handler
+// --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
+    // Agar API route nahi hai, toh 404 page dikhao
     if (req.method === 'GET' && !req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
     } else {
-        next();
+        // Agar API route galat hai toh JSON error do
+        res.status(404).json({ error: "API Route Not Found" });
     }
 });
 
