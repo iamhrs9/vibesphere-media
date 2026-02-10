@@ -129,6 +129,7 @@ app.post('/api/add-review', async (req, res) => {
         await newReview.save();
         res.json({ success: true, message: "Review Added!" });
     } catch (err) {
+        console.error("❌ Add Review Error:", err);
         res.status(500).json({ success: false, error: "Failed to add review" });
     }
 });
@@ -254,6 +255,7 @@ Always end with a Call to Action (CTA):
         res.json({ reply: replyText });
 
     } catch (error) {
+        console.error("❌ AI Chat Error:", error);
         res.status(500).json({ reply: "Server busy. Try later." });
     }
 });
@@ -306,7 +308,13 @@ app.post('/api/verify-payment', async (req, res) => {
             date: new Date().toLocaleString()
         });
         localOrders.push(newOrder);
-        try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) {}
+        try {
+            if (mongoose.connection.readyState === 1) {
+                await newOrder.save();
+            }
+        } catch (e) {
+            console.error("❌ Error saving order to MongoDB:", e);
+        }
         res.json({ success: true });
     } else {
         res.json({ success: false });
@@ -334,7 +342,10 @@ app.get('/api/admin/orders', checkAuth, async (req, res) => {
         let orders = await Order.find().sort({ _id: -1 });
         if (orders.length === 0) orders = [...localOrders].reverse();
         res.json(orders);
-    } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
+    } catch (err) {
+        console.error("❌ Fetch Orders Error:", err);
+        res.status(500).json({ error: "Fetch Failed" });
+    }
 });
 
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
@@ -344,7 +355,10 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
         const localOrder = localOrders.find(o => o.orderId === id);
         if (localOrder) localOrder.status = status;
         res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+    } catch (error) {
+        console.error("❌ Update Status Error:", error);
+        res.status(500).json({ success: false });
+    }
 });
 
 // --- BLOG API ROUTES ---
@@ -357,6 +371,7 @@ app.post('/api/add-blog', async (req, res) => {
         await newBlog.save();
         res.json({ success: true, message: "Blog Posted Successfully!" });
     } catch (error) {
+        console.error("❌ Add Blog Error:", error);
         res.status(500).json({ success: false, error: "Error saving blog" });
     }
 });
@@ -417,6 +432,7 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
         await Review.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Review Deleted Successfully!" });
     } catch (err) {
+        console.error("❌ Delete Review Error:", err);
         res.status(500).json({ success: false, error: "Failed to delete review" });
     }
 });
@@ -428,6 +444,7 @@ app.delete('/api/delete-blog/:id', async (req, res) => {
         await Blog.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Blog Deleted!" });
     } catch (error) {
+        console.error("❌ Delete Blog Error:", error);
         res.status(500).json({ success: false, error: "Delete failed" });
     }
 });
@@ -439,6 +456,7 @@ app.put('/api/edit-blog/:id', async (req, res) => {
         await Blog.findByIdAndUpdate(req.params.id, req.body);
         res.json({ success: true, message: "Blog Updated Successfully!" });
     } catch (error) {
+        console.error("❌ Update Blog Error:", error);
         res.status(500).json({ success: false, error: "Update failed" });
     }
 });
