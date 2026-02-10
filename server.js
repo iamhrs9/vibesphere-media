@@ -5,6 +5,7 @@ const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { sanitizeAmount, sanitizeCurrency } = require('./utils/paymentUtils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -269,17 +270,9 @@ app.post('/api/create-payment', async (req, res) => {
         
         console.log(`📝 Payment Request: ${amount} ${currency}`);
 
-        // 👇 YEH HAI MAGIC LINE:
-        // Agar amount "$19" hai, toh "$" hata kar "19" bana dega.
-        // Agar "₹399" hai, toh "399" bana dega.
-        let cleanAmount = amount.toString().replace(/[^\d.]/g, ''); 
-        
-        // Currency validation
-        let cleanCurrency = currency && currency.length === 3 ? currency : "INR";
-
         const options = {
-            amount: Math.round(parseFloat(cleanAmount) * 100), // Paise conversion
-            currency: cleanCurrency,
+            amount: sanitizeAmount(amount),
+            currency: sanitizeCurrency(currency),
             receipt: "rcpt_" + Date.now()
         };
 
