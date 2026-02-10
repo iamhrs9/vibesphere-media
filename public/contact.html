@@ -10,23 +10,38 @@
 </head>
 <body>
 
-    <nav>
-      <a href="/" class="logo-link">
-    <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
-</a>
+   <nav>
+        <a href="/" class="logo-link">
+            <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
+        </a>
         
-        <ul class="nav-links">
-            <li><a href="/">Home</a></li>
+        <ul class="nav-links" id="nav-menu">
+            <li><a href="/#home">Home</a></li>
             <li><a href="/#about">About</a></li>
             <li><a href="/#services">Services</a></li>
-            <li><a href="/#packages">Packages</a></li>
-            <li><a href="#" class="active">Contact</a></li>
+            <li><a href="/packages">Packages</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li>
+                    <a href="/blog" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                        Blog 
+                        <span style="font-size: 0.7rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">NEW</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/login" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                        Login 
+                       
+                    </a>
+                </li>
         </ul>
+
         <div class="nav-right">
-            <div class="menu-icon"><i class="ri-menu-3-line"></i></div>
+            <a href="/login" class="btn-primary">Login</a>
+            <div class="menu-icon" id="hamburger-btn">
+                <i class="ri-menu-3-line"></i>
+            </div>
         </div>
     </nav>
-
     <section class="contact-page">
         <div class="contact-container">
             <h2>Get In Touch</h2>
