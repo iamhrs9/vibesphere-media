@@ -145,19 +145,35 @@
         </div>
     </div>
 
+    <!-- Pagination Control -->
+    <div id="pagination-container" style="text-align: center; margin-bottom: 80px; display: none;">
+        <button id="loadMoreBtn" style="background: #8b5cf6; color: white; border: none; padding: 12px 30px; border-radius: 50px; cursor: pointer; font-weight: 600; font-family: 'Outfit', sans-serif; transition: 0.3s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);">
+            Load More Articles <i class="ri-arrow-down-line"></i>
+        </button>
+    </div>
+
     <footer style="background: #1e293b; color: white; padding: 40px 0; text-align: center; margin-top: auto;">
         <p style="opacity: 0.7; font-size: 0.9rem;">&copy; 2026 VibeSphere Media. Built for You.</p>
     </footer>
 
     <script>
-        // Fetch Blogs Logic
-        fetch('/api/blogs')
-            .then(res => res.json())
-            .then(data => {
-                const container = document.getElementById('blogList');
-                container.innerHTML = ''; 
+        let currentPage = 1;
+        const limit = 12;
+        const container = document.getElementById('blogList');
+        const paginationContainer = document.getElementById('pagination-container');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+        async function fetchBlogs(page = 1) {
+            try {
+                const res = await fetch(`/api/blogs?page=${page}&limit=${limit}`);
+                const data = await res.json();
                 
-                if(data.length === 0) {
+                if (page === 1) container.innerHTML = '';
+
+                const blogs = data.blogs || [];
+                const pagination = data.pagination || {};
+
+                if (blogs.length === 0 && page === 1) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="ri-article-line empty-icon"></i>
@@ -165,19 +181,20 @@
                             <p>We are writing something amazing. Check back soon.</p>
                         </div>
                     `;
+                    paginationContainer.style.display = 'none';
                     return;
                 }
 
-                data.forEach(blog => {
-                    // Date Parsing (Safe Mode)
+                blogs.forEach(blog => {
                     let dateStr = "Recent";
                     try {
-                        dateStr = new Date(blog.date).toLocaleDateString('en-US', {
-                            year: 'numeric', month: 'short', day: 'numeric'
-                        });
+                        if (blog.date) {
+                            dateStr = new Date(blog.date).toLocaleDateString('en-US', {
+                                year: 'numeric', month: 'short', day: 'numeric'
+                            });
+                        }
                     } catch(e) {}
 
-                    // TITLE LOGIC: Jo bhi title available ho use karo (Simplified)
                     const displayTitle = blog.title || blog.titleHinglish || blog.titleHindi || "Untitled Post";
 
                     const html = `
@@ -194,13 +211,31 @@
                             </div>
                         </article>
                     `;
-                    container.innerHTML += html;
+                    container.insertAdjacentHTML('beforeend', html);
                 });
-            })
-            .catch(err => {
+
+                // Show/Hide Load More Button
+                if (pagination.page < pagination.pages) {
+                    paginationContainer.style.display = 'block';
+                    currentPage = pagination.page;
+                } else {
+                    paginationContainer.style.display = 'none';
+                }
+
+            } catch (err) {
                 console.error(err);
-                document.getElementById('blogList').innerHTML = `<p class="empty-state">Failed to load blogs.</p>`;
-            });
+                if (page === 1) {
+                    container.innerHTML = `<p class="empty-state">Failed to load blogs.</p>`;
+                }
+            }
+        }
+
+        loadMoreBtn.addEventListener('click', () => {
+            fetchBlogs(currentPage + 1);
+        });
+
+        // Initial Load
+        fetchBlogs(1);
     </script>
 </body>
 </html>
