@@ -271,12 +271,8 @@
         // --- 3. BLOGS ---
         async function fetchBlogs() {
             try {
-                // Admin might want to see more, but for now we fetch the first 100 to keep it simple
-                // In a larger app, we would add pagination controls here too
-                const res = await fetch('/api/blogs?limit=100');
-                const data = await res.json();
-                allBlogs = data.blogs || [];
-
+                const res = await fetch('/api/blogs');
+                allBlogs = await res.json();
                 const tbody = document.getElementById('blogsTable');
                 tbody.innerHTML = '';
                 if(allBlogs.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No blogs found.</td></tr>'; return; }
@@ -294,7 +290,7 @@
                             </td>
                         </tr>`;
                 });
-            } catch(e) { console.error("Admin Fetch Blogs Error:", e); }
+            } catch(e) {}
         }
 
         // Generate Slug
@@ -303,33 +299,24 @@
             document.getElementById('bSlug').value = title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
         }
 
-        // Edit Mode (Modified for TinyMCE & Paginated API)
-        window.prepareEdit = async function(id) {
-            const blogSummary = allBlogs.find(b => b._id === id);
-            if(!blogSummary) return;
+        // Edit Mode (Modified for TinyMCE)
+        window.prepareEdit = function(id) {
+            const blog = allBlogs.find(b => b._id === id);
+            if(!blog) return;
 
-            try {
-                // Fetch full blog data since the list view no longer contains the content
-                const res = await fetch(`/api/blog/${blogSummary.slug}`);
-                const blog = await res.json();
+            document.getElementById('editBlogId').value = blog._id;
+            document.getElementById('bTitle').value = blog.title || blog.titleHinglish || blog.titleHindi;
+            document.getElementById('bSlug').value = blog.slug;
+            document.getElementById('bImage').value = blog.image;
+            
+            // 🟢 Set Data in Editor
+            const content = blog.content || blog.contentHinglish || blog.contentHindi;
+            tinymce.get('bContent').setContent(content || "");
 
-                document.getElementById('editBlogId').value = blog._id;
-                document.getElementById('bTitle').value = blog.title || blog.titleHinglish || blog.titleHindi;
-                document.getElementById('bSlug').value = blog.slug;
-                document.getElementById('bImage').value = blog.image;
-
-                // 🟢 Set Data in Editor
-                const content = blog.content || blog.contentHinglish || blog.contentHindi;
-                tinymce.get('bContent').setContent(content || "");
-
-                document.getElementById('formTitle').innerText = "Edit Blog Post ✏️";
-                document.getElementById('submitBtn').innerText = "Update Blog 🔄";
-                document.getElementById('cancelBtn').style.display = "block";
-                document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
-            } catch (err) {
-                alert("Failed to fetch blog content for editing.");
-                console.error(err);
-            }
+            document.getElementById('formTitle').innerText = "Edit Blog Post ✏️";
+            document.getElementById('submitBtn').innerText = "Update Blog 🔄";
+            document.getElementById('cancelBtn').style.display = "block";
+            document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
         }
 
         // Reset Form
