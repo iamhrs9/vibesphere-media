@@ -35,17 +35,6 @@ function closeModal() {
 }
 
 // --- CHECKOUT LOGIC ---
-// --- script.js ---
-
-function openModal(packageName, priceText) {
-    document.getElementById('detailsModal').style.display = 'flex';
-    document.getElementById('selectedPackage').value = packageName;
-    document.getElementById('selectedPrice').value = priceText; // e.g. "19 USD" or "₹399"
-}
-
-function closeModal() {
-    document.getElementById('detailsModal').style.display = 'none';
-}
 
 function goToCheckout() {
     const pkg = document.getElementById('selectedPackage').value;
@@ -136,67 +125,4 @@ async function sendMessage() {
     }
 
     chatBody.scrollTop = chatBody.scrollHeight;
-}// ==========================================
-// 🌟 REVIEW SYSTEM (UPDATED)
-// ==========================================
-
-// 1. Schema (Added Avatar Field)
-const reviewSchema = new mongoose.Schema({
-    name: String,
-    instaId: String,
-    message: String,
-    rating: { type: Number, default: 5 },
-    avatar: { type: String, default: "" }, // Base64 Image String
-    date: { type: Date, default: Date.now }
-});
-const Review = mongoose.model('Review', reviewSchema);
-
-// 2. API: Get Reviews + Dynamic Stats
-app.get('/api/reviews', async (req, res) => {
-    try {
-        // Saare reviews lao (Latest first)
-        const reviews = await Review.find().sort({ date: -1 }).limit(50);
-        
-        // --- 🧮 Calculate Average Rating ---
-        const allReviews = await Review.find(); // Stats ke liye saare chahiye
-        let totalStars = 0;
-        
-        allReviews.forEach(r => totalStars += r.rating);
-        
-        // Agar koi review nahi hai to default 4.9, warna calculate karo
-        const avgRating = allReviews.length > 0 ? (totalStars / allReviews.length).toFixed(1) : "4.9";
-        const totalCount = allReviews.length > 0 ? allReviews.length : "1200+"; // 1200 Fake start base
-
-        res.json({
-            reviews: reviews,
-            stats: {
-                average: avgRating,
-                count: totalCount
-            }
-        });
-    } catch (err) {
-        console.error("Fetch Error:", err);
-        res.status(500).json({ error: "Failed to fetch reviews" });
-    }
-});
-
-// 3. API: Add Review (With Image)
-app.post('/api/add-review', async (req, res) => {
-    try {
-        const { name, instaId, message, rating, avatar } = req.body;
-        
-        const newReview = new Review({
-            name,
-            instaId,
-            message,
-            rating: rating || 5,
-            avatar: avatar || "" // Image string (Compressed)
-        });
-
-        await newReview.save();
-        res.json({ success: true, message: "Review Saved!" });
-    } catch (err) {
-        console.error("Save Error:", err);
-        res.status(500).json({ success: false, error: "Failed to add review" });
-    }
-});
+}
