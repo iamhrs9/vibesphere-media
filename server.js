@@ -5,6 +5,7 @@ const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { checkAuth } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -323,12 +324,6 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-const checkAuth = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (token === "SECRET_VIBESPHERE_KEY_123") next();
-    else res.status(403).json({ error: "Access Denied" });
-};
-
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         let orders = await Order.find().sort({ _id: -1 });
@@ -350,7 +345,7 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
 // --- BLOG API ROUTES ---
 
 // 1. Save New Blog (Admin Only)
-app.post('/api/add-blog', async (req, res) => {
+app.post('/api/add-blog', checkAuth, async (req, res) => {
     try {
         const { title, image, content, slug } = req.body;
         const newBlog = new Blog({ title, image, content, slug });
@@ -423,7 +418,7 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
 // --- BLOG MANAGEMENT APIS (NEW) ---
 
 // 1. Delete Blog
-app.delete('/api/delete-blog/:id', async (req, res) => {
+app.delete('/api/delete-blog/:id', checkAuth, async (req, res) => {
     try {
         await Blog.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Blog Deleted!" });
@@ -433,7 +428,7 @@ app.delete('/api/delete-blog/:id', async (req, res) => {
 });
 
 // 2. Edit (Update) Blog
-app.put('/api/edit-blog/:id', async (req, res) => {
+app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
     try {
         // req.body mein naya data aayega (title, content etc.)
         await Blog.findByIdAndUpdate(req.params.id, req.body);
