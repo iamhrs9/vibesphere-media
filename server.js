@@ -6,6 +6,20 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 
+// --- 0. Helper Functions ---
+function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>"']/g, function(m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[m];
+    });
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -116,13 +130,19 @@ app.get('/api/reviews', async (req, res) => {
 // 2. Add Review
 app.post('/api/add-review', async (req, res) => {
     try {
-        const { name, instaId, message, rating, avatar } = req.body;
+        let { name, instaId, message, rating, avatar } = req.body;
         
+        // --- Security: Sanitize Inputs (Prevent XSS) ---
+        name = escapeHTML(name);
+        instaId = escapeHTML(instaId);
+        message = escapeHTML(message);
+        avatar = escapeHTML(avatar);
+
         const newReview = new Review({
             name,
             instaId,
             message,
-            rating: rating || 5,
+            rating: Number(rating) || 5,
             avatar: avatar || "" 
         });
 
@@ -350,7 +370,7 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
 // --- BLOG API ROUTES ---
 
 // 1. Save New Blog (Admin Only)
-app.post('/api/add-blog', async (req, res) => {
+app.post('/api/add-blog', checkAuth, async (req, res) => {
     try {
         const { title, image, content, slug } = req.body;
         const newBlog = new Blog({ title, image, content, slug });
@@ -423,7 +443,7 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
 // --- BLOG MANAGEMENT APIS (NEW) ---
 
 // 1. Delete Blog
-app.delete('/api/delete-blog/:id', async (req, res) => {
+app.delete('/api/delete-blog/:id', checkAuth, async (req, res) => {
     try {
         await Blog.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Blog Deleted!" });
@@ -433,7 +453,7 @@ app.delete('/api/delete-blog/:id', async (req, res) => {
 });
 
 // 2. Edit (Update) Blog
-app.put('/api/edit-blog/:id', async (req, res) => {
+app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
     try {
         // req.body mein naya data aayega (title, content etc.)
         await Blog.findByIdAndUpdate(req.params.id, req.body);
