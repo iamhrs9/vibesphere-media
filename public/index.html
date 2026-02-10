@@ -403,6 +403,7 @@
         </div>
     </footer>
 
+   <script src="script.js"></script>
    <script>
         // ==========================================
         // 🌍 SMART GEO-PRICING (Social + Web Dev)
@@ -601,31 +602,6 @@
         }
         function openReviewModal() { document.getElementById('reviewModal').style.display = 'flex'; }
         function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
-        function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
-
-        // --- 🤖 CHAT BOT ---
-        function toggleChat() {
-            const box = document.getElementById('chat-box');
-            box.style.display = box.style.display === 'flex' ? 'none' : 'flex';
-        }
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const msg = input.value.trim();
-            const body = document.getElementById('chat-body');
-            if (!msg) return;
-
-            body.innerHTML += `<div class="user-msg" style="background:#6c63ff; color:white; padding:10px; border-radius:15px; align-self:flex-end; margin:5px; max-width:80%;">${msg}</div>`;
-            input.value = '';
-            body.scrollTop = body.scrollHeight;
-
-            try {
-                const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) });
-                const data = await res.json();
-                body.innerHTML += `<div class="bot-msg" style="background:#f1f1f1; color:#333; padding:10px; border-radius:15px; align-self:flex-start; margin:5px; max-width:80%;">${data.reply}</div>`;
-                body.scrollTop = body.scrollHeight;
-            } catch (error) { body.innerHTML += `<div class="bot-msg">Error.</div>`; }
-        }
-        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
 
         window.onload = function() {
             initPricing(); 
