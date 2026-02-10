@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- 1. Variables ---
-let localOrders = [];
+const localOrders = new Map();
 let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123"; 
 
 app.use(cors());
@@ -305,7 +305,7 @@ app.post('/api/verify-payment', async (req, res) => {
             ...orderDetails,
             date: new Date().toLocaleString()
         });
-        localOrders.push(newOrder);
+        localOrders.set(newOrder.orderId, newOrder);
         try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) {}
         res.json({ success: true });
     } else {
@@ -332,7 +332,7 @@ const checkAuth = (req, res, next) => {
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         let orders = await Order.find().sort({ _id: -1 });
-        if (orders.length === 0) orders = [...localOrders].reverse();
+        if (orders.length === 0) orders = [...localOrders.values()].reverse();
         res.json(orders);
     } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
 });
@@ -341,7 +341,7 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
     const { id, status } = req.body;
     try {
         await Order.findOneAndUpdate({ orderId: id }, { status: status });
-        const localOrder = localOrders.find(o => o.orderId === id);
+        const localOrder = localOrders.get(id);
         if (localOrder) localOrder.status = status;
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false }); }
