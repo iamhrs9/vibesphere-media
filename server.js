@@ -5,21 +5,9 @@ const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const { sanitizeAmount, sanitizeCurrency } = require('./utils/paymentUtils');
-
-// --- 0. Helper Functions ---
-function escapeHTML(str) {
-    if (typeof str !== 'string') return str;
-    return str.replace(/[&<>"']/g, function(m) {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        }[m];
-    });
-}
+const { OAuth2Client } = require('google-auth-library');
+const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; // ⚠️ Isse baad mein replace karna padega
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,7 +35,56 @@ if (mongoURI) {
 } else {
     console.warn("⚠️ WARNING: MongoDB URI missing in Environment Variables.");
 }
+// --- Client/User Schema (NEW) ---
+const userSchema = new mongoose.Schema({
+    name: String,
+    email: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    phone: String,
+    picture: String, // 👈 Photo ke liye naya field
+    googleId: String, // 👈 Google ID store karne ke liye
+    date: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
 
+// --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
+
+// 1. Client Signup
+app.post('/api/auth/signup', async (req, res) => {
+    try {
+        const { name, email, password, phone } = req.body;
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.json({ success: false, message: "Email already exists!" });
+
+        const newUser = new User({ name, email, password, phone });
+        await newUser.save();
+        res.json({ success: true, message: "Account Created! Please Login." });
+    } catch (e) { res.status(500).json({ success: false, error: "Signup Failed" }); }
+});
+
+// 2. Client Login
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email, password });
+        
+        if (user) {
+            res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
+        } else {
+            res.json({ success: false, message: "Invalid Email or Password" });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
+});
+
+// 3. Get Client Orders (Dashboard)
+app.post('/api/client/my-orders', async (req, res) => {
+    try {
+        const { email } = req.body; // Client ka email aayega
+        // Us email se jude saare orders dhoondo
+        const myOrders = await Order.find({ email: email }).sort({ _id: -1 });
+        res.json({ success: true, orders: myOrders });
+    } catch (e) { res.status(500).json({ success: false, error: "Fetch Error" }); }
+});
 // --- Order Schema ---
 const orderSchema = new mongoose.Schema({
     orderId: String,
@@ -131,26 +168,19 @@ app.get('/api/reviews', async (req, res) => {
 // 2. Add Review
 app.post('/api/add-review', async (req, res) => {
     try {
-        let { name, instaId, message, rating, avatar } = req.body;
+        const { name, instaId, message, rating, avatar } = req.body;
         
-        // --- Security: Sanitize Inputs (Prevent XSS) ---
-        name = escapeHTML(name);
-        instaId = escapeHTML(instaId);
-        message = escapeHTML(message);
-        avatar = escapeHTML(avatar);
-
         const newReview = new Review({
             name,
             instaId,
             message,
-            rating: Number(rating) || 5,
+            rating: rating || 5,
             avatar: avatar || "" 
         });
 
         await newReview.save();
         res.json({ success: true, message: "Review Added!" });
     } catch (err) {
-        console.error("❌ Add Review Error:", err);
         res.status(500).json({ success: false, error: "Failed to add review" });
     }
 });
@@ -167,7 +197,7 @@ app.post('/api/chat', async (req, res) => {
 
    
       const systemPrompt = `
-INSTRUCTIONS: You are 'VibeSphere AI', the lead strategy consultant for VibeSphere Media. And your Name is VibeGenie.
+INSTRUCTIONS: You are 'VibeSphere AI', the lead strategy consultant for VibeSphere Media.
 
 --- YOUR IDENTITY ---
 • Created by: VibeSphere Media Tech Team.
@@ -276,7 +306,6 @@ Always end with a Call to Action (CTA):
         res.json({ reply: replyText });
 
     } catch (error) {
-        console.error("❌ AI Chat Error:", error);
         res.status(500).json({ reply: "Server busy. Try later." });
     }
 });
@@ -292,9 +321,17 @@ app.post('/api/create-payment', async (req, res) => {
         
         console.log(`📝 Payment Request: ${amount} ${currency}`);
 
+        // 👇 YEH HAI MAGIC LINE:
+        // Agar amount "$19" hai, toh "$" hata kar "19" bana dega.
+        // Agar "₹399" hai, toh "399" bana dega.
+        let cleanAmount = amount.toString().replace(/[^\d.]/g, ''); 
+        
+        // Currency validation
+        let cleanCurrency = currency && currency.length === 3 ? currency : "INR";
+
         const options = {
-            amount: sanitizeAmount(amount),
-            currency: sanitizeCurrency(currency),
+            amount: Math.round(parseFloat(cleanAmount) * 100), // Paise conversion
+            currency: cleanCurrency,
             receipt: "rcpt_" + Date.now()
         };
 
@@ -321,13 +358,7 @@ app.post('/api/verify-payment', async (req, res) => {
             date: new Date().toLocaleString()
         });
         localOrders.push(newOrder);
-        try {
-            if (mongoose.connection.readyState === 1) {
-                await newOrder.save();
-            }
-        } catch (e) {
-            console.error("❌ Error saving order to MongoDB:", e);
-        }
+        try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) {}
         res.json({ success: true });
     } else {
         res.json({ success: false });
@@ -355,10 +386,7 @@ app.get('/api/admin/orders', checkAuth, async (req, res) => {
         let orders = await Order.find().sort({ _id: -1 });
         if (orders.length === 0) orders = [...localOrders].reverse();
         res.json(orders);
-    } catch (err) {
-        console.error("❌ Fetch Orders Error:", err);
-        res.status(500).json({ error: "Fetch Failed" });
-    }
+    } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
 });
 
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
@@ -368,61 +396,27 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
         const localOrder = localOrders.find(o => o.orderId === id);
         if (localOrder) localOrder.status = status;
         res.json({ success: true });
-    } catch (error) {
-        console.error("❌ Update Status Error:", error);
-        res.status(500).json({ success: false });
-    }
+    } catch (error) { res.status(500).json({ success: false }); }
 });
 
 // --- BLOG API ROUTES ---
 
 // 1. Save New Blog (Admin Only)
-app.post('/api/add-blog', checkAuth, async (req, res) => {
+app.post('/api/add-blog', async (req, res) => {
     try {
         const { title, image, content, slug } = req.body;
         const newBlog = new Blog({ title, image, content, slug });
         await newBlog.save();
         res.json({ success: true, message: "Blog Posted Successfully!" });
     } catch (error) {
-        console.error("❌ Add Blog Error:", error);
         res.status(500).json({ success: false, error: "Error saving blog" });
     }
 });
 
 // 2. Get All Blogs (For Blog Page)
 app.get('/api/blogs', async (req, res) => {
-    try {
-        let page = parseInt(req.query.page) || 1;
-        let limit = parseInt(req.query.limit) || 12; // Default 12 blogs per page
-
-        // Guard against invalid/large values
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 12;
-        if (limit > 100) limit = 100; // Cap at 100
-
-        const skip = (page - 1) * limit;
-
-        const blogs = await Blog.find()
-            .select('title titleHinglish titleHindi slug image date')
-            .sort({ date: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await Blog.countDocuments();
-
-        res.json({
-            blogs,
-            pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-            }
-        });
-    } catch (error) {
-        console.error("Fetch Blogs Error:", error);
-        res.status(500).json({ error: "Failed to fetch blogs" });
-    }
+    const blogs = await Blog.find().sort({ date: -1 }); // Newest first
+    res.json(blogs);
 });
 
 // 3. Get Single Blog (For Reading)
@@ -445,32 +439,58 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
         await Review.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Review Deleted Successfully!" });
     } catch (err) {
-        console.error("❌ Delete Review Error:", err);
         res.status(500).json({ success: false, error: "Failed to delete review" });
     }
 });
 // --- BLOG MANAGEMENT APIS (NEW) ---
 
 // 1. Delete Blog
-app.delete('/api/delete-blog/:id', checkAuth, async (req, res) => {
+app.delete('/api/delete-blog/:id', async (req, res) => {
     try {
         await Blog.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Blog Deleted!" });
     } catch (error) {
-        console.error("❌ Delete Blog Error:", error);
         res.status(500).json({ success: false, error: "Delete failed" });
     }
 });
 
 // 2. Edit (Update) Blog
-app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
+app.put('/api/edit-blog/:id', async (req, res) => {
     try {
         // req.body mein naya data aayega (title, content etc.)
         await Blog.findByIdAndUpdate(req.params.id, req.body);
         res.json({ success: true, message: "Blog Updated Successfully!" });
     } catch (error) {
-        console.error("❌ Update Blog Error:", error);
         res.status(500).json({ success: false, error: "Update failed" });
+    }
+});
+// 4. Google Login API (NEW)
+app.post('/api/auth/google', async (req, res) => {
+    try {
+        const { token } = req.body;
+        
+        // Google se verify karo ki token asli hai
+        const ticket = await googleClient.verifyIdToken({
+            idToken: token,
+            audience: GOOGLE_CLIENT_ID,
+        });
+        const { name, email, picture, sub } = ticket.getPayload();
+
+        // Check karo user pehle se hai kya?
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Naya user banao
+            user = new User({ name, email, picture, googleId: sub });
+            await user.save();
+        }
+
+        // Login Success
+        res.json({ success: true, user: { name: user.name, email: user.email, picture: user.picture } });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: "Google Auth Failed" });
     }
 });
 // --- 404 Handler (UPDATED) ---
