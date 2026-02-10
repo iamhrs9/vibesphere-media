@@ -363,8 +363,38 @@ app.post('/api/add-blog', async (req, res) => {
 
 // 2. Get All Blogs (For Blog Page)
 app.get('/api/blogs', async (req, res) => {
-    const blogs = await Blog.find().sort({ date: -1 }); // Newest first
-    res.json(blogs);
+    try {
+        let page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 12; // Default 12 blogs per page
+
+        // Guard against invalid/large values
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 12;
+        if (limit > 100) limit = 100; // Cap at 100
+
+        const skip = (page - 1) * limit;
+
+        const blogs = await Blog.find()
+            .select('title titleHinglish titleHindi slug image date')
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const total = await Blog.countDocuments();
+
+        res.json({
+            blogs,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error("Fetch Blogs Error:", error);
+        res.status(500).json({ error: "Failed to fetch blogs" });
+    }
 });
 
 // 3. Get Single Blog (For Reading)
