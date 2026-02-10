@@ -3,121 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login | VibeSphere</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Login | VibeSphere Media</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        /* --- PAGE LAYOUT FIX --- */
         body {
-            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fc;
+        }
+
+        /* --- LOGIN SECTION (Center Alignment) --- */
+        .login-wrapper {
+            flex: 1; /* Ye baki bachi jagah lega */
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            padding: 40px 20px;
+            background: radial-gradient(circle at top left, #f3e8ff, #f8fafc); /* Halka Purple Glow */
         }
-        .login-container {
-            background: rgba(255, 255, 255, 0.05);
+
+        /* --- AUTH BOX STYLE --- */
+        .auth-box {
+            background: white;
             padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08); /* Soft Shadow */
+            width: 100%;
+            max-width: 400px;
             text-align: center;
-            width: 350px;
+            border: 1px solid #fff;
         }
-        .logo-area { font-size: 50px; margin-bottom: 10px; }
-        h2 { color: #fff; margin-bottom: 30px; font-weight: 600; letter-spacing: 1px; }
+
+        h2 { color: #1e293b; margin-bottom: 20px; font-weight: 700; }
         
-        .input-group { position: relative; margin-bottom: 25px; }
-        input {
-            width: 100%;
-            padding: 15px;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid #6B46C1;
-            outline: none;
-            color: #fff;
-            font-size: 16px;
-            transition: 0.3s;
+        input { 
+            width: 100%; padding: 14px; margin: 10px 0; 
+            border: 1px solid #e2e8f0; border-radius: 10px; 
+            background: #fdfdfd; outline: none; transition: 0.3s;
         }
-        input:focus { border-bottom-color: #00ff88; }
-        ::placeholder { color: rgba(255,255,255,0.5); }
-        
-        .login-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, #6B46C1, #8e44ad);
-            border: none;
-            border-radius: 30px;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            box-shadow: 0 5px 15px rgba(107, 70, 193, 0.4);
+        input:focus { border-color: #6c63ff; background: white; box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.1); }
+
+        /* Eye Icon */
+        .password-group { position: relative; width: 100%; }
+        .password-group input { padding-right: 45px; }
+        .toggle-eye {
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            cursor: pointer; color: #94a3b8; font-size: 1.2rem; transition: 0.3s;
         }
-        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(107, 70, 193, 0.6); }
-        .login-btn:active { transform: translateY(1px); }
-        
-        .error-msg {
-            color: #ff4444;
-            background: rgba(255, 68, 68, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            margin-bottom: 20px;
-            display: none;
-            border: 1px solid #ff4444;
+        .toggle-eye:hover { color: #6c63ff; }
+
+        /* Button */
+        .btn { 
+            width: 100%; padding: 14px; margin-top: 15px;
+            background: linear-gradient(135deg, #6c63ff, #5a52d5); 
+            color: white; border: none; border-radius: 10px; 
+            font-weight: 600; font-size: 1rem; cursor: pointer; 
+            transition: 0.3s; box-shadow: 0 10px 20px rgba(108, 99, 255, 0.2);
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(108, 99, 255, 0.3); }
+
+        .switch { margin-top: 25px; font-size: 0.95rem; color: #64748b; cursor: pointer; }
+        .switch span { color: #6c63ff; font-weight: 600; text-decoration: underline; }
+        .hidden { display: none; }
+
+        /* Mobile Fix */
+        @media (max-width: 768px) {
+            .auth-box { padding: 30px 20px; }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="logo-area">🚀</div>
-        <h2>Admin Access</h2>
-        <div class="error-msg" id="errorMsg">❌ Incorrect Password!</div>
-        <div class="input-group">
-            <input type="password" id="password" placeholder="Enter Secure Password" required>
+
+    <nav>
+        <a href="/" class="logo-link">
+            <img src="logo.png" alt="VibeSphere" class="logo-img">
+        </a>
+        
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/packages">Packages</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
+
+        <div class="menu-icon"><i class="ri-menu-3-line"></i></div>
+    </nav>
+
+    <div class="login-wrapper">
+        <div class="auth-box">
+            
+            <div id="loginForm">
+                <div style="font-size: 3rem; margin-bottom: 10px;">👋</div>
+                <h2>Welcome Back</h2>
+                <p style="color:#64748b; margin-bottom: 25px; font-size: 0.9rem;">Login to manage your orders</p>
+                
+                <input type="email" id="lEmail" placeholder="Email Address">
+                <div class="password-group">
+                    <input type="password" id="lPass" placeholder="Password">
+                    <i class="ri-eye-line toggle-eye" onclick="togglePass('lPass', this)"></i>
+                </div>
+
+                <button class="btn" onclick="login()">Login Securely</button>
+                <p class="switch" onclick="toggleForm()">New here? <span>Create Account</span></p>
+
+                <div style="margin-top: 25px; display: flex; justify-content: center;">
+                    <div id="g_id_onload"
+                        data-client_id="877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"
+                        data-callback="handleCredentialResponse"
+                        data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
+                </div>
+            </div>
+
+            <div id="signupForm" class="hidden">
+                <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
+                <h2>Create Account</h2>
+                <p style="color:#64748b; margin-bottom: 25px; font-size: 0.9rem;">Join VibeSphere today</p>
+
+                <input type="text" id="sName" placeholder="Full Name">
+                <input type="email" id="sEmail" placeholder="Email Address">
+                <input type="text" id="sPhone" placeholder="Phone Number">
+                
+                <div class="password-group">
+                    <input type="password" id="sPass" placeholder="Create Password">
+                    <i class="ri-eye-line toggle-eye" onclick="togglePass('sPass', this)"></i>
+                </div>
+
+                <button class="btn" onclick="signup()">Sign Up Now</button>
+                <p class="switch" onclick="toggleForm()">Already have an account? <span>Login</span></p>
+            </div>
+
         </div>
-        <button class="login-btn" onclick="login()" id="loginBtn">Unlock Panel</button>
     </div>
 
-    <script>
-        if(localStorage.getItem("adminToken")) window.location.href = "admin.html";
+    <footer style="margin-top: 0; border-top: 1px solid #eaeaea;">
+        <div class="footer-content" style="margin-bottom: 20px; justify-content: center; text-align: center;">
+            <div>
+                <h3 style="margin-bottom: 10px;">VibeSphere Media</h3>
+                <p style="color: #666; font-size: 0.9rem;">Secure & Trusted Digital Growth Agency.</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 VibeSphere Media. All rights reserved.</p>
+        </div>
+    </footer>
 
-        async function login() {
-            const pwdInput = document.getElementById('password');
-            const btn = document.getElementById('loginBtn');
-            const errorMsg = document.getElementById('errorMsg');
+    <script src="script.js"></script>
+     <script>
+        const API = '/api/auth';
 
-            btn.innerText = "Verifying...";
-            btn.disabled = true;
-            errorMsg.style.display = "none";
-            
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pwdInput.value })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    localStorage.setItem("adminToken", data.token);
-                    btn.innerText = "Success! Redirecting...";
-                    btn.style.background = "#00ff88";
-                    setTimeout(() => window.location.href = "admin.html", 1000);
-                } else {
-                    throw new Error();
-                }
-            } catch (err) {
-                errorMsg.style.display = "block";
-                btn.innerText = "Unlock Panel";
-                btn.disabled = false;
-                pwdInput.value = '';
+        function togglePass(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.replace("ri-eye-line", "ri-eye-off-line");
+            } else {
+                input.type = "password";
+                icon.classList.replace("ri-eye-off-line", "ri-eye-line");
             }
         }
-        // Enter button se login
-        document.getElementById('password').addEventListener('keypress', (e) => { if(e.key === 'Enter') login(); });
+
+        function toggleForm() {
+            document.getElementById('loginForm').classList.toggle('hidden');
+            document.getElementById('signupForm').classList.toggle('hidden');
+        }
+
+        async function signup() {
+            const btn = document.querySelector('#signupForm .btn');
+            btn.innerText = "Creating Account...";
+            
+            const name = document.getElementById('sName').value;
+            const email = document.getElementById('sEmail').value;
+            const password = document.getElementById('sPass').value;
+            const phone = document.getElementById('sPhone').value;
+
+            try {
+                const res = await fetch(`${API}/signup`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password, phone })
+                });
+                const data = await res.json();
+                alert(data.message);
+                if(data.success) toggleForm();
+            } catch(e) { alert("Error!"); }
+            btn.innerText = "Sign Up Now";
+        }
+
+        async function login() {
+            const btn = document.querySelector('#loginForm .btn');
+            btn.innerText = "Verifying...";
+            
+            const email = document.getElementById('lEmail').value;
+            const password = document.getElementById('lPass').value;
+
+            try {
+                const res = await fetch(`${API}/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    localStorage.setItem('clientUser', JSON.stringify(data.user));
+                    window.location.href = '/dashboard.html';
+                } else {
+                    alert(data.message);
+                    btn.innerText = "Login Securely";
+                }
+            } catch(e) { 
+                alert("Login Error"); 
+                btn.innerText = "Login Securely";
+            }
+        }
+
+        async function handleCredentialResponse(response) {
+            try {
+                const res = await fetch('/api/auth/google', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ token: response.credential })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    localStorage.setItem('clientUser', JSON.stringify(data.user));
+                    window.location.href = '/dashboard.html';
+                } else {
+                    alert("Google Login Failed");
+                }
+            } catch(e) { console.error(e); }
+        }
     </script>
 </body>
 </html>
