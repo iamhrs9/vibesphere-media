@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Services | VibeSphere Media</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="icon" type="image/png" href="icon.png">
+
+<link rel="apple-touch-icon" href="icon.png">
+    <style>
+        /* --- PAGE SPECIFIC STYLES --- */
+        body { background: #f8f9fc; }
+
+        .hero-services {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 120px 5% 100px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-services::before {
+            content: ""; position: absolute; top: -50px; right: -50px; width: 300px; height: 300px;
+            background: #6c63ff; opacity: 0.2; filter: blur(100px); border-radius: 50%;
+        }
+        .hero-services h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 20px; }
+        .hero-services p { color: #cbd5e1; font-size: 1.2rem; max-width: 700px; margin: 0 auto; }
+
+        /* --- SERVICE GRID --- */
+        .services-section { padding: 80px 5%; }
+        .section-title { text-align: center; margin-bottom: 60px; }
+        .section-title h2 { font-size: 2.5rem; color: #1e293b; margin-bottom: 10px; }
+        .section-title p { color: #64748b; }
+
+        .services-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 30px; 
+        }
+        .service-card {
+            background: white; padding: 40px 30px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: 0.3s;
+            border: 1px solid #f1f5f9; position: relative; overflow: hidden;
+        }
+        .service-card:hover { transform: translateY(-10px); border-color: #6c63ff; box-shadow: 0 20px 40px rgba(108, 99, 255, 0.1); }
+        .service-icon { 
+            font-size: 3rem; color: #6c63ff; margin-bottom: 20px; 
+            background: #f3e8ff; width: 80px; height: 80px; display: flex; 
+            align-items: center; justify-content: center; border-radius: 50%; 
+        }
+        .service-card h3 { font-size: 1.5rem; color: #1e293b; margin-bottom: 15px; }
+        .service-card p { color: #64748b; line-height: 1.6; font-size: 0.95rem; }
+
+        /* --- PRICING TABLE --- */
+        .pricing-section { background: #eef2ff; padding: 100px 5%; }
+        .pricing-grid { 
+            display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-top: 50px; 
+        }
+        .price-card {
+            background: white; padding: 40px; border-radius: 24px; width: 320px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05); transition: 0.3s; position: relative;
+        }
+        .price-card.popular { 
+            transform: scale(1.05); border: 2px solid #6c63ff; 
+            box-shadow: 0 30px 60px rgba(108, 99, 255, 0.15); 
+        }
+        .price-card:hover { transform: translateY(-10px); }
+        
+        .badge-popular {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            background: #6c63ff; color: white; padding: 5px 20px; border-radius: 50px;
+            font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+        }
+
+        .price-header h3 { font-size: 1.5rem; color: #1e293b; }
+        .price { font-size: 3rem; color: #1e293b; font-weight: 800; margin: 20px 0; }
+        .price span { font-size: 1rem; color: #64748b; font-weight: 400; }
+        
+        .features-list { list-style: none; margin: 30px 0; }
+        .features-list li { margin-bottom: 15px; color: #475569; display: flex; align-items: center; gap: 10px; }
+        .features-list li i { color: #10b981; font-size: 1.2rem; }
+        
+        .btn-price {
+            display: block; width: 100%; padding: 15px; text-align: center;
+            background: #f1f5f9; color: #1e293b; border-radius: 12px;
+            text-decoration: none; font-weight: 700; transition: 0.3s;
+        }
+        .popular .btn-price { background: #6c63ff; color: white; }
+        .btn-price:hover { background: #1e293b; color: white; }
+
+        /* --- PROCESS STEPS --- */
+        .process-section { padding: 100px 5%; text-align: center; }
+        .steps-grid { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 30px; margin-top: 50px; }
+        .step-item { flex: 1; min-width: 200px; position: relative; }
+        .step-num { 
+            font-size: 4rem; font-weight: 900; color: #e2e8f0; position: absolute; 
+            top: -20px; left: 50%; transform: translateX(-50%); z-index: -1; 
+        }
+        .step-item h4 { font-size: 1.3rem; margin-top: 20px; color: #1e293b; }
+        .step-item p { color: #64748b; font-size: 0.9rem; margin-top: 10px; }
+
+        @media (max-width: 768px) {
+            .hero-services h1 { font-size: 2.5rem; }
+            .pricing-grid { flex-direction: column; align-items: center; }
+            .price-card.popular { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+   <nav>
+        <a href="/" class="logo-link">
+            <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
+        </a>
+        
+        <ul class="nav-links" id="nav-menu">
+            <li><a href="/#home">Home</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/services">Services</a></li>
+            <li><a href="/packages">Packages</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li>
+                    <a href="/blog" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                        Blog 
+                        <span style="font-size: 0.7rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">NEW</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/login" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                        Login 
+                       
+                    </a>
+                </li>
+        </ul>
+
+        <div class="nav-right">
+            <a href="/login" class="btn-primary">Login</a>
+            <div class="menu-icon" id="hamburger-btn">
+                <i class="ri-menu-3-line"></i>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-services">
+        <h1>World-Class Digital Services</h1>
+        <p>We don't just deliver services; we deliver growth. Choose the perfect package to scale your brand today.</p>
+    </header>
+
+    <section class="services-section">
+        <div class="section-title">
+            <h2>What We Do Best 🔥</h2>
+            <p>360-degree digital solutions tailored for your business.</p>
+        </div>
+
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-code-s-slash-line"></i></div>
+                <h3>Web Development</h3>
+                <p>Custom, high-speed, and responsive websites that convert visitors into paying customers. React, Node, & WordPress experts.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-search-eye-line"></i></div>
+                <h3>SEO Optimization</h3>
+                <p>Rank #1 on Google. We optimize your site structure and content to drive organic traffic without paid ads.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-megaphone-line"></i></div>
+                <h3>Social Media Mgmt</h3>
+                <p>Instagram, LinkedIn, & Twitter growth. We create viral content strategies to build a loyal community around your brand.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-advertisement-line"></i></div>
+                <h3>Performance Ads</h3>
+                <p>Meta (FB/Insta) & Google Ads. We run high-ROI campaigns that bring instant leads and sales.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-pen-nib-line"></i></div>
+                <h3>Content Writing</h3>
+                <p>Blogs, Copywriting, and Scripts. Words that sell. We write content that resonates with your audience.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-video-add-line"></i></div>
+                <h3>Video Editing</h3>
+                <p>Reels, Shorts, and Long-form editing. Engaging visuals to skyrocket your watch time.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-smartphone-line"></i></div>
+                <h3>App Development</h3>
+                <p>Android & iOS apps built with Flutter & React Native. We turn your unique startup ideas into fully functional mobile apps.</p>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon"><i class="ri-palette-line"></i></div>
+                <h3>Graphic Design & Branding</h3>
+                <p>Logos, UI/UX, and Brand Kits. We give your brand a premium look that stands out in the crowded market.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing-section">
+        <div class="section-title">
+            <h2>Transparent Pricing 💸</h2>
+            <p>No hidden fees. Choose the plan that fits your stage.</p>
+        </div>
+    </section>
+
+    <section class="process-section">
+        <div class="section-title">
+            <h2>How We Work ⚙️</h2>
+        </div>
+        <div class="steps-grid">
+            <div class="step-item">
+                <span class="step-num">01</span>
+                <h4>Discovery</h4>
+                <p>We analyze your business, competitors, and goals.</p>
+            </div>
+            <div class="step-item">
+                <span class="step-num">02</span>
+                <h4>Strategy</h4>
+                <p>We build a custom roadmap to hit your targets.</p>
+            </div>
+            <div class="step-item">
+                <span class="step-num">03</span>
+                <h4>Execution</h4>
+                <p>Our team starts building, writing, and running ads.</p>
+            </div>
+            <div class="step-item">
+                <span class="step-num">04</span>
+                <h4>Growth</h4>
+                <p>You see the results, we optimize and scale up.</p>
+            </div>
+        </div>
+    </section>
+
+    
+   <footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
+            <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+            <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
+            <a href="/login" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Login</a>
+            
+            <a href="/blog" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a>
+            
+            <a href="/about" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">About</a>
+            <a href="/terms&conditions" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+            <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
+        </div>
+        <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
+            <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.
+                built with ❤️ by <a href="https://www.harshpanwar.online" target="_blank" rel="noopener noreferrer" style="color: #101011; text-decoration: none; font-weight: 600; cursor: pointer;">
+            Harsh
+        </a>
+            </p>
+        </div>
+        
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
