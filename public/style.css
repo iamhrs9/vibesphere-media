@@ -1188,3 +1188,72 @@ footer {
 .web-card.store { border-top: 5px solid #FF9671; }
 .web-card.store .card-icon { color: #FF9671; }
 .web-card.store .features i { color: #FF9671; }
+
+/* --- Secondary Button (About Us) --- */
+.btn-about {
+    display: inline-block;
+    padding: 14px 35px;
+    border: 2px solid #6c63ff; /* Purple Border */
+    color: #6c63ff;            /* Purple Text */
+    background: transparent;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    margin-left: 15px; /* Main button se thodi duri */
+}
+
+/* Hover Effect */
+.btn-about:hover {
+    background: #6c63ff;
+    color: white;
+    box-shadow: 0 10px 20px rgba(108, 99, 255, 0.2);
+    transform: translateY(-3px);
+}
+
+/* Mobile par button niche aa jaye */
+@media (max-width: 768px) {
+    .btn-about {
+        margin-left: 0;
+        margin-top: 15px;
+        display: block; /* Mobile pe alag line me */
+        width: 100%;
+        text-align: center;
+    }
+}
+/* --- Services Button (Soft Style) --- */
+.btn-services {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Icon aur text ke beech gap */
+    padding: 14px 30px;
+    background: #f1f5f9; /* Light Gray Background */
+    color: #475569;      /* Dark Gray Text */
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    margin-left: 19px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Hover Effect */
+.btn-services:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .btn-services {
+        margin-left: 0;
+        margin-top: 10px;
+        display: flex;       /* Mobile par full width */
+        justify-content: center;
+        width: 100%;
+    }
+}
