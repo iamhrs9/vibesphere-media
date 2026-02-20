@@ -50,7 +50,7 @@ VibeSphere Media is a comprehensive web platform for a digital agency offering I
    ADMIN_PASSWORD=your_admin_password (Default: "admin123")
    RAZORPAY_KEY_ID=your_razorpay_key_id
    RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-   GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_API_KEY=yournpm_gemini_api_key
    ```
 
 4. **Start the server:**

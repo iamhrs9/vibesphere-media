@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-<link rel="icon" type="image/png" href="icon.png">
-
-<link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    
     <style>
         /* --- ABOUT SPECIFIC STYLES --- */
         .hero-about {
@@ -37,7 +37,6 @@
         .stat-box h3 { color: #6c63ff; font-size: 2.5rem; font-weight: 800; margin-bottom: 5px; }
         .stat-box p { font-size: 0.9rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
 
-       
        /* --- TEAM SECTION (AESTHETIC) --- */
         .team-section { 
             position: relative; 
@@ -52,29 +51,42 @@
             z-index: 0; pointer-events: none;
         }
 
-        .team-grid { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; margin-top: 60px; position: relative; z-index: 1; }
+        /* Updated Grid & Gap for 4 items in one row */
+        .team-grid { 
+            display: flex; 
+            justify-content: center; 
+            gap: 25px; /* Reduced gap */
+            flex-wrap: wrap; 
+            margin-top: 60px; 
+            position: relative; 
+            z-index: 1; 
+        }
 
+        /* Updated Card Width to fit 4 in a row */
         .team-card { 
-            width: 320px;
+            flex: 1; 
+            min-width: 230px; /* Minimum width before breaking to next line */
+            max-width: 280px; /* Max width to keep them uniform */
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(20px);
-            padding: 40px 30px; 
-            border-radius: 40px; 
+            padding: 35px 20px; /* Slightly reduced padding */
+            border-radius: 30px; 
             border: 1px solid rgba(255, 255, 255, 0.8);
             box-shadow: 0 20px 50px rgba(0,0,0,0.05);
             transition: all 0.4s ease;
         }
         .team-card:hover { transform: translateY(-15px); box-shadow: 0 40px 80px rgba(108, 99, 255, 0.15); border-color: #e0e7ff; }
 
-        /* Profile Photo Styling */
-        .img-container { width: 130px; height: 130px; margin: 0 auto 25px; position: relative; }
+        /* Adjusted Profile Photo Size */
+        .img-container { width: 110px; height: 110px; margin: 0 auto 20px; position: relative; } /* Reduced from 130px */
         .img-container::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; background: linear-gradient(135deg, #6c63ff, #c084fc); opacity: 0.3; filter: blur(15px); transition: 0.4s; }
         .team-card:hover .img-container::before { opacity: 0.6; filter: blur(20px); inset: -12px; }
 
         .team-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 4px solid white; position: relative; z-index: 2; }
-        .team-name { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
-        .team-role { font-size: 0.85rem; color: #6c63ff; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 20px; }
-        .team-quote { color: #64748b; font-size: 1rem; line-height: 1.6; font-style: italic; }
+        .team-name { font-size: 1.4rem; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
+        .team-role { font-size: 0.8rem; color: #6c63ff; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 15px; }
+        .team-quote { color: #64748b; font-size: 0.95rem; line-height: 1.5; font-style: italic; }
+
         .cta-box { background: linear-gradient(135deg, #6c63ff, #4f46e5); color: white; text-align: center; padding: 70px 20px; border-radius: 30px; margin: 80px 5%; box-shadow: 0 20px 50px rgba(79, 70, 229, 0.3); }
         .cta-btn { background: white; color: #4f46e5; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: 700; display: inline-block; margin-top: 25px; transition: 0.3s; font-size: 1.1rem; }
         .cta-btn:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
@@ -91,7 +103,7 @@
 
     <nav>
         <a href="/" class="logo-link">
-            <img src="logo.png" alt="VibeSphere Media Logo" class="logo-img">
+            <img src="logo.webp" alt="VibeSphere Media Logo" class="logo-img">
         </a>
         
         <ul class="nav-links" id="nav-menu">
@@ -101,17 +113,16 @@
             <li><a href="/packages">Packages</a></li>
             <li><a href="/contact">Contact</a></li>
             <li>
-                    <a href="/blog" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
-                        Blog 
-                        <span style="font-size: 0.7rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">NEW</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/login" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
-                        Login 
-                       
-                    </a>
-                </li>
+                <a href="/blog" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                    Blog 
+                    <span style="font-size: 0.7rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">NEW</span>
+                </a>
+            </li>
+            <li>
+                <a href="/login" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                    Login 
+                </a>
+            </li>
         </ul>
 
         <div class="nav-right">
@@ -121,6 +132,7 @@
             </div>
         </div>
     </nav>
+    
     <header class="hero-about">
         <span class="badge">EST. 2022 • JAIPUR</span>
         <h1>Not Just an Agency. <br>We Are a <span style="color:#6c63ff;">Revolution.</span></h1>
@@ -177,32 +189,57 @@
                 <p class="team-quote">"In the digital world, speed and precision are everything. I ensure the technology driving your growth is flawless and future-proof."</p>
             </div>
 
+            <div class="team-card">
+                <div class="img-container">
+                    <img src="rohit.png" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Rohit'" alt="Rohit Meena" class="team-img">
+                </div>
+                <h3 class="team-name">Mr. Rohit Meena</h3>
+                <span class="team-role">Graphic Designer</span>
+                <p class="team-quote">"Great design isn't just about making things look good; it's about communicating your brand's story effectively to the audience."</p>
+            </div>
+
+            <div class="team-card">
+                <div class="img-container">
+                    <img src="dinesh.png" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Dinesh'" alt="Dinesh Chouhan" class="team-img">
+                </div>
+                <h3 class="team-name">Mr. Dinesh Chouhan</h3>
+                <span class="team-role">Video Editor & Creator</span>
+                <p class="team-quote">"A good video captures attention, but a great story captures hearts. I bring your ideas to life through dynamic motion and visuals."</p>
+            </div>
+            
         </div>
     </section>
+
     <div class="cta-box">
         <h2>Want to be part of our next Success Story?</h2>
         <p style="margin: 15px 0; opacity: 0.9; font-size: 1.1rem;">Don't just watch us grow. Grow with us.</p>
         <a href="/contact" class="cta-btn">Start Your Project &rarr;</a>
     </div>
 
-    <footer>
-        <div class="footer-content">
-            <div class="footer-brand">
-                <h3>VibeSphere<span>.</span></h3>
-                <p>Digital Excellence, Delivered.</p>
-            </div>
-            <div class="footer-links">
-                <a href="/">Home</a>
-                <a href="/packages">Services</a>
-                <a href="/blog">Blog</a>
-                <a href="/contact">Contact</a>
-            </div>
+    <footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
+            <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
         </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 VibeSphere Media. Built with ❤️ <a href="https://www.harshpanwar.online" target="_blank" rel="noopener noreferrer" style="color: #101011; text-decoration: none; font-weight: 600; cursor: pointer;">
+        <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
+            <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
+            <a href="/login" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Login</a>
+            
+            <a href="/blog" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a>
+            
+            <a href="/about" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">About</a>
+            <a href="/terms&conditions" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+            <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
+        </div>
+        <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
+            <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.
+                built with ❤️ by <a href="https://www.harshpanwar.online" target="_blank" rel="noopener noreferrer" style="color: #101011; text-decoration: none; font-weight: 600; cursor: pointer;">
             Harsh
-        </a></p>
+        </a>
+            </p>
         </div>
+        
     </footer>
 
     <script src="script.js"></script>
