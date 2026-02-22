@@ -9,6 +9,7 @@ const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; // ⚠️ Isse baad mein replace karna padega
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -46,6 +47,7 @@ const userSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
+
 
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
@@ -120,6 +122,111 @@ const blogSchema = new mongoose.Schema({
     contentHindi: String
 });
 const Blog = mongoose.model('Blog', blogSchema);
+// ==========================================
+// 🏢 STAFF CRM & TASK MANAGEMENT SCHEMAS
+// ==========================================
+
+// 1. Staff Schema (Staff Login Ke Liye)
+const staffSchema = new mongoose.Schema({
+    empId: { type: String, unique: true },
+    name: String,
+    email: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    role: { type: String, default: 'Sales Executive' },
+    profilePhoto: { type: String, default: '' },
+    date: { type: Date, default: Date.now }
+});
+const Staff = mongoose.model('Staff', staffSchema);
+
+// 2. Task/Lead Schema (Calling Data Ke Liye)
+const taskSchema = new mongoose.Schema({
+    clientName: String,
+    clientType: String,      // e.g. "Instagram Page", "Local Shop"
+    contactNumber: String,
+    servicePitch: String,    // e.g. "Growth Package"
+    status: { type: String, default: 'pending' }, // pending, interested, not-answering, call-back, rejected
+    notes: { type: String, default: '' },         // Staff ka feedback
+    assignedTo: String,      // Kis staff ko diya (Staff ka Email)
+    dateAssigned: { type: Date, default: Date.now }
+});
+const Task = mongoose.model('Task', taskSchema);
+
+// 3. Notice Board Schema
+const noticeSchema = new mongoose.Schema({
+    title: String,
+    message: String,
+    author: { type: String, default: 'Admin' },
+    date: { type: Date, default: Date.now }
+});
+const Notice = mongoose.model('Notice', noticeSchema);
+
+
+// ==========================================
+// 🚀 STAFF PORTAL APIs
+// ==========================================
+
+// API 1: Staff Login
+app.post('/api/staff/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const staff = await Staff.findOne({ email, password });
+        if (staff) {
+            // 🟢 Naya code: empId bhi frontend ko bhejo
+            res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto } });
+        } else {
+            res.json({ success: false, message: "Invalid Staff ID or Password" });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
+});
+// API 2: Get Staff Tasks (Dashbaord Load Hote Hi Chalegi)
+app.post('/api/staff/tasks', async (req, res) => {
+    try {
+        const { email } = req.body; // Kis staff ne login kiya hai
+        const tasks = await Task.find({ assignedTo: email }).sort({ dateAssigned: -1 });
+        res.json({ success: true, tasks: tasks });
+    } catch (e) { res.status(500).json({ success: false, error: "Fetch Error" }); }
+});
+
+// API 3: Update Task (Jab Staff 'Save' button dabayega)
+app.post('/api/staff/update-task', async (req, res) => {
+    try {
+        const { taskId, status, notes } = req.body;
+        await Task.findByIdAndUpdate(taskId, { status: status, notes: notes });
+        res.json({ success: true, message: "Lead Updated Successfully!" });
+    } catch (e) { res.status(500).json({ success: false, error: "Update Error" }); }
+});
+
+// API 4: Get Notices
+app.get('/api/staff/notices', async (req, res) => {
+    try {
+        const notices = await Notice.find().sort({ date: -1 }).limit(10);
+        res.json({ success: true, notices: notices });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+// API 5: Change Password
+app.post('/api/staff/update-password', async (req, res) => {
+    try {
+        const { email, currentPassword, newPassword } = req.body;
+        const staff = await Staff.findOne({ email: email, password: currentPassword });
+        
+        if (staff) {
+            staff.password = newPassword;
+            await staff.save();
+            res.json({ success: true, message: "Password updated successfully!" });
+        } else {
+            res.json({ success: false, message: "Incorrect current password!" });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
+});
+
+// API 6: Update Profile Photo (Base64 Format me)
+app.post('/api/staff/update-photo', async (req, res) => {
+    try {
+        const { email, photoBase64 } = req.body;
+        await Staff.findOneAndUpdate({ email: email }, { profilePhoto: photoBase64 });
+        res.json({ success: true, message: "Photo updated!" });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
 // --- 3. Razorpay Setup ---
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID, 
@@ -492,6 +599,137 @@ app.post('/api/auth/google', async (req, res) => {
         console.error(e);
         res.status(500).json({ success: false, error: "Google Auth Failed" });
     }
+});// ==========================================
+// 👮‍♂️ ADMIN: STAFF MANAGEMENT APIs
+// ==========================================
+
+// 1. Get all staff list
+app.get('/api/admin/staff', checkAuth, async (req, res) => {
+    try {
+        const staff = await Staff.find().sort({ date: -1 });
+        res.json({ success: true, staff: staff });
+    } catch (e) { res.status(500).json({ error: "Failed to fetch staff" }); }
+});
+
+// 2. Add new staff
+app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        
+        const existingStaff = await Staff.findOne({ email });
+        if(existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
+
+        // 🟢 Naya code: Ek unique EMP ID generate karo (e.g., VS-4821)
+        let newEmpId;
+        let isUnique = false;
+        while(!isUnique) {
+            newEmpId = 'VS-' + Math.floor(1000 + Math.random() * 9000);
+            const checkId = await Staff.findOne({ empId: newEmpId });
+            if(!checkId) isUnique = true; // Agar ID pehle se kisi ke paas nahi hai, toh confirm karo
+        }
+
+        const newStaff = new Staff({ empId: newEmpId, name, email, password, role });
+        await newStaff.save();
+        res.json({ success: true, message: `Staff Added! ID is ${newEmpId}` });
+    } catch (e) { res.status(500).json({ success: false, error: "Server error!" }); }
+});
+// 3. Delete a staff member
+app.delete('/api/admin/delete-staff/:id', checkAuth, async (req, res) => {
+    try {
+        await Staff.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Staff Deleted!" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to delete" }); }
+});
+
+// 4. Get Staff Performance (Work Chart) - UPDATED FOR FULL DETAILS
+app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
+    try {
+        const tasks = await Task.find().sort({ dateAssigned: -1 });
+        const performance = {};
+        
+        tasks.forEach(task => {
+            const email = task.assignedTo;
+            if(!email) return;
+
+            if(!performance[email]) {
+                // 'details' naam ka array add kiya hai jisme saari leads hongi
+                performance[email] = { total: 0, completed: 0, pending: 0, details: [] }; 
+            }
+            performance[email].total++;
+            
+            if(task.status === 'interested' || task.status === 'rejected') {
+                performance[email].completed++;
+            } else {
+                performance[email].pending++;
+            }
+
+            // Lead ka poora data (aur staff ka review/notes) array mein save karo
+            performance[email].details.push(task); 
+        });
+        res.json({ success: true, performance: performance });
+    } catch (e) { res.status(500).json({ error: "Failed to fetch performance" }); }
+});
+// 5. Assign New Lead (Task)
+app.post('/api/admin/add-task', checkAuth, async (req, res) => {
+    try {
+        const { clientName, contactNumber, servicePitch, assignedTo } = req.body;
+        
+        // Naya task banakar database mein save karo
+        const newTask = new Task({ 
+            clientName, 
+            contactNumber, 
+            servicePitch, 
+            assignedTo,
+            status: 'pending' // Naya kaam hamesha pending rahega
+        });
+        await newTask.save();
+        res.json({ success: true, message: "Lead Assigned Successfully!" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to assign lead" }); }
+});
+
+// 6. Post a Notice (Notification)
+app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
+    try {
+        const { title, message } = req.body;
+        
+        const newNotice = new Notice({ title, message, author: "Admin" });
+        await newNotice.save();
+        res.json({ success: true, message: "Notice Posted on Staff Board!" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to post notice" }); }
+});
+
+// ==========================================
+// 🔍 PUBLIC: VERIFY STAFF ID API
+// ==========================================
+app.get('/api/verify-staff/:id', async (req, res) => {
+    try {
+        const checkId = req.params.id.toUpperCase().trim(); // Taki log lowercase me dale toh bhi chal jaye
+        const staff = await Staff.findOne({ empId: checkId });
+        
+        if (staff) {
+            res.json({ 
+                success: true, 
+                staff: { name: staff.name, role: staff.role, profilePhoto: staff.profilePhoto, empId: staff.empId } 
+            });
+        } else {
+            res.json({ success: false, message: "🚨 FAKE ID DETECTED: No such person works at VibeSphere Media!" });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
+});
+// 7. Get All Notices (Admin Panel ke liye)
+app.get('/api/admin/notices', checkAuth, async (req, res) => {
+    try {
+        const notices = await Notice.find().sort({ date: -1 });
+        res.json({ success: true, notices: notices });
+    } catch (e) { res.status(500).json({ error: "Failed to fetch notices" }); }
+});
+
+// 8. Delete Notice (Admin Panel se delete karne ke liye)
+app.delete('/api/admin/delete-notice/:id', checkAuth, async (req, res) => {
+    try {
+        await Notice.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Notice Deleted Successfully!" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to delete notice" }); }
 });
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {

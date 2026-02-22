@@ -58,76 +58,66 @@
             </span>
         </div>
 
-        <div class="pricing-grid-full">
-            
-            <div class="price-card">
-                <h4>Silver Package</h4>
-                <div class="price" id="price-silver">₹399 <span>/ Total</span></div>
-                <ul>
-                    <li><i class="ri-history-line"></i> 2 Story for 2 Days</li>
-                    <li><i class="ri-user-add-line"></i> 1000-1200 Followers Growth</li>
-                </ul>
-                <button class="btn-outline" id="btn-silver" onclick="openModal('Silver Package', 399)">Choose Plan</button>
-            </div>
+       <div class="price-card">
+        <h4>Essential Package</h4>
+        <p style="font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 10px;">Best for Small Shops</p>
+        <div class="price" id="price-starter">₹1400 <span>/ Month</span></div>
+        <p >Keep your social media active and professional without breaking the bank.</p>
+        <ul>
+            <li><i class="ri-image-edit-line"></i> 4-5 High-Quality Posts/mo</li>
+            <li><i class="ri-play-circle-line"></i> 1 Reels (Basic Editing)</li>
+            <li><i class="ri-play-circle-line"></i> Profile Setup & Highlights</li>
+            <li><i class="ri-account-circle-line"></i> Basic Hashtag Strategy</li>
+            <li><i class="ri-leaf-line"></i> 100% Organic Approach</li>
+        </ul>
+        <button class="btn-outline" id="btn-starter" onclick="openModal('Essential', 1400)">Choose Plan</button>
+    </div>
 
-            <div class="price-card">
-                <h4>Gold Package</h4>
-                <div class="price" id="price-gold">₹669 <span>/ Total</span></div>
-                <ul>
-                    <li><i class="ri-history-line"></i> 2 Story for 2 Days</li>
-                    <li><i class="ri-gallery-upload-line"></i> 1 Permanent Post</li>
-                    <li><i class="ri-user-add-line"></i> 2000-2200 Followers Growth</li>
-                </ul>
-                <button class="btn-outline" id="btn-gold" onclick="openModal('Gold Package', 669)">Choose Plan</button>
-            </div>
+    <div class="price-card">
+        <h4>Starter Package</h4>
+        <p style="font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 10px;">Basic Setup</p>
+        <div class="price" id="price-starter">₹2,999 <span>/ Month</span></div>
+        <p >Great for new businesses stepping into the online world. Build a solid foundation.</p>
+        <ul>
+            <li><i class="ri-image-line"></i> 8-10 High-Quality Static Posts</li>
+            <li><i class="ri-play-circle-line"></i> 2 Reels (Basic Editing)</li>
+            <li><i class="ri-links-line"></i> Profile Optimization (Bio & Links)</li>
+            <li><i class="ri-hashtag"></i> Basic Hashtag Strategy</li>
+            <li><i class="ri-line-chart-line"></i> Organic Growth Focus</li>
+        </ul>
+        <button class="btn-outline" id="btn-starter" onclick="openModal('Starter', 2999)">Choose Plan</button>
+    </div>
 
-            <div class="price-card popular">
-                <span class="badge">Most Popular</span>
-                <h4>Platinum Package</h4>
-                <div class="price" id="price-platinum">₹1199 <span>/ Total</span></div>
-                <ul>
-                    <li><i class="ri-gallery-upload-line"></i> 3 Permanent Posts</li>
-                    <li><i class="ri-history-line"></i> 2 Story for 4 Days</li>
-                    <li><i class="ri-user-add-line"></i> 5k-5.5k Followers Growth</li>
-                </ul>
-                <button class="btn-filled" id="btn-platinum" onclick="openModal('Platinum Package', 1199)">Choose Plan</button>
-            </div>
+    <div class="price-card popular">
+        <span class="badge">Most Popular</span>
+        <h4>Growth Package</h4>
+        <p style="font-size: 13px; color: #eee; margin-top: -10px; margin-bottom: 10px;">Serious Growth</p>
+        <div class="price" id="price-growth">₹5,999 <span>/ Month</span></div>
+        <p style="font-size: 14px; margin-bottom: 20px; line-height: 1.5;">The ultimate package for businesses ready to grow their audience on Instagram & Facebook.</p>
+        <ul>
+            <li><i class="ri-slideshow-line"></i> 15 Posts (Static & Carousels)</li>
+            <li><i class="ri-movie-line"></i> 5-6 Reels (Pro Video Editing)</li>
+            <li><i class="ri-history-line"></i> 2-3 Story Updates/week</li>
+            <li><i class="ri-file-text-line"></i> Engaging Captions & Hashtags</li>
+            <li><i class="ri-search-eye-line"></i> Competitor Analysis</li>
+        </ul>
+        <button class="btn-filled" id="btn-growth" onclick="openModal('Growth', 5999)">Choose Plan</button>
+    </div>
 
-            <div class="price-card">
-                <h4>Influencer Package</h4>
-                <div class="price" id="price-influencer">₹1889 <span>/ Total</span></div>
-                <ul>
-                    <li><i class="ri-star-line"></i> Face of the Week</li>
-                    <li><i class="ri-gallery-upload-line"></i> 5 Permanent Posts</li>
-                    <li><i class="ri-shake-hands-line"></i> 1 Post Collab</li>
-                    <li><i class="ri-user-add-line"></i> 7k-8k Followers Growth</li>
-                </ul>
-                <button class="btn-outline" id="btn-influencer" onclick="openModal('Influencer Package', 1889)">Choose Plan</button>
-            </div>
-
-            <div class="price-card">
-                <h4>Business Package</h4>
-                <div class="price" id="price-business">₹2699 <span>/ Total</span></div>
-                <ul>
-                    <li><i class="ri-gallery-upload-line"></i> 7 Permanent Posts</li>
-                    <li><i class="ri-shake-hands-line"></i> 2 Collabs</li>
-                    <li><i class="ri-history-line"></i> Daily Story (2 Weeks)</li>
-                    <li><i class="ri-user-add-line"></i> 13k-14k Followers Growth</li>
-                </ul>
-                <button class="btn-outline" id="btn-business" onclick="openModal('Business Package', 2699)">Choose Plan</button>
-            </div>
-
-            <div class="price-card">
-                <h4>Special Package</h4>
-                <div class="price" id="price-special">₹4690 <span>/ Month</span></div>
-                <ul>
-                    <li><i class="ri-vip-crown-line"></i> All Services (1 Month)</li>
-                    <li><i class="ri-bar-chart-line"></i> 3k-4k Reach on New Posts</li>
-                    <li><i class="ri-user-add-line"></i> 26k-27k Followers Growth</li>
-                </ul>
-                <button class="btn-outline" id="btn-special" onclick="openModal('Special Package', 4690)">Choose Plan</button>
-            </div>
-        </div>
+    <div class="price-card">
+        <h4>Pro Package</h4>
+        <p style="font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 10px;">Aggressive Growth</p>
+        <div class="price" id="price-pro">₹9,999 <span>/ Month</span></div>
+        <p style="font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Dominate your market. For established brands and personal brands who want it all.</p>
+        <ul>
+            <li><i class="ri-vip-crown-line"></i> 20 Posts (Carousels & Graphics)</li>
+            <li><i class="ri-video-upload-line"></i> 8-10 Reels (Advanced & Trending)</li>
+            <li><i class="ri-history-line"></i> Daily Story Updates</li>
+            <li><i class="ri-message-2-line"></i> Comment & DM Replies</li>
+            <li><i class="ri-file-chart-line"></i> Monthly Performance Report</li>
+        </ul>
+        <button class="btn-outline" id="btn-pro" onclick="openModal('Pro', 9999)">Choose Plan</button>
+    </div>
         <section class="web-dev-section">
     
     <div class="web-header">
@@ -234,12 +224,10 @@
         // Group A: South Asia (INR Base - Affordable)
         const pricesINR = {
             // Social Media
-            silver: 399,
-            gold: 669,
-            platinum: 1199,
-            influencer: 1889,
-            business: 2699,
-            special: 4690,
+            essential: 1499,
+            starter: 2999,
+            growth: 5999,
+            pro: 9999, 
 
             // 👇 Web Development (New Added)
             webBasic: 4999,
@@ -250,12 +238,10 @@
         // Group B: International (USD Base - Premium)
         const pricesUSD = {
             // Social Media
-            silver: 19,
-            gold: 29,
-            platinum: 39,
-            influencer: 69,
-            business: 139,
-            special: 259,
+            essential: 99,
+            starter: 199,
+            growth: 399,
+            pro: 699,
 
             // 👇 Web Development (New Added)
             webBasic: 199,
@@ -282,14 +268,14 @@
                 const displayPrice = formatMoney(finalPrice, localCurrency);
                 
                 // Suffix Logic: Social vs Web vs Monthly
-                let suffix = '/ Total';
+                let suffix = '/ Month';
                 if (plan === 'special') suffix = '/ Month';
                 else if (plan.includes('web')) suffix = '/ One Time';
 
                 // 2. Update Display Text
                 const priceEl = document.getElementById(`price-${plan}`);
                 if (priceEl) {
-                    priceEl.innerHTML = `${displayPrice} <span style="font-size: 14px; font-weight: normal; color: #666;">${suffix}</span>`;
+                   
                 }
 
                 // 3. Update Button Action
