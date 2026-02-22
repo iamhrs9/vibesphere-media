@@ -94,6 +94,7 @@
             <div class="tab" onclick="switchTab('orders', this)">Orders (Database)</div>
             <div class="tab" onclick="switchTab('blogs', this)">Write Blog ✍️</div>
             <div class="tab" onclick="switchTab('staff-section', this); fetchStaffData();">Staff Mgmt 👥</div>
+            <div class="tab" onclick="switchTab('jobs-section', this); fetchAdminJobs();">Careers 💼</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -296,6 +297,53 @@
             </table>
         </div>
     </div>
+    <div id="jobs-section" class="section">
+            <h2>💼 Manage Job Postings</h2>
+
+            <div class="staff-grid" style="margin-top: 20px;">
+                <div class="staff-card" style="border-top: 4px solid #8b5cf6; max-width: 400px;">
+                    <h3>Post a New Job</h3>
+                    <form id="addJobForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitJob(event)">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="jobTitle" placeholder="Job Title (e.g. Video Editor)" required>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="jobType" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                                <option value="Full-time">Full-time</option>
+                                <option value="Part-time">Part-time</option>
+                                <option value="Internship">Internship</option>
+                                <option value="Freelance">Freelance</option>
+                            </select>
+                            <select id="jobLocation" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                                <option value="Remote">Remote</option>
+                                <option value="On-site">On-site</option>
+                                <option value="Hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <textarea id="jobDesc" rows="4" placeholder="Short description of the role..." required></textarea>
+                        </div>
+                        <button type="submit" id="btnJob" class="btn-publish" style="background: #8b5cf6;">Post Job 🚀</button>
+                    </form>
+                </div>
+
+                <div class="staff-card" style="flex: 1;">
+                    <h3>Active Job Postings</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Type & Location</th>
+                                <th>Posted On</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobsTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
  <script>
     const API_URL = '/api';
     let AUTH_TOKEN = localStorage.getItem('adminToken');
@@ -781,6 +829,80 @@
             } catch(e) { alert("Failed to delete notice"); }
         }
     }; 
+    // ==========================================
+    // 🟢 8. MANAGE CAREERS / JOBS
+    // ==========================================
+    
+    // 1. Fetch & Show Jobs in Admin
+    window.fetchAdminJobs = async function() {
+        try {
+            const res = await fetch('/api/jobs');
+            const data = await res.json();
+            const tbody = document.getElementById('jobsTableBody');
+            tbody.innerHTML = '';
+            
+            if(data.success && data.jobs) {
+                if(data.jobs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No jobs posted right now.</td></tr>';
+                    return;
+                }
+                data.jobs.forEach(job => {
+                    tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${job.title}</strong></td>
+                        <td>${job.type} • ${job.location}</td>
+                        <td>${new Date(job.date).toLocaleDateString()}</td>
+                        <td><button onclick="deleteJob('${job._id}')" class="delete-btn">Remove</button></td>
+                    </tr>`;
+                });
+            }
+        } catch(e) { console.error("Error fetching jobs"); }
+    }
+
+    // 2. Submit New Job
+    window.submitJob = async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnJob');
+        btn.innerText = "Posting...";
+
+        const jobData = {
+            title: document.getElementById('jobTitle').value,
+            type: document.getElementById('jobType').value,
+            location: document.getElementById('jobLocation').value,
+            description: document.getElementById('jobDesc').value
+        };
+
+        try {
+            const res = await fetch('/api/admin/add-job', {
+                method: 'POST',
+                headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify(jobData)
+            });
+            const result = await res.json();
+            
+            if(result.success) {
+                alert("✅ " + result.message);
+                document.getElementById('addJobForm').reset();
+                fetchAdminJobs(); // Table update
+            } else { alert("❌ Error: " + result.error); }
+        } catch(err) { alert("Server connection failed"); }
+        
+        btn.innerText = "Post Job 🚀";
+    };
+
+    // 3. Delete Job
+    window.deleteJob = async function(id) {
+        if(confirm("Are you sure? This job will be removed from the public website!")) {
+            try {
+                const res = await fetch(`/api/admin/delete-job/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': AUTH_TOKEN }
+                });
+                const result = await res.json();
+                if(result.success) fetchAdminJobs();
+            } catch(e) { alert("Failed to delete job"); }
+        }
+    };
 </script>
 </body>
 </html>

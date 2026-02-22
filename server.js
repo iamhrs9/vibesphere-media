@@ -159,7 +159,15 @@ const noticeSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const Notice = mongoose.model('Notice', noticeSchema);
-
+// 1. Job Schema (Database format)
+const jobSchema = new mongoose.Schema({
+    title: String,
+    type: String, // Full-time, Internship, Freelance
+    location: String, // Remote, Mumbai, etc.
+    description: String,
+    date: { type: Date, default: Date.now }
+});
+const Job = mongoose.model('Job', jobSchema);
 
 // ==========================================
 // 🚀 STAFF PORTAL APIs
@@ -730,6 +738,32 @@ app.delete('/api/admin/delete-notice/:id', checkAuth, async (req, res) => {
         await Notice.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Notice Deleted Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to delete notice" }); }
+});
+
+// 2. Get All Jobs (Public & Admin ke liye)
+app.get('/api/jobs', async (req, res) => {
+    try {
+        const jobs = await Job.find().sort({ date: -1 });
+        res.json({ success: true, jobs });
+    } catch(e) { res.status(500).json({ error: "Failed to fetch jobs" }); }
+});
+
+// 3. Post a New Job (Sirf Admin ke liye)
+app.post('/api/admin/add-job', checkAuth, async (req, res) => {
+    try {
+        const { title, type, location, description } = req.body;
+        const newJob = new Job({ title, type, location, description });
+        await newJob.save();
+        res.json({ success: true, message: "Job Posted Successfully 🚀" });
+    } catch(e) { res.status(500).json({ success: false, error: "Failed to post job" }); }
+});
+
+// 4. Delete a Job (Sirf Admin ke liye)
+app.delete('/api/admin/delete-job/:id', checkAuth, async (req, res) => {
+    try {
+        await Job.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Job Deleted!" });
+    } catch(e) { res.status(500).json({ success: false, error: "Failed to delete job" }); }
 });
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
