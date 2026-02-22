@@ -95,6 +95,7 @@
             <div class="tab" onclick="switchTab('blogs', this)">Write Blog ✍️</div>
             <div class="tab" onclick="switchTab('staff-section', this); fetchStaffData();">Staff Mgmt 👥</div>
             <div class="tab" onclick="switchTab('jobs-section', this); fetchAdminJobs();">Careers 💼</div>
+            <div class="tab" onclick="switchTab('handover-doc', this)">Deliver Project 📄</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -106,7 +107,26 @@
                 <tbody id="reviewsTable"></tbody>
             </table>
         </div>
-
+<div id="handover-doc" class="section">
+            <h3 style="color: #3b82f6; margin-bottom: 20px;">Generate Verified Handover PDF</h3>
+            <div class="blog-editor">
+                <form id="secureHandoverForm" onsubmit="generateHandover(event)">
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <input type="text" id="hOrder" placeholder="Order No (e.g. #ORD-123)" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="text" id="hClient" placeholder="Client Name" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <input type="text" id="hProject" placeholder="Project Title" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="date" id="hDelDate" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" title="Delivery Date">
+                        <input type="date" id="hSupDate" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" title="Support Valid Till">
+                    </div>
+                    <input type="text" id="hLink" placeholder="Live Link / Proof URL" required style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <textarea id="hNotes" rows="2" placeholder="Admin Notes (Optional)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                    
+                    <button type="submit" id="btnHandover" class="btn-publish" style="width: 100%;">Create & Download Official PDF 🚀</button>
+                </form>
+            </div>
+        </div>
         <div id="orders" class="section">
             <h3>Recent Orders</h3>
             <table>
@@ -459,7 +479,13 @@
                         <td><strong>${o.customerName}</strong><br><small>${o.email}</small></td>
                         <td>${o.package}</td>
                         <td>${o.price}</td>
-                        <td><select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}"><option value="Pending" ${o.status==='Pending'?'selected':''}>Pending</option><option value="Done" ${o.status==='Done'?'selected':''}>Done</option></select></td>
+                        <td style="display:flex; gap:10px; align-items:center;">
+    <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border-radius:5px; padding:5px;">
+        <option value="Pending" ${o.status==='Pending'?'selected':''}>Pending</option>
+        <option value="Done" ${o.status==='Done'?'selected':''}>Done</option>
+    </select>
+    <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Download Invoice">📥 PDF</button>
+</td>
                     </tr>`;
             });
         } catch(e) {}
@@ -903,6 +929,44 @@
             } catch(e) { alert("Failed to delete job"); }
         }
     };
+    async function generateHandover(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnHandover');
+        btn.innerText = "Processing Document...";
+
+        const payload = {
+            orderNumber: document.getElementById('hOrder').value,
+            clientName: document.getElementById('hClient').value,
+            projectName: document.getElementById('hProject').value,
+            deliveryDate: document.getElementById('hDelDate').value,
+            supportDate: document.getElementById('hSupDate').value,
+            liveLink: document.getElementById('hLink').value,
+            remarks: document.getElementById('hNotes').value
+        };
+
+        try {
+            // Secure API Call (Auth Token sent)
+            const res = await fetch('/api/admin/generate-handover', {
+                method: 'POST',
+                headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                // PDF Download Logic (Browser Trick)
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `VibeSphere_Handover_${payload.orderNumber}.pdf`;
+                a.click();
+                document.getElementById('secureHandoverForm').reset();
+            } else { alert("Failed to generate PDF. Check auth."); }
+        } catch (err) { alert("Server error"); }
+        
+        btn.innerText = "Create & Download Official PDF 🚀";
+    };
+
 </script>
 </body>
 </html>

@@ -8,11 +8,112 @@ const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; // ⚠️ Isse baad mein replace karna padega
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-
+const nodemailer = require('nodemailer'); // 🚨 NAYA IMPORT
+const PDFDocument = require('pdfkit');    // 🚨 NAYA IMPORT
+const QRCode = require('qrcode');
+const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
+// ==========================================
+// 🎨 PREMIUM INVOICE DESIGN (BUG FREE)
+// ==========================================
+function buildProfessionalInvoice(doc, order) {
+    const logoPath = path.join(__dirname, 'public', 'icon.png'); 
+    const displayPrice = order.price ? order.price.replace('₹', 'INR ') : 'INR 0';
 
+    // --- 1. HEADER ---
+    try {
+        if (fs.existsSync(logoPath)) {
+            doc.image(logoPath, 50, 40, { width: 140 }); 
+        }
+    } catch(e) {}
+
+    doc.font('Helvetica').fontSize(10).fillColor('#555555')
+       .text('Digital Growth & Web Agency', 50, 95)
+       .text('Tech Park, Jaipur, RJ 302001', 50, 110)
+       .text('support@vibespheremedia.in', 50, 125)
+       .text('www.vibespheremedia.in', 50, 140); 
+
+    doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(28).text('INVOICE', 380, 45, { align: 'right', width: 160 });
+
+    // --- 2. CLIENT & INVOICE DETAILS ---
+    const detailY = 185; 
+    
+    // Left Side
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11).text('Client Details', 50, detailY);
+    doc.font('Helvetica').fontSize(10).fillColor('#333333')
+       .text(`Name: ${order.customerName || 'Client'}`, 50, detailY + 18)
+       .text(`Email: ${order.email || 'N/A'}`, 50, detailY + 33)
+       .text(`Phone: ${order.phone || 'N/A'}`, 50, detailY + 48);
+
+    // Right Side (Fixed Bug - Strict Coordinates)
+    const rightLabelX = 330;
+    const rightValueX = 410;
+
+    doc.font('Helvetica-Bold').fillColor('#000000').text('Date of Issue:', rightLabelX, detailY);
+    doc.font('Helvetica').text(`${new Date(order.date).toLocaleDateString()}`, rightValueX, detailY);
+
+    doc.font('Helvetica-Bold').text('Invoice Code:', rightLabelX, detailY + 15);
+    doc.font('Helvetica').text(`${order.orderId}`, rightValueX, detailY + 15);
+
+    doc.font('Helvetica-Bold').text('Payment ID:', rightLabelX, detailY + 30);
+    doc.font('Helvetica').text(`${order.paymentId || 'N/A'}`, rightValueX, detailY + 30);
+
+    doc.font('Helvetica-Bold').text('Status:', rightLabelX, detailY + 45);
+    doc.font('Helvetica-Bold').fillColor('#16a34a').text('PAID', rightValueX, detailY + 45); 
+
+    // --- 3. TABLE HEADER ---
+    const tableTop = 270;
+    doc.rect(50, tableTop, 490, 25).fill('#3b82f6'); 
+
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(10)
+       .text('Description', 60, tableTop + 7)
+       .text('Qty', 330, tableTop + 7)
+       .text('Rate', 400, tableTop + 7)
+       .text('Amount', 480, tableTop + 7);
+
+    // --- 4. TABLE ROW ---
+    doc.fillColor('#333333').font('Helvetica').fontSize(10)
+       .text(`${order.package || 'VibeSphere Digital Service'}`, 60, tableTop + 35)
+       .text('1', 330, tableTop + 35)
+       .text(displayPrice, 400, tableTop + 35)
+       .text(displayPrice, 480, tableTop + 35);
+
+    doc.moveTo(50, tableTop + 60).lineTo(540, tableTop + 60).strokeColor('#e2e8f0').lineWidth(1).stroke();
+
+    // --- 5. TOTAL CALCULATION ---
+    const totalY = tableTop + 80;
+    
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
+       .text('Subtotal', 400, totalY)
+       .text('Tax (0%)', 400, totalY + 20);
+
+    doc.font('Helvetica').fontSize(10)
+       .text(displayPrice, 480, totalY)
+       .text('INR 0.00', 480, totalY + 20);
+
+    doc.rect(380, totalY + 40, 160, 25).fill('#f1f5f9');
+    
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11)
+       .text('Total Paid', 390, totalY + 47)
+       .text(displayPrice, 480, totalY + 47);
+
+    // --- 6. TERMS & CONDITIONS ---
+    // --- 6. TERMS & CONDITIONS (Legal Section) ---
+    const termsY = totalY + 90;
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10)
+       .text('Terms & Conditions:', 50, termsY);
+    
+    doc.font('Helvetica').fontSize(9).fillColor('#64748b')
+       .text('1. Full details regarding the deliverables of this package are available on our official website.', 50, termsY + 15)
+       .text('2. All payments are strictly non-refundable once the project work has been initiated.', 50, termsY + 30)
+       .text('3. For refund requests (valid only before work starts), contact support within 24 hours of payment.', 50, termsY + 45)
+       .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 50, termsY + 60)
+       .text('5. This is a computer-generated invoice and does not require a physical signature.', 50, termsY + 75);
+    // --- 7. FOOTER ---
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#383d46')
+       .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
+}
 // --- 1. Variables ---
 let localOrders = [];
 let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123"; 
@@ -48,6 +149,13 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER, // Hum ise .env file se lenge
+        pass: process.env.EMAIL_PASS  // Gmail ka 16-digit App Password
+    }
+});
 
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
@@ -122,6 +230,15 @@ const blogSchema = new mongoose.Schema({
     contentHindi: String
 });
 const Blog = mongoose.model('Blog', blogSchema);
+// --- Handover Certificate Schema ---
+const handoverSchema = new mongoose.Schema({
+    certId: { type: String, unique: true }, // VIBE-CERT-123456
+    orderNumber: String,
+    clientName: String,
+    projectName: String,
+    dateGenerated: { type: Date, default: Date.now }
+});
+const Handover = mongoose.model('Handover', handoverSchema);
 // ==========================================
 // 🏢 STAFF CRM & TASK MANAGEMENT SCHEMAS
 // ==========================================
@@ -474,6 +591,44 @@ app.post('/api/verify-payment', async (req, res) => {
         });
         localOrders.push(newOrder);
         try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) {}
+        
+        // 🟢 MAGIC: Generate PDF in memory & Send Email
+        try {
+            const doc = new PDFDocument({ margin: 50 });
+            let buffers = [];
+            doc.on('data', buffers.push.bind(buffers));
+            doc.on('end', async () => {
+                let pdfData = Buffer.concat(buffers);
+                
+                let mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: newOrder.email, // Client ka email jo order form me bhara gaya
+                    subject: `Order Confirmed! Your Invoice ${newOrder.orderId} - VibeSphere Media`,
+                    text: `Hi ${newOrder.customerName},\n\nThank you for choosing VibeSphere Media! Your payment was successful and your order (${newOrder.orderId}) is now confirmed.\n\nPlease find your official invoice attached to this email.\n\nOur team will contact you shortly to start the work.\n\nRegards,\nTeam VibeSphere`,
+                    attachments: [{ filename: `Invoice-${newOrder.orderId}.pdf`, content: pdfData }]
+                };
+                
+                // Email send karo (Background me)
+                transporter.sendMail(mailOptions).catch(err => console.log("Email Error:", err));
+            });
+
+            // Make the PDF content (Same as download logic)
+            doc.fontSize(25).fillColor('#6c63ff').text('VibeSphere Media.', { align: 'center' });
+            doc.moveDown();
+            doc.fontSize(12).fillColor('#333').text(`Invoice Number: ${newOrder.orderId}`, { align: 'right' });
+            doc.text(`Date: ${new Date(newOrder.date).toLocaleDateString()}`, { align: 'right' });
+            doc.moveDown();
+            doc.fontSize(16).fillColor('#000').text('Customer Details:');
+            doc.fontSize(12).fillColor('#444').text(`Name: ${newOrder.customerName}`);
+            doc.text(`Email: ${newOrder.email}`);
+            doc.moveDown();
+            doc.fontSize(16).fillColor('#000').text('Order Details:');
+            doc.fontSize(12).fillColor('#444').text(`Package: ${newOrder.package}`);
+            doc.text(`Amount Paid: ${newOrder.price}`);
+            doc.end();
+
+        } catch (emailErr) { console.log("Failed to process email", emailErr); }
+
         res.json({ success: true });
     } else {
         res.json({ success: false });
@@ -503,7 +658,33 @@ app.get('/api/admin/orders', checkAuth, async (req, res) => {
         res.json(orders);
     } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
 });
+// ==========================================
+// 📥 INVOICE DOWNLOAD API
+// ==========================================
+// ==========================================
+// 📥 INVOICE DOWNLOAD API (Updated)
+// ==========================================
+app.get('/api/download-invoice/:orderId', async (req, res) => {
+    try {
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) return res.status(404).send("Order not found");
 
+        // Margin 0 zaroori hai full-width header ke liye
+        const doc = new PDFDocument({ margin: 0, size: 'A4' }); 
+        
+        res.setHeader('Content-disposition', `attachment; filename=VibeSphere_Invoice_${order.orderId}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        doc.pipe(res);
+
+        // Naya Premium Design call karo
+        buildProfessionalInvoice(doc, order);
+
+        doc.end();
+    } catch (e) {
+        console.error("PDF Error:", e);
+        res.status(500).send("Error generating invoice");
+    }
+});
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
     const { id, status } = req.body;
     try {
@@ -765,6 +946,148 @@ app.delete('/api/admin/delete-job/:id', checkAuth, async (req, res) => {
         res.json({ success: true, message: "Job Deleted!" });
     } catch(e) { res.status(500).json({ success: false, error: "Failed to delete job" }); }
 });
+// ==========================================
+// 📄 SECURE HANDOVER PDF API (FIXED ALIGNMENT & BIG LOGO)
+// ==========================================
+app.post('/api/admin/generate-handover', checkAuth, async (req, res) => {
+    try {
+        const { orderNumber, clientName, projectName, deliveryDate, supportDate, liveLink, remarks } = req.body;
+        
+        const certId = "VIBE-CERT-" + Math.floor(100000 + Math.random() * 900000);
+        const newCert = new Handover({ certId, orderNumber, clientName, projectName });
+        await newCert.save();
+
+        const verifyLink = `http://localhost:3000/verify.html?cert=${certId}`;
+        const qrImage = await QRCode.toDataURL(verifyLink);
+
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        res.setHeader('Content-disposition', `attachment; filename=Handover_${orderNumber}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        doc.pipe(res);
+
+        // Confidential Header
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#94a3b8').text('CONFIDENTIAL DOCUMENT  |  CLIENT COPY  |  VER 1.0.0', 50, 25);
+
+        // 3. Header & Logo (Logo thoda bada kar diya)
+        const logoPath = path.join(__dirname, 'public', 'icon.png');
+        try { if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 45, { width: 165 }); } catch(e) {}
+
+        // Text alignment fix (Overlap hatane ke liye Y axis change kiya)
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(24).text('PROJECT', 300, 45, { align: 'right' });
+        doc.text('HANDOVER', 300, 70, { align: 'right' });
+        doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Official Delivery & Sign-off Document', 300, 98, { align: 'right' });
+        
+        // ID Badge position niche ki
+        doc.roundedRect(360, 115, 185, 22, 4).fill('#f8fafc');
+        doc.fillColor('#10b981').font('Helvetica-Bold').fontSize(10).text(`CERT ID: ${certId}`, 360, 122, { align: 'center', width: 185 });
+
+        doc.moveTo(50, 150).lineTo(545, 150).strokeColor('#f1f5f9').lineWidth(2).stroke();
+
+        // 4. Project Details Card
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Project Details', 50, 170);
+        doc.roundedRect(50, 190, 495, 110, 8).fillAndStroke('#ffffff', '#e2e8f0'); 
+        
+        let rowY = 210;
+        doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Order Number:', 70, rowY);
+        doc.fillColor('#0f172a').font('Helvetica-Bold').text(orderNumber, 170, rowY);
+        doc.fillColor('#64748b').font('Helvetica').text('Client Name:', 70, rowY + 20);
+        doc.fillColor('#0f172a').font('Helvetica-Bold').text(clientName, 170, rowY + 20);
+        doc.fillColor('#64748b').font('Helvetica').text('Project Title:', 70, rowY + 40);
+        doc.fillColor('#0f172a').font('Helvetica-Bold').text(projectName, 170, rowY + 40);
+        doc.fillColor('#64748b').font('Helvetica').text('Delivery Date:', 70, rowY + 60);
+        doc.fillColor('#0f172a').font('Helvetica-Bold').text(new Date(deliveryDate).toLocaleDateString(), 170, rowY + 60);
+        doc.fillColor('#64748b').font('Helvetica').text('Support Valid Till:', 300, rowY + 60);
+        doc.fillColor('#10b981').font('Helvetica-Bold').text(new Date(supportDate).toLocaleDateString(), 400, rowY + 60);
+
+        // 5. Deliverables Card
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Deliverables & Notes', 50, 320);
+        doc.roundedRect(50, 340, 495, 75, 8).fillAndStroke('#ffffff', '#e2e8f0'); 
+
+        doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Live Link :', 70, 360);
+        doc.fillColor('#3b82f6').font('Helvetica-Bold').text(liveLink, 170, 360);
+        doc.fillColor('#64748b').font('Helvetica').text('Important Notes:', 70, 380);
+        doc.fillColor('#0f172a').font('Helvetica').text(remarks || 'No additional remarks from admin.', 170, 380, { width: 350 });
+
+        // 6. Terms
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11).text('Post-Delivery Support Terms', 50, 440);
+        doc.font('Helvetica').fontSize(9).fillColor('#64748b')
+           .text('1. Free technical support is valid strictly up to the date mentioned above.', 50, 460)
+           .text('2. Support covers minor bug fixes. Major structural changes billed separately.', 50, 475)
+           .text('3. Not responsible for third-party plugin issues or unauthorized code edits.', 50, 490);
+
+        // 7. Upsell Box
+        doc.roundedRect(50, 520, 495, 40, 6).fill('#ecfdf5');
+        doc.fillColor('#047857').font('Helvetica-Bold').fontSize(9).text('Maintenance Recommendation:', 65, 530);
+        doc.fillColor('#065f46').font('Helvetica').fontSize(8.5).text('We strongly recommend our monthly maintenance plan to ensure continuous security and peak performance.', 65, 542);
+// =========================================
+        // 🟢 BOTTOM SECTION: QR Left | Sign & Stamp Right
+        // =========================================
+
+        // A. QR Code (Left Side)
+        doc.image(qrImage, 50, 600, { width: 70 }); 
+        doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text('Scan to Verify', 50, 675, { width: 70, align: 'center' });
+        doc.font('Helvetica').fontSize(8).fillColor('#3b82f6').text('vibespheremedia.in/verify', 50, 688, { width: 70, align: 'center' });
+
+
+        // B. Signature Image (Right Side)
+        const signPath = path.join(__dirname, 'public', 'signature.png'); // 🚨 Make sure this file exists!
+        const signX = 380; // Right side coordinate
+        const signY = 590;
+        try {
+            if (fs.existsSync(signPath)) {
+                // Width 120, Height auto adjust hoga
+                doc.image(signPath, signX, signY, { width: 120 });
+            } else {
+                // Fallback agar image nahi mili
+                 doc.font('Helvetica-Italic').fontSize(14).fillColor('#ef4444').text('[Upload signature.png]', signX, signY + 20);
+            }
+        } catch(e) {}
+
+        // C. Name & Title Text (Below Signature Image)
+        doc.font('Helvetica-Bold').fontSize(11).fillColor('#0f172a').text('Harsh Panwar', signX, signY + 60, { align: 'center', width: 120 });
+        doc.font('Helvetica').fontSize(9).fillColor('#64748b').text('Founder & CEO, VibeSphere', signX, signY + 75, { align: 'center', width: 120 });
+
+
+        // D. Authentic Stamp (Tilted, Overlapping Signature Text on Right)
+        try {
+            doc.save();
+            // Translate to Right side, below signature
+            doc.translate(signX + 60, signY + 70); 
+            doc.rotate(-(6 + Math.random() * 5)); // Slight tilt
+            
+            const stampBlue = '#1d4ed8'; 
+            doc.fillOpacity(0.85).strokeOpacity(0.85); 
+            // Stamp Boxes
+            doc.roundedRect(-75, -25, 150, 50, 4).lineWidth(2).strokeColor(stampBlue).stroke();
+            doc.roundedRect(-71, -21, 142, 42, 2).lineWidth(1).strokeColor(stampBlue).stroke();
+            // Stamp Text
+            doc.fillColor(stampBlue).font('Helvetica-Bold').fontSize(12).text('VIBESPHERE MEDIA', -75, -14, { width: 150, align: 'center' });
+            doc.fillColor(stampBlue).font('Helvetica-Bold').fontSize(8).text('DELIVERED & VERIFIED', -75, 3, { width: 150, align: 'center' });
+            doc.fillColor(stampBlue).font('Helvetica').fontSize(7).text(`Date: ${new Date(deliveryDate).toLocaleDateString()}`, -75, 14, { width: 150, align: 'center' });
+            doc.restore(); 
+        } catch(e) {}
+
+        // Footer Line
+        doc.moveTo(50, 740).lineTo(545, 740).strokeColor('#e2e8f0').lineWidth(1).stroke();
+        doc.font('Helvetica').fontSize(8).fillColor('#94a3b8').text('Thank you for trusting VibeSphere Media with your project!', 50, 750, { align: 'center', width: 495 });
+
+        doc.end();
+    } catch (e) { res.status(500).send("Error generating PDF"); }
+});
+// ==========================================
+// 🔍 PUBLIC VERIFICATION API
+// ==========================================
+app.get('/api/verify-certificate/:certId', async (req, res) => {
+    try {
+        const cert = await Handover.findOne({ certId: req.params.certId.trim() });
+        if (cert) {
+            res.json({ success: true, cert });
+        } else {
+            res.json({ success: false, message: "🚨 Fake/Invalid Certificate Detected!" });
+        }
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao
