@@ -59,7 +59,7 @@
             <button type="submit" class="btn-login" id="loginBtn">Login to Dashboard</button>
         </form>
         
-        <a href="index.html" class="back-link"><i class="ri-arrow-left-line"></i> Back to Main Website</a>
+        <a href="/" class="back-link"><i class="ri-arrow-left-line"></i> Back to Main Website</a>
     </div>
 <script>
         document.getElementById('staffLoginForm').addEventListener('submit', async function(e) {
@@ -93,7 +93,7 @@
                     btn.style.background = "#16a34a"; // Green color
                     
                     setTimeout(() => {
-                        window.location.href = 'staff-dashboard.html';
+                        window.location.href = 'staff-dashboard';
                     }, 1000);
                 } else {
                     // ❌ Login Failed (Galat password ya email)
