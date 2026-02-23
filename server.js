@@ -110,7 +110,16 @@ function buildProfessionalInvoice(doc, order) {
        .text('3. For refund requests (valid only before work starts), contact support within 24 hours of payment.', 50, termsY + 45)
        .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 50, termsY + 60)
        .text('5. This is a computer-generated invoice and does not require a physical signature.', 50, termsY + 75);
-    // --- 7. FOOTER ---
+   // ==========================================
+    // 🟢 NAYA ADD KIYA: Client Dashboard Tracker Note
+    // ==========================================
+    doc.rect(50, termsY + 100, 490, 25).fill('#f8fafc'); // Light gray SaaS box
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9)
+       .text(' Track Order History & Download Certificates at:', 60, termsY + 108);
+    doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(9)
+       .text('vibespheremedia.in/dashboard', 330, termsY + 108);
+   
+       // --- 7. FOOTER ---
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#383d46')
        .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
 }
@@ -1286,6 +1295,54 @@ function generatePremiumHandoverLayout(doc, cert, qrImage) {
     doc.font('Helvetica').fontSize(8).fillColor('#94a3b8').text('Thank you for trusting VibeSphere Media with your project!', 50, 750, { align: 'center', width: 495 });
     doc.end();
 }
+// ==========================================
+// 📄 CLIENT DASHBOARD: DOWNLOAD APIS
+// ==========================================
+
+// 1. Download Invoice API
+app.get('/api/download-invoice/:orderId', async (req, res) => {
+    try {
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) return res.status(404).json({ error: "Order not found" });
+
+        const doc = new PDFDocument({ margin: 0, size: 'A4' });
+        res.setHeader('Content-disposition', `attachment; filename=Invoice_${order.orderId}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        doc.pipe(res);
+
+        // Agar tumhara invoice function ka naam kuch aur hai toh yahan change kar lena
+        if (typeof buildProfessionalInvoice === "function") {
+            buildProfessionalInvoice(doc, order);
+        } else {
+            doc.fontSize(20).text(`VibeSphere Invoice - ${order.orderId}`, 50, 50);
+        }
+        doc.end();
+    } catch (e) { res.status(500).json({ error: "Error generating invoice" }); }
+});
+
+// 2. Download Handover Certificate API
+app.get('/api/download-handover/:orderId', async (req, res) => {
+    try {
+        const cert = await Handover.findOne({ orderNumber: req.params.orderId });
+        
+        if(!cert) {
+            return res.status(404).json({ error: "Certificate not generated yet. Please contact support." });
+        }
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const qrImage = await QRCode.toDataURL(`${baseUrl}/verify.html?cert=${cert.certId}`);
+
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        res.setHeader('Content-disposition', `attachment; filename=VibeSphere_Handover_${cert.orderNumber}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        doc.pipe(res);
+
+        // Ye humara helper function hai jo premium design banata hai
+        generatePremiumHandoverLayout(doc, cert, qrImage); 
+    } catch(e) { 
+        res.status(500).json({ error: "Error downloading Certificate" }); 
+    }
+});
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao

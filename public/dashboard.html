@@ -120,7 +120,19 @@
             font-weight: 600; margin-top: 10px; transition: 0.3s;
         }
         .support-btn:hover { color: #5a52d5; text-decoration: underline; }
-
+/* --- DASHBOARD ACTION BUTTONS --- */
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; align-items: center; }
+        .btn-doc { 
+            display: inline-flex; align-items: center; gap: 5px; 
+            padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; 
+            text-decoration: none; transition: 0.3s; border: 1px solid transparent;
+        }
+        .btn-invoice { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+        .btn-invoice:hover { background: #e2e8f0; color: #1e293b; }
+        
+        .btn-cert { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+        .btn-cert:hover { background: #d1fae5; color: #047857; }
+        .btn-cert i { font-size: 1rem; }
         /* --- 3. AESTHETIC FOOTER --- */
         footer {
             background: white;
@@ -264,10 +276,21 @@
                 return;
             }
 
-            data.orders.forEach(order => {
-                // 👇 MAGIC FIX: Encode the message properly for WhatsApp
+          data.orders.forEach(order => {
                 const waMessage = encodeURIComponent(`Hi, I need help with Order ID: ${order.orderId}`);
                 
+                // 🚨 MAGIC FIX: Order ID ko URL ke liye safe banaya ( # hata kar %23 kar dega )
+                const safeOrderId = encodeURIComponent(order.orderId);
+
+                // 🟢 Smart Logic: Certificate button sirf tab dikhega jab status 'Done' ho
+                let certButton = '';
+                if(order.status === 'Done') {
+                    certButton = `
+                    <a href="/api/download-handover/${safeOrderId}" target="_blank" class="btn-doc btn-cert" title="Download Official Handover">
+                        <i class="ri-award-fill"></i> Certificate
+                    </a>`;
+                }
+
                 list.innerHTML += `
                     <div class="order-card">
                         <div class="order-info">
@@ -275,9 +298,15 @@
                             <p><i class="ri-hashtag" style="color:#94a3b8;"></i> <strong>Order ID:</strong> ${order.orderId}</p>
                             <p><i class="ri-calendar-line" style="color:#94a3b8;"></i> <strong>Date:</strong> ${order.date}</p>
                             
-                            <a href="https://wa.me/918302485826?text=${waMessage}" target="_blank" class="support-btn">
-                                <i class="ri-whatsapp-line"></i> Need Help?
-                            </a>
+                            <div class="action-buttons">
+                                <a href="https://wa.me/918302485826?text=${waMessage}" target="_blank" class="support-btn" style="margin-top:0;">
+                                    <i class="ri-whatsapp-line"></i> Support
+                                </a>
+                                <a href="/api/download-invoice/${safeOrderId}" target="_blank" class="btn-doc btn-invoice">
+                                    <i class="ri-file-list-3-line"></i> Invoice
+                                </a>
+                                ${certButton}
+                            </div>
                         </div>
                         <div>
                             <span class="status ${order.status}">${order.status}</span>
