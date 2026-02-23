@@ -95,7 +95,7 @@
             <div class="tab" onclick="switchTab('blogs', this)">Write Blog ✍️</div>
             <div class="tab" onclick="switchTab('staff-section', this); fetchStaffData();">Staff Mgmt 👥</div>
             <div class="tab" onclick="switchTab('jobs-section', this); fetchAdminJobs();">Careers 💼</div>
-            <div class="tab" onclick="switchTab('handover-doc', this)">Deliver Project 📄</div>
+            <div class="tab" onclick="switchTab('handover-doc', this); fetchHandovers();">Deliver Project 📄</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -123,7 +123,30 @@
                     <input type="text" id="hLink" placeholder="Live Link / Proof URL" required style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
                     <textarea id="hNotes" rows="2" placeholder="Admin Notes (Optional)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
                     
-                    <button type="submit" id="btnHandover" class="btn-publish" style="width: 100%;">Create & Download Official PDF 🚀</button>
+                    <div style="display: flex; gap: 15px;">
+                        <button type="submit" id="btnHandover" class="btn-publish" style="flex: 1; background: #6c63ff;">📥 Download PDF</button>
+                        <button type="button" id="btnEmailHandover" class="btn-publish" style="flex: 1; background: #10b981;" onclick="emailHandover(event)">📧 Email to Client</button>
+                    </div>
+                </form>
+                <div class="staff-card" style="margin-top: 40px; border-top: 4px solid #ff4757;">
+                <h3>🗑️ Manage Generated Certificates</h3>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">If you delete a certificate here, its QR Code will instantly become invalid.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Cert ID</th>
+                            <th>Order No</th>
+                            <th>Client & Project</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="certificatesTableBody">
+                        </tbody>
+                </table>
+            </div>
+            </div>
+        </div>
                 </form>
             </div>
         </div>
@@ -131,7 +154,8 @@
             <h3>Recent Orders</h3>
             <table>
                 <thead>
-                    <tr><th>ID</th><th>Payment ID</th><th>Target Link</th><th>Customer</th><th>Package</th><th>Price</th><th>Status</th></tr>
+                    <tr><th>ID</th><th>Payment ID</th><th>Target Link</th><th>Customer</th><th>Package</th><th>Price</th><th>Status</th>
+                    </tr>
                 </thead>
                 <tbody id="ordersTable"></tbody>
             </table>
@@ -485,7 +509,10 @@
         <option value="Done" ${o.status==='Done'?'selected':''}>Done</option>
     </select>
     <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Download Invoice">📥 PDF</button>
-</td>
+<button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer; font-size:16px;" title="Resend Invoice Email">📧</button>
+    </td>
+
+
                     </tr>`;
             });
         } catch(e) {}
@@ -966,7 +993,142 @@
         
         btn.innerText = "Create & Download Official PDF 🚀";
     };
+// 🟢 RESEND INVOICE FUNCTION
+    window.resendInvoice = async function(orderId) {
+        if(!confirm(`Do you want to resend the invoice to the client for ${orderId}?`)) return;
+        
+        try {
+            const res = await fetch('/api/admin/resend-invoice', {
+                method: 'POST',
+                headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId })
+            });
+            const result = await res.json();
+            
+            if(result.success) {
+                alert("✅ " + result.message);
+            } else {
+                alert("❌ Error: " + result.message);
+            }
+        } catch(e) {
+            alert("Server connection failed");
+        }
+    };
+// 🟢 EMAIL HANDOVER TO CLIENT DIRECTLY
+    window.emailHandover = async function(e) {
+        e.preventDefault();
+        
+        const payload = {
+            orderNumber: document.getElementById('hOrder').value,
+            clientName: document.getElementById('hClient').value,
+            projectName: document.getElementById('hProject').value,
+            deliveryDate: document.getElementById('hDelDate').value,
+            supportDate: document.getElementById('hSupDate').value,
+            liveLink: document.getElementById('hLink').value,
+            remarks: document.getElementById('hNotes').value
+        };
 
+        if(!payload.orderNumber || !payload.clientName || !payload.projectName) {
+            return alert("⚠️ Please fill the Order No, Client Name, and Project Title first!");
+        }
+
+        if(!confirm(`Send official handover email to the client for ${payload.orderNumber}?`)) return;
+
+        const btn = document.getElementById('btnEmailHandover');
+        btn.innerText = "Sending... ⏳";
+
+        try {
+            const res = await fetch('/api/admin/email-handover', {
+                method: 'POST',
+                headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            
+            if(result.success) {
+                alert("✅ " + result.message);
+                document.getElementById('secureHandoverForm').reset();
+            } else { 
+                alert("❌ Error: " + result.message); 
+            }
+        } catch (err) { alert("Server connection failed"); }
+        
+        btn.innerText = "📧 Email to Client";
+    }
+// ==========================================
+    // 🟢 MANAGE HANDOVER CERTIFICATES
+    // ==========================================
+    
+    // 1. Fetch Handovers
+    window.fetchHandovers = async function() {
+        try {
+            const res = await fetch('/api/admin/handovers', { headers: { 'Authorization': AUTH_TOKEN } });
+            const data = await res.json();
+            const tbody = document.getElementById('certificatesTableBody');
+            if(!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            if(data.success && data.certs) {
+                if(data.certs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No certificates generated yet.</td></tr>';
+                    return;
+                }
+                data.certs.forEach(c => {
+                    tbody.innerHTML += `
+                    <tr>
+                        <td>${new Date(c.dateGenerated).toLocaleDateString()}</td>
+                        <td><strong style="color: #10b981;">${c.certId}</strong></td>
+                        <td>${c.orderNumber}</td>
+                        <td><strong>${c.clientName}</strong><br><small style="color: #64748b;">${c.projectName}</small></td>
+                       
+<td>
+    <div style="display: flex; gap: 8px;">
+        <button onclick="window.open('/api/admin/download-saved-handover/${c._id}')" title="Download PDF" style="background:#8b5cf6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📥</button>
+        <button onclick="reEmailSavedHandover('${c._id}')" title="Resend to Client" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📧</button>
+        <button onclick="deleteHandover('${c._id}')" title="Delete Certificate" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+    </div>
+</td>
+                    </tr>`;
+                });
+            }
+        } catch(e) { console.error("Error fetching certificates"); }
+    };
+
+    // 2. Delete Handover
+    window.deleteHandover = async function(id) {
+        if(confirm("Are you sure? Agar aapne isko delete kiya toh client ka QR Code scan hone par FAKE batayega!")) {
+            try {
+                const res = await fetch(`/api/admin/delete-handover/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': AUTH_TOKEN }
+                });
+                const result = await res.json();
+                if(result.success) {
+                    fetchHandovers(); // Table turant refresh karo
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch(e) { alert("Failed to delete certificate"); }
+        }
+    };
+// 3. 📧 Re-Email Saved Handover
+    window.reEmailSavedHandover = async function(id) {
+        if(!confirm("Resend this handover certificate to the client's email?")) return;
+        
+        try {
+            const res = await fetch(`/api/admin/re-email-handover/${id}`, {
+                method: 'POST',
+                headers: { 'Authorization': AUTH_TOKEN }
+            });
+            const result = await res.json();
+            if(result.success) {
+                alert("✅ " + result.message);
+            } else {
+                alert("❌ Error: " + result.message);
+            }
+        } catch(e) { alert("Failed to connect to server"); }
+    };
 </script>
 </body>
 </html>
