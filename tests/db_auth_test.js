@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const MONGO_URI = "mongodb+srv://harshpanwar7410:Harsh355@cluster0.hgt8rkh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = "";
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
