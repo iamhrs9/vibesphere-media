@@ -23,7 +23,6 @@
         }
     </script>
 
-
     <style>
         * {
             font-family: 'Poppins', sans-serif;
@@ -105,7 +104,7 @@
             cursor: pointer;
         }
 
-        /* Tabs */
+        /* Tabs (Default Desktop Horizontal / Lete Hue) */
         .tabs {
             display: flex;
             gap: 20px;
@@ -113,6 +112,8 @@
             border-bottom: 2px solid #ddd;
             padding-bottom: 10px;
             flex-wrap: wrap;
+            flex-direction: row;
+            /* Fix: Horizontal tab layout */
         }
 
         .tab {
@@ -298,44 +299,6 @@
             }
         }
 
-        /* --- MOBILE RESPONSIVE ADMIN DASHBOARD --- */
-
-        /* 1. Dashboard Layout adjustments (Flexbox for Sidebar effect on Desktop) */
-        @media (min-width: 769px) {
-            #dashboard {
-                display: flex !important;
-                flex-wrap: wrap;
-                align-items: flex-start;
-                gap: 30px;
-            }
-
-            .header {
-                width: 100%;
-                display: flex;
-                flex-shrink: 0;
-            }
-
-            .tabs {
-                flex-direction: column;
-                width: 250px;
-                flex-shrink: 0;
-                background: white;
-                padding: 15px;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-                border: none;
-            }
-
-            .section {
-                flex: 1;
-                width: calc(100% - 280px);
-            }
-
-            #dashboard[style*="display: none"] {
-                display: none !important;
-            }
-        }
-
         /* Input Tap Target Minimums */
         input,
         select,
@@ -345,6 +308,7 @@
             font-size: 16px;
         }
 
+        /* --- MOBILE RESPONSIVE ADMIN DASHBOARD --- */
         @media (max-width: 768px) {
 
             /* 1. Header & Hamburger */
@@ -355,6 +319,8 @@
             .header {
                 margin-bottom: 20px;
                 align-items: center;
+                flex-direction: row;
+                flex-wrap: wrap;
             }
 
             .header h1 {
@@ -381,6 +347,7 @@
                 transition: 0.3s ease-in-out;
                 border: none;
                 margin: 0;
+                flex-wrap: nowrap;
             }
 
             .tabs.open {
@@ -416,11 +383,6 @@
                 min-width: unset;
                 margin-bottom: 15px;
                 padding: 15px;
-            }
-
-            .header {
-                flex-direction: row;
-                flex-wrap: wrap;
             }
 
             /* Multi-column forms to stack */
@@ -554,208 +516,209 @@
                 </div>
             </div>
         </div>
-        </form>
-    </div>
-    </div>
-    <div id="orders" class="section">
-        <h3>Recent Orders</h3>
-        <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Payment ID</th>
-                        <th>Target Link</th>
-                        <th>Customer</th>
-                        <th>Package</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersTable"></tbody>
-            </table>
-        </div>
-    </div>
 
-    <div id="blogs" class="section">
-        <h3 id="formTitle">Create New Blog Post</h3>
-
-        <div class="blog-editor">
-            <form id="blogForm">
-                <input type="hidden" id="editBlogId">
-
-                <div class="form-group">
-                    <label>Blog Title</label>
-                    <input type="text" id="bTitle" placeholder="e.g. How to Grow" required onkeyup="generateSlug()">
-                </div>
-
-                <div class="form-group">
-                    <label>Slug (Auto Generated)</label>
-                    <input type="text" id="bSlug" readonly style="background: #f9f9f9; color: #777;">
-                </div>
-
-                <div class="form-group">
-                    <label>Image URL</label>
-                    <input type="text" id="bImage" placeholder="Paste image link here..." required>
-                </div>
-
-                <div class="form-group">
-                    <label>Content (Full Article)</label>
-                    <textarea id="bContent" rows="15" placeholder="Yahan apna pura blog likho..."></textarea>
-                </div>
-
-                <div style="display: flex;">
-                    <button type="submit" class="btn-publish" id="submitBtn">Publish Blog 🚀</button>
-                    <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel Edit</button>
-                </div>
-            </form>
+        <div id="orders" class="section">
+            <h3>Recent Orders</h3>
+            <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Payment ID</th>
+                            <th>Target Link</th>
+                            <th>Customer</th>
+                            <th>Package</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTable"></tbody>
+                </table>
+            </div>
         </div>
 
-        <h3 style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">Existing Blogs</h3>
-        <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Image</th>
-                        <th>Title</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="blogsTable"></tbody>
-            </table>
-        </div>
-    </div>
+        <div id="blogs" class="section">
+            <h3 id="formTitle">Create New Blog Post</h3>
 
-    <div id="staff-section" class="section">
-        <h2>👥 Staff Management & Work Chart</h2>
+            <div class="blog-editor">
+                <form id="blogForm">
+                    <input type="hidden" id="editBlogId">
 
-        <div class="staff-grid">
-            <div class="staff-card" style="max-width: 350px;">
-                <h3>Add New Staff</h3>
-                <form id="addStaffForm" style="display: flex; flex-direction: column; gap: 15px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="staffName" placeholder="Full Name" required>
+                    <div class="form-group">
+                        <label>Blog Title</label>
+                        <input type="text" id="bTitle" placeholder="e.g. How to Grow" required onkeyup="generateSlug()">
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="email" id="staffEmail" placeholder="Login Email" required>
+
+                    <div class="form-group">
+                        <label>Slug (Auto Generated)</label>
+                        <input type="text" id="bSlug" readonly style="background: #f9f9f9; color: #777;">
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="staffPassword" placeholder="Password" required>
+
+                    <div class="form-group">
+                        <label>Image URL</label>
+                        <input type="text" id="bImage" placeholder="Paste image link here..." required>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <select id="staffRole">
-                            <option value="Sales Executive">Sales Executive</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Editor">Editor</option>
-                        </select>
+
+                    <div class="form-group">
+                        <label>Content (Full Article)</label>
+                        <textarea id="bContent" rows="15" placeholder="Yahan apna pura blog likho..."></textarea>
                     </div>
-                    <button type="submit" class="btn-publish" style="width: 100%;">Create Staff ID</button>
+
+                    <div style="display: flex;">
+                        <button type="submit" class="btn-publish" id="submitBtn">Publish Blog 🚀</button>
+                        <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel
+                            Edit</button>
+                    </div>
                 </form>
             </div>
 
-            <div class="staff-card">
-                <h3>📊 Staff Work Chart</h3>
+            <h3 style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">Existing Blogs</h3>
+            <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blogsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="staff-section" class="section">
+            <h2>👥 Staff Management & Work Chart</h2>
+
+            <div class="staff-grid">
+                <div class="staff-card" style="max-width: 350px;">
+                    <h3>Add New Staff</h3>
+                    <form id="addStaffForm" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="staffName" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="email" id="staffEmail" placeholder="Login Email" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="staffPassword" placeholder="Password" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <select id="staffRole">
+                                <option value="Sales Executive">Sales Executive</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Editor">Editor</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-publish" style="width: 100%;">Create Staff ID</button>
+                    </form>
+                </div>
+
+                <div class="staff-card">
+                    <h3>📊 Staff Work Chart</h3>
+                    <div class="table-responsive"
+                        style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Staff Email</th>
+                                    <th>Total Leads</th>
+                                    <th>Completed</th>
+                                    <th>Pending Calls</th>
+                                    <th>Action</th>
+                                </tr>
+
+                            </thead>
+                            <tbody id="performanceTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="staff-card" style="margin-top: 20px;">
+                <h3>📋 Manage Sent Notices</h3>
                 <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Staff Email</th>
-                                <th>Total Leads</th>
-                                <th>Completed</th>
-                                <th>Pending Calls</th>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Message</th>
                                 <th>Action</th>
                             </tr>
-
                         </thead>
-                        <tbody id="performanceTableBody">
+                        <tbody id="noticesTableBody">
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
-        <div class="staff-card" style="margin-top: 20px;">
-            <h3>📋 Manage Sent Notices</h3>
-            <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Title</th>
-                            <th>Message</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="noticesTableBody">
-                    </tbody>
-                </table>
+            <div class="staff-card" style="margin-top: 20px;">
+                <h3>🛡️ Manage Staff Access</h3>
+                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-        <div class="staff-card" style="margin-top: 20px;">
-            <h3>🛡️ Manage Staff Access</h3>
-            <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="staffTableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="staff-grid" style="margin-top: 20px;">
+            <div class="staff-grid" style="margin-top: 20px;">
 
-            <div class="staff-card" style="border-top: 4px solid #3b82f6;">
-                <h3>🎯 Assign New Lead</h3>
-                <form id="assignLeadForm" style="display: flex; flex-direction: column; gap: 15px;"
-                    onsubmit="submitLead(event)">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="leadClientName" placeholder="Client / Business Name" required>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="leadContact" placeholder="Contact Number (Phone/Insta)" required>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <select id="leadService" required>
-                            <option value="">-- Select Service to Pitch --</option>
-                            <option value="Instagram Growth">Instagram Growth</option>
-                            <option value="Web Development">Web Development</option>
-                            <option value="Combo Package">Combo Package</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <select id="leadAssignTo" required>
-                            <option value="">-- Assign to Staff --</option>
-                        </select>
-                    </div>
-                    <button type="submit" id="btnLead" class="btn-publish"
-                        style="width: 100%; background: #3b82f6;">Assign Lead 🚀</button>
-                </form>
-            </div>
+                <div class="staff-card" style="border-top: 4px solid #3b82f6;">
+                    <h3>🎯 Assign New Lead</h3>
+                    <form id="assignLeadForm" style="display: flex; flex-direction: column; gap: 15px;"
+                        onsubmit="submitLead(event)">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="leadClientName" placeholder="Client / Business Name" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="leadContact" placeholder="Contact Number (Phone/Insta)" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <select id="leadService" required>
+                                <option value="">-- Select Service to Pitch --</option>
+                                <option value="Instagram Growth">Instagram Growth</option>
+                                <option value="Web Development">Web Development</option>
+                                <option value="Combo Package">Combo Package</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <select id="leadAssignTo" required>
+                                <option value="">-- Assign to Staff --</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="btnLead" class="btn-publish"
+                            style="width: 100%; background: #3b82f6;">Assign Lead 🚀</button>
+                    </form>
+                </div>
 
-            <div class="staff-card" style="border-top: 4px solid #10b981;">
-                <h3>📢 Post Notice (Board)</h3>
-                <form id="addNoticeForm" style="display: flex; flex-direction: column; gap: 15px;"
-                    onsubmit="submitNotice(event)">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="noticeTitle" placeholder="Notice Title (e.g., Target Update!)" required>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <textarea id="noticeMessage" rows="5" placeholder="Type your full message here..."
-                            required></textarea>
-                    </div>
-                    <button type="submit" id="btnNotice" class="btn-publish"
-                        style="width: 100%; background: #10b981;">Send Notice 🔔</button>
-                </form>
-            </div>
+                <div class="staff-card" style="border-top: 4px solid #10b981;">
+                    <h3>📢 Post Notice (Board)</h3>
+                    <form id="addNoticeForm" style="display: flex; flex-direction: column; gap: 15px;"
+                        onsubmit="submitNotice(event)">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="noticeTitle" placeholder="Notice Title (e.g., Target Update!)"
+                                required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <textarea id="noticeMessage" rows="5" placeholder="Type your full message here..."
+                                required></textarea>
+                        </div>
+                        <button type="submit" id="btnNotice" class="btn-publish"
+                            style="width: 100%; background: #10b981;">Send Notice 🔔</button>
+                    </form>
+                </div>
 
+            </div>
         </div>
-    </div>
 
     </div>
     <div id="staffWorkModal"
@@ -835,6 +798,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
     <script>
         const API_URL = '/api';
@@ -1530,7 +1494,7 @@
                         <td><strong style="color: #10b981;">${c.certId}</strong></td>
                         <td>${c.orderNumber}</td>
                         <td><strong>${c.clientName}</strong><br><small style="color: #64748b;">${c.projectName}</small></td>
-                       
+                        
 <td>
     <div style="display: flex; gap: 8px;">
         <button onclick="window.open('/api/admin/download-saved-handover/${c._id}')" title="Download PDF" style="background:#8b5cf6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📥</button>
