@@ -8,8 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="icon.png">
-
-<link rel="apple-touch-icon" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
 </head>
 <body>
 
@@ -51,12 +50,8 @@
             <h2>Get In Touch</h2>
             <p>Fill out the form below and we'll get back to you shortly.</p>
 
-            
-
-            <form action="https://api.web3forms.com/submit" method="POST" class="contact-form">
+            <form id="myCustomContactForm" class="contact-form">
                 
-                <input type="hidden" name="access_key" value="51f56bd4-e1da-49a3-a6e6-2e6d97449095">
-
                 <div class="input-group">
                     <input type="text" name="name" placeholder="Your Name" required>
                 </div>
@@ -75,8 +70,8 @@
 
                 <button type="submit" class="btn-primary">Send Message</button>
 
-                <input type="checkbox" name="botcheck" class="hidden" style="display: none;">
             </form>
+            
             <div class="contact-methods">
     <a href="https://wa.me/918302485826" target="_blank" class="method-card whatsapp">
         <div class="icon-box"><i class="ri-whatsapp-line"></i></div>
@@ -130,14 +125,48 @@
     </footer>
 <style>
     footer a:hover {
-        color: #6c63ff !important; /* Brand Color on Hover */
+        color: #6c63ff !important;
     }
 </style>
 
+    <script src="script.js"></script>
 
-    <script src="script.js"> 
-
+    <script>
+    document.getElementById('myCustomContactForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); 
         
+        // Button effect (Loading animation)
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = 'Sending... <i class="ri-loader-4-line ri-spin"></i>';
+        submitBtn.disabled = true;
+
+        // Collect form data
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert("✅ " + result.message);
+                this.reset(); 
+            } else {
+                alert("❌ Error: " + result.message);
+            }
+        } catch (error) {
+            alert("Failed to connect to server. Check your connection.");
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
     </script>
 
 </body>

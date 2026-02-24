@@ -24,8 +24,8 @@ function openModal(planName, price) {
 
     if (modal) {
         modal.style.display = 'flex';
-        if(pkgInput) pkgInput.value = planName;
-        if(priceInput) priceInput.value = price;
+        if (pkgInput) pkgInput.value = planName;
+        if (priceInput) priceInput.value = price;
     }
 }
 
@@ -45,7 +45,7 @@ function goToCheckout() {
 
     // 🧠 SMART LOGIC: Price string me se Currency nikalna
     let currency = "INR"; // Default
-    
+
     if (priceStr.includes("USD") || priceStr.includes("$")) currency = "USD";
     else if (priceStr.includes("NPR")) currency = "NPR";
     else if (priceStr.includes("EUR") || priceStr.includes("€")) currency = "EUR";
@@ -69,9 +69,9 @@ function toggleChat() {
     }
 }
 
-function handleEnter(e) { 
-    if(e.key === 'Enter') {
-        sendMessage(); 
+function handleEnter(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
     }
 }
 
@@ -80,7 +80,7 @@ async function sendMessage() {
     const chatBody = document.getElementById('chat-body');
     const txt = input.value.trim();
 
-    if(!txt) return;
+    if (!txt) return;
 
     // 1. User Message Show
     chatBody.innerHTML += `<div class="user-msg">${txt}</div>`;
@@ -99,15 +99,18 @@ async function sendMessage() {
         // 4. Send to Server
         const res = await fetch('/api/chat', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ history: chatHistory }) 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: txt,
+                history: chatHistory
+            })
         });
 
         const data = await res.json();
-        
+
         // 5. Remove Loading
         const loader = document.getElementById(loadingId);
-        if(loader) loader.remove();
+        if (loader) loader.remove();
 
         // 6. Show Reply
         if (data.reply) {
@@ -116,11 +119,11 @@ async function sendMessage() {
         } else {
             chatBody.innerHTML += `<div class="bot-msg" style="color:red;">⚠️ Server Error.</div>`;
         }
-        
+
     } catch (err) {
         console.error("Chat Error:", err);
         const loader = document.getElementById(loadingId);
-        if(loader) loader.remove();
+        if (loader) loader.remove();
         chatBody.innerHTML += `<div class="bot-msg" style="color:red;">❌ Connection Failed.</div>`;
     }
 

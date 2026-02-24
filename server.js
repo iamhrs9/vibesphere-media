@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -8,43 +8,44 @@ const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; // ⚠️ Isse baad mein replace karna padega
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-const nodemailer = require('nodemailer'); // 🚨 NAYA IMPORT
-const PDFDocument = require('pdfkit');    // 🚨 NAYA IMPORT
+const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const fs = require('fs');
+const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const app = express();
 const PORT = process.env.PORT || 3000;
 // ==========================================
 // 🎨 PREMIUM INVOICE DESIGN (BUG FREE)
 // ==========================================
 function buildProfessionalInvoice(doc, order) {
-    const logoPath = path.join(__dirname, 'public', 'icon.png'); 
+    const logoPath = path.join(__dirname, 'public', 'icon.png');
     const displayPrice = order.price ? order.price.replace('₹', 'INR ') : 'INR 0';
 
     // --- 1. HEADER ---
     try {
         if (fs.existsSync(logoPath)) {
-            doc.image(logoPath, 50, 40, { width: 140 }); 
+            doc.image(logoPath, 50, 40, { width: 140 });
         }
-    } catch(e) {}
+    } catch (e) { }
 
     doc.font('Helvetica').fontSize(10).fillColor('#555555')
-       .text('Digital Growth & Web Agency', 50, 95)
-       .text('Tech Park, Jaipur, RJ 302001', 50, 110)
-       .text('support@vibespheremedia.in', 50, 125)
-       .text('www.vibespheremedia.in', 50, 140); 
+        .text('Digital Growth & Web Agency', 50, 95)
+        .text('Tech Park, Jaipur, RJ 302001', 50, 110)
+        .text('support@vibespheremedia.in', 50, 125)
+        .text('www.vibespheremedia.in', 50, 140);
 
     doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(28).text('INVOICE', 380, 45, { align: 'right', width: 160 });
 
     // --- 2. CLIENT & INVOICE DETAILS ---
-    const detailY = 185; 
-    
+    const detailY = 185;
+
     // Left Side
     doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11).text('Client Details', 50, detailY);
     doc.font('Helvetica').fontSize(10).fillColor('#333333')
-       .text(`Name: ${order.customerName || 'Client'}`, 50, detailY + 18)
-       .text(`Email: ${order.email || 'N/A'}`, 50, detailY + 33)
-       .text(`Phone: ${order.phone || 'N/A'}`, 50, detailY + 48);
+        .text(`Name: ${order.customerName || 'Client'}`, 50, detailY + 18)
+        .text(`Email: ${order.email || 'N/A'}`, 50, detailY + 33)
+        .text(`Phone: ${order.phone || 'N/A'}`, 50, detailY + 48);
 
     // Right Side (Fixed Bug - Strict Coordinates)
     const rightLabelX = 330;
@@ -60,84 +61,84 @@ function buildProfessionalInvoice(doc, order) {
     doc.font('Helvetica').text(`${order.paymentId || 'N/A'}`, rightValueX, detailY + 30);
 
     doc.font('Helvetica-Bold').text('Status:', rightLabelX, detailY + 45);
-    doc.font('Helvetica-Bold').fillColor('#16a34a').text('PAID', rightValueX, detailY + 45); 
+    doc.font('Helvetica-Bold').fillColor('#16a34a').text('PAID', rightValueX, detailY + 45);
 
     // --- 3. TABLE HEADER ---
     const tableTop = 270;
-    doc.rect(50, tableTop, 490, 25).fill('#3b82f6'); 
+    doc.rect(50, tableTop, 490, 25).fill('#3b82f6');
 
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(10)
-       .text('Description', 60, tableTop + 7)
-       .text('Qty', 330, tableTop + 7)
-       .text('Rate', 400, tableTop + 7)
-       .text('Amount', 480, tableTop + 7);
+        .text('Description', 60, tableTop + 7)
+        .text('Qty', 330, tableTop + 7)
+        .text('Rate', 400, tableTop + 7)
+        .text('Amount', 480, tableTop + 7);
 
     // --- 4. TABLE ROW ---
     doc.fillColor('#333333').font('Helvetica').fontSize(10)
-       .text(`${order.package || 'VibeSphere Digital Service'}`, 60, tableTop + 35)
-       .text('1', 330, tableTop + 35)
-       .text(displayPrice, 400, tableTop + 35)
-       .text(displayPrice, 480, tableTop + 35);
+        .text(`${order.package || 'VibeSphere Digital Service'}`, 60, tableTop + 35)
+        .text('1', 330, tableTop + 35)
+        .text(displayPrice, 400, tableTop + 35)
+        .text(displayPrice, 480, tableTop + 35);
 
     doc.moveTo(50, tableTop + 60).lineTo(540, tableTop + 60).strokeColor('#e2e8f0').lineWidth(1).stroke();
 
     // --- 5. TOTAL CALCULATION ---
     const totalY = tableTop + 80;
-    
+
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-       .text('Subtotal', 400, totalY)
-       .text('Tax (0%)', 400, totalY + 20);
+        .text('Subtotal', 400, totalY)
+        .text('Tax (0%)', 400, totalY + 20);
 
     doc.font('Helvetica').fontSize(10)
-       .text(displayPrice, 480, totalY)
-       .text('INR 0.00', 480, totalY + 20);
+        .text(displayPrice, 480, totalY)
+        .text('INR 0.00', 480, totalY + 20);
 
     doc.rect(380, totalY + 40, 160, 25).fill('#f1f5f9');
-    
+
     doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11)
-       .text('Total Paid', 390, totalY + 47)
-       .text(displayPrice, 480, totalY + 47);
+        .text('Total Paid', 390, totalY + 47)
+        .text(displayPrice, 480, totalY + 47);
 
     // --- 6. TERMS & CONDITIONS ---
     // --- 6. TERMS & CONDITIONS (Legal Section) ---
     const termsY = totalY + 90;
     doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10)
-       .text('Terms & Conditions:', 50, termsY);
-    
+        .text('Terms & Conditions:', 50, termsY);
+
     doc.font('Helvetica').fontSize(9).fillColor('#64748b')
-       .text('1. Full details regarding the deliverables of this package are available on our official website.', 50, termsY + 15)
-       .text('2. All payments are strictly non-refundable once the project work has been initiated.', 50, termsY + 30)
-       .text('3. For refund requests (valid only before work starts), contact support within 24 hours of payment.', 50, termsY + 45)
-       .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 50, termsY + 60)
-       .text('5. This is a computer-generated invoice and does not require a physical signature.', 50, termsY + 75);
-   // ==========================================
+        .text('1. Full details regarding the deliverables of this package are available on our official website.', 50, termsY + 15)
+        .text('2. All payments are strictly non-refundable once the project work has been initiated.', 50, termsY + 30)
+        .text('3. For refund requests (valid only before work starts), contact support within 24 hours of payment.', 50, termsY + 45)
+        .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 50, termsY + 60)
+        .text('5. This is a computer-generated invoice and does not require a physical signature.', 50, termsY + 75);
+    // ==========================================
     // 🟢 NAYA ADD KIYA: Client Dashboard Tracker Note
     // ==========================================
     doc.rect(50, termsY + 100, 490, 25).fill('#f8fafc'); // Light gray SaaS box
     doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9)
-       .text(' Track Order History & Download Certificates at:', 60, termsY + 108);
+        .text(' Track Order History & Download Certificates at:', 60, termsY + 108);
     doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(9)
-       .text('vibespheremedia.in/dashboard', 330, termsY + 108);
-   
-       // --- 7. FOOTER ---
+        .text('vibespheremedia.in/dashboard', 330, termsY + 108);
+
+    // --- 7. FOOTER ---
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#383d46')
-       .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
+        .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
 }
 // --- 1. Variables ---
-let localOrders = [];
-let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123"; 
+let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "DEFAULT_SECRET_KEY";
 
 app.use(cors());
 
 // ✅ 10MB Limit for Photos
-app.use(express.json({ limit: '10mb' })); 
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Frontend files serve
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
 
 // --- 2. Database Connection ---
-const mongoURI = process.env.MONGO_URI; 
+const mongoURI = process.env.MONGO_URI;
 
 if (mongoURI) {
     mongoose.connect(mongoURI)
@@ -152,19 +153,35 @@ const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     phone: String,
-    picture: String, // 👈 Photo ke liye naya field
-    googleId: String, // 👈 Google ID store karne ke liye
+    picture: String,
+    googleId: String,
+    resetOtp: String,
+    resetOtpExpiry: Date,
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
 
+// 📧 AUTOMATIC EMAIL SENDER (WALLEHOST SMTP)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: false, // 587 port ke liye false rakhte hain
     auth: {
-        user: process.env.EMAIL_USER, // Hum ise .env file se lenge
-        pass: process.env.EMAIL_PASS  // Gmail ka 16-digit App Password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     }
 });
+
+// Server start hote hi check karega ki Email properly connect hua ya nahi
+transporter.verify(function (error, success) {
+    if (error) {
+        console.log("❌ Email SMTP Connection Error:", error);
+    } else {
+        console.log("✅ Custom Business Email (SMTP) Connected Successfully!");
+    }
+});
+
+// --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
@@ -175,7 +192,9 @@ app.post('/api/auth/signup', async (req, res) => {
         const existingUser = await User.findOne({ email });
         if (existingUser) return res.json({ success: false, message: "Email already exists!" });
 
-        const newUser = new User({ name, email, password, phone });
+        // Hash password before saving
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ name, email, password: hashedPassword, phone });
         await newUser.save();
         res.json({ success: true, message: "Account Created! Please Login." });
     } catch (e) { res.status(500).json({ success: false, error: "Signup Failed" }); }
@@ -185,14 +204,88 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email, password });
-        
-        if (user) {
+        const user = await User.findOne({ email });
+
+        if (user && await bcrypt.compare(password, user.password)) {
             res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
         } else {
             res.json({ success: false, message: "Invalid Email or Password" });
         }
     } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
+});
+
+// 2a. Client Forgot Password (Send OTP)
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.json({ success: false, message: "No account found with that email." });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+        user.resetOtp = await bcrypt.hash(otp, 10);
+        user.resetOtpExpiry = otpExpiry;
+        await user.save();
+
+        let mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: "Password Reset OTP - VibeSphere Media",
+            html: `
+                <h3>Hello ${user.name},</h3>
+                <p>You requested a password reset. Your OTP is: <strong>${otp}</strong></p>
+                <p>This OTP will expire in 15 minutes.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+            `
+        };
+
+        transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+        res.json({ success: true, message: "OTP sent to your email!" });
+
+    } catch (e) { res.status(500).json({ success: false, message: "Error processing forgot password request." }); }
+});
+
+// 2b. Client Reset Password (Verify OTP & Change)
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user || !user.resetOtp || !user.resetOtpExpiry || user.resetOtpExpiry < Date.now()) {
+            return res.json({ success: false, message: "Invalid or expired OTP." });
+        }
+
+        if (await bcrypt.compare(otp, user.resetOtp)) {
+            user.password = await bcrypt.hash(newPassword, 10);
+            user.resetOtp = undefined;
+            user.resetOtpExpiry = undefined;
+            await user.save();
+            res.json({ success: true, message: "Password reset successful!" });
+        } else {
+            res.json({ success: false, message: "Incorrect OTP." });
+        }
+    } catch (e) { res.status(500).json({ success: false, message: "Error resetting password." }); }
+});
+
+// 2c. Client Change Password (Dashboard)
+app.post('/api/auth/change-password', async (req, res) => {
+    try {
+        const { email, currentPassword, newPassword } = req.body;
+        const user = await User.findOne({ email });
+
+        if (user && await bcrypt.compare(currentPassword, user.password)) {
+            user.password = await bcrypt.hash(newPassword, 10);
+            await user.save();
+            res.json({ success: true, message: "Password changed successfully!" });
+        } else {
+            res.json({ success: false, message: "Incorrect current password." });
+        }
+    } catch (e) { res.status(500).json({ success: false, message: "Error changing password." }); }
 });
 
 // 3. Get Client Orders (Dashboard)
@@ -225,7 +318,7 @@ const blogSchema = new mongoose.Schema({
     slug: String,
     image: String,
     date: { type: Date, default: Date.now },
-    
+
     // 🇬🇧 English Data
     title: String,
     content: String,
@@ -307,8 +400,8 @@ const Job = mongoose.model('Job', jobSchema);
 app.post('/api/staff/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const staff = await Staff.findOne({ email, password });
-        if (staff) {
+        const staff = await Staff.findOne({ email });
+        if (staff && await bcrypt.compare(password, staff.password)) {
             // 🟢 Naya code: empId bhi frontend ko bhejo
             res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto } });
         } else {
@@ -345,10 +438,10 @@ app.get('/api/staff/notices', async (req, res) => {
 app.post('/api/staff/update-password', async (req, res) => {
     try {
         const { email, currentPassword, newPassword } = req.body;
-        const staff = await Staff.findOne({ email: email, password: currentPassword });
-        
-        if (staff) {
-            staff.password = newPassword;
+        const staff = await Staff.findOne({ email: email });
+
+        if (staff && await bcrypt.compare(currentPassword, staff.password)) {
+            staff.password = await bcrypt.hash(newPassword, 10);
             await staff.save();
             res.json({ success: true, message: "Password updated successfully!" });
         } else {
@@ -367,7 +460,7 @@ app.post('/api/staff/update-photo', async (req, res) => {
 });
 // --- 3. Razorpay Setup ---
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID, 
+    key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
@@ -380,7 +473,7 @@ const reviewSchema = new mongoose.Schema({
     instaId: String,
     message: String,
     rating: { type: Number, default: 5 },
-    avatar: { type: String, default: "" }, 
+    avatar: { type: String, default: "" },
     date: { type: Date, default: Date.now }
 });
 const Review = mongoose.model('Review', reviewSchema);
@@ -389,13 +482,13 @@ const Review = mongoose.model('Review', reviewSchema);
 app.get('/api/reviews', async (req, res) => {
     try {
         const reviews = await Review.find().sort({ date: -1 }).limit(50);
-        
+
         const allReviews = await Review.find();
         let totalStars = 0;
         allReviews.forEach(r => totalStars += r.rating);
-        
+
         const avgRating = allReviews.length > 0 ? (totalStars / allReviews.length).toFixed(1) : "4.9";
-        const totalCount = (1200 + allReviews.length) + "+"; 
+        const totalCount = (1200 + allReviews.length) + "+";
 
         res.json({
             reviews: reviews,
@@ -414,13 +507,13 @@ app.get('/api/reviews', async (req, res) => {
 app.post('/api/add-review', async (req, res) => {
     try {
         const { name, instaId, message, rating, avatar } = req.body;
-        
+
         const newReview = new Review({
             name,
             instaId,
             message,
             rating: rating || 5,
-            avatar: avatar || "" 
+            avatar: avatar || ""
         });
 
         await newReview.save();
@@ -435,13 +528,13 @@ app.post('/api/add-review', async (req, res) => {
 // ==========================================
 app.post('/api/chat', async (req, res) => {
     const userHistory = req.body.history || [];
-    const userMessage = req.body.message;
-    const API_KEY = process.env.GEMINI_API_KEY; 
+    const userMessage = req.body.message || (userHistory.length > 0 ? userHistory[userHistory.length - 1].parts[0].text : "");
+    const API_KEY = process.env.GEMINI_API_KEY;
 
     if (!API_KEY) return res.json({ reply: "API Key Missing" });
 
-   
-      const systemPrompt = `
+
+    const systemPrompt = `
 INSTRUCTIONS: You are 'VibeSphere AI', the lead strategy consultant for VibeSphere Media.
 
 --- YOUR IDENTITY ---
@@ -529,14 +622,14 @@ Always end with a Call to Action (CTA):
         let contents = JSON.parse(JSON.stringify(userHistory));
 
         if (contents.length === 0 && userMessage) {
-            contents = [{ 
-                role: "user", 
-                parts: [{ text: `${systemPrompt}\n\nUser Question: ${userMessage}` }] 
+            contents = [{
+                role: "user",
+                parts: [{ text: `${systemPrompt}\n\nUser Question: ${userMessage}` }]
             }];
         } else if (contents.length > 0 && contents[0].role === 'user') {
-             if (!contents[0].parts[0].text.includes("INSTRUCTIONS:")) {
+            if (!contents[0].parts[0].text.includes("INSTRUCTIONS:")) {
                 contents[0].parts[0].text = `${systemPrompt}\n\n${contents[0].parts[0].text}`;
-             }
+            }
         }
 
         // ✅ Updated to Gemini 1.5 Flash (Faster & More Stable)
@@ -563,14 +656,14 @@ Always end with a Call to Action (CTA):
 app.post('/api/create-payment', async (req, res) => {
     try {
         let { amount, currency } = req.body;
-        
+
         console.log(`📝 Payment Request: ${amount} ${currency}`);
 
         // 👇 YEH HAI MAGIC LINE:
         // Agar amount "$19" hai, toh "$" hata kar "19" bana dega.
         // Agar "₹399" hai, toh "399" bana dega.
-        let cleanAmount = amount.toString().replace(/[^\d.]/g, ''); 
-        
+        let cleanAmount = amount.toString().replace(/[^\d.]/g, '');
+
         // Currency validation
         let cleanCurrency = currency && currency.length === 3 ? currency : "INR";
 
@@ -602,9 +695,9 @@ app.post('/api/verify-payment', async (req, res) => {
             ...orderDetails,
             date: new Date().toLocaleString()
         });
-        localOrders.push(newOrder);
-        try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) {}
-        
+
+        try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) { }
+
         // 🟢 MAGIC: Generate PDF in memory & Send Email
         try {
             const doc = new PDFDocument({ margin: 50 });
@@ -612,7 +705,7 @@ app.post('/api/verify-payment', async (req, res) => {
             doc.on('data', buffers.push.bind(buffers));
             doc.on('end', async () => {
                 let pdfData = Buffer.concat(buffers);
-                
+
                 let mailOptions = {
                     from: process.env.EMAIL_USER,
                     to: newOrder.email, // Client ka email jo order form me bhara gaya
@@ -620,9 +713,9 @@ app.post('/api/verify-payment', async (req, res) => {
                     text: `Hi ${newOrder.customerName},\n\nThank you for choosing VibeSphere Media! Your payment was successful and your order (${newOrder.orderId}) is now confirmed.\n\nPlease find your official invoice attached to this email.\n\nOur team will contact you shortly to start the work.\n\nRegards,\nTeam VibeSphere`,
                     attachments: [{ filename: `Invoice-${newOrder.orderId}.pdf`, content: pdfData }]
                 };
-                
+
                 // Email send karo (Background me)
-                transporter.sendMail(mailOptions).catch(err => console.log("Email Error:", err));
+                transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
             });
 
             // Make the PDF content (Same as download logic)
@@ -652,7 +745,7 @@ app.post('/api/verify-payment', async (req, res) => {
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (password === CURRENT_ADMIN_PASSWORD) {
-        res.json({ success: true, token: "SECRET_VIBESPHERE_KEY_123" });
+        res.json({ success: true, token: ADMIN_TOKEN });
     } else {
         res.json({ success: false });
     }
@@ -667,7 +760,6 @@ const checkAuth = (req, res, next) => {
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         let orders = await Order.find().sort({ _id: -1 });
-        if (orders.length === 0) orders = [...localOrders].reverse();
         res.json(orders);
     } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
 });
@@ -683,8 +775,8 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
         if (!order) return res.status(404).send("Order not found");
 
         // Margin 0 zaroori hai full-width header ke liye
-        const doc = new PDFDocument({ margin: 0, size: 'A4' }); 
-        
+        const doc = new PDFDocument({ margin: 0, size: 'A4' });
+
         res.setHeader('Content-disposition', `attachment; filename=VibeSphere_Invoice_${order.orderId}.pdf`);
         res.setHeader('Content-type', 'application/pdf');
         doc.pipe(res);
@@ -702,8 +794,6 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
     const { id, status } = req.body;
     try {
         await Order.findOneAndUpdate({ orderId: id }, { status: status });
-        const localOrder = localOrders.find(o => o.orderId === id);
-        if (localOrder) localOrder.status = status;
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false }); }
 });
@@ -777,7 +867,7 @@ app.put('/api/edit-blog/:id', async (req, res) => {
 app.post('/api/auth/google', async (req, res) => {
     try {
         const { token } = req.body;
-        
+
         // Google se verify karo ki token asli hai
         const ticket = await googleClient.verifyIdToken({
             idToken: token,
@@ -817,20 +907,21 @@ app.get('/api/admin/staff', checkAuth, async (req, res) => {
 app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
-        
+
         const existingStaff = await Staff.findOne({ email });
-        if(existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
+        if (existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
 
         // 🟢 Naya code: Ek unique EMP ID generate karo (e.g., VS-4821)
         let newEmpId;
         let isUnique = false;
-        while(!isUnique) {
+        while (!isUnique) {
             newEmpId = 'VS-' + Math.floor(1000 + Math.random() * 9000);
             const checkId = await Staff.findOne({ empId: newEmpId });
-            if(!checkId) isUnique = true; // Agar ID pehle se kisi ke paas nahi hai, toh confirm karo
+            if (!checkId) isUnique = true; // Agar ID pehle se kisi ke paas nahi hai, toh confirm karo
         }
 
-        const newStaff = new Staff({ empId: newEmpId, name, email, password, role });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newStaff = new Staff({ empId: newEmpId, name, email, password: hashedPassword, role });
         await newStaff.save();
         res.json({ success: true, message: `Staff Added! ID is ${newEmpId}` });
     } catch (e) { res.status(500).json({ success: false, error: "Server error!" }); }
@@ -848,25 +939,25 @@ app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
     try {
         const tasks = await Task.find().sort({ dateAssigned: -1 });
         const performance = {};
-        
+
         tasks.forEach(task => {
             const email = task.assignedTo;
-            if(!email) return;
+            if (!email) return;
 
-            if(!performance[email]) {
+            if (!performance[email]) {
                 // 'details' naam ka array add kiya hai jisme saari leads hongi
-                performance[email] = { total: 0, completed: 0, pending: 0, details: [] }; 
+                performance[email] = { total: 0, completed: 0, pending: 0, details: [] };
             }
             performance[email].total++;
-            
-            if(task.status === 'interested' || task.status === 'rejected') {
+
+            if (task.status === 'interested' || task.status === 'rejected') {
                 performance[email].completed++;
             } else {
                 performance[email].pending++;
             }
 
             // Lead ka poora data (aur staff ka review/notes) array mein save karo
-            performance[email].details.push(task); 
+            performance[email].details.push(task);
         });
         res.json({ success: true, performance: performance });
     } catch (e) { res.status(500).json({ error: "Failed to fetch performance" }); }
@@ -875,12 +966,12 @@ app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
 app.post('/api/admin/add-task', checkAuth, async (req, res) => {
     try {
         const { clientName, contactNumber, servicePitch, assignedTo } = req.body;
-        
+
         // Naya task banakar database mein save karo
-        const newTask = new Task({ 
-            clientName, 
-            contactNumber, 
-            servicePitch, 
+        const newTask = new Task({
+            clientName,
+            contactNumber,
+            servicePitch,
             assignedTo,
             status: 'pending' // Naya kaam hamesha pending rahega
         });
@@ -893,7 +984,7 @@ app.post('/api/admin/add-task', checkAuth, async (req, res) => {
 app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
     try {
         const { title, message } = req.body;
-        
+
         const newNotice = new Notice({ title, message, author: "Admin" });
         await newNotice.save();
         res.json({ success: true, message: "Notice Posted on Staff Board!" });
@@ -927,7 +1018,7 @@ app.delete('/api/admin/delete-handover/:id', checkAuth, async (req, res) => {
 app.get('/api/admin/download-saved-handover/:id', async (req, res) => {
     try {
         const cert = await Handover.findById(req.params.id);
-        if(!cert) return res.status(404).send("Certificate Not Found");
+        if (!cert) return res.status(404).send("Certificate Not Found");
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const verifyLink = `${baseUrl}/verify.html?cert=${cert.certId}`;
@@ -939,7 +1030,7 @@ app.get('/api/admin/download-saved-handover/:id', async (req, res) => {
         doc.pipe(res);
 
         generatePremiumHandoverLayout(doc, cert, qrImage); // Calling Helper Function
-    } catch(e) { res.status(500).send("Error downloading PDF"); }
+    } catch (e) { res.status(500).send("Error downloading PDF"); }
 });
 
 
@@ -950,11 +1041,11 @@ app.get('/api/verify-staff/:id', async (req, res) => {
     try {
         const checkId = req.params.id.toUpperCase().trim(); // Taki log lowercase me dale toh bhi chal jaye
         const staff = await Staff.findOne({ empId: checkId });
-        
+
         if (staff) {
-            res.json({ 
-                success: true, 
-                staff: { name: staff.name, role: staff.role, profilePhoto: staff.profilePhoto, empId: staff.empId } 
+            res.json({
+                success: true,
+                staff: { name: staff.name, role: staff.role, profilePhoto: staff.profilePhoto, empId: staff.empId }
             });
         } else {
             res.json({ success: false, message: "🚨 FAKE ID DETECTED: No such person works at VibeSphere Media!" });
@@ -982,7 +1073,7 @@ app.get('/api/jobs', async (req, res) => {
     try {
         const jobs = await Job.find().sort({ date: -1 });
         res.json({ success: true, jobs });
-    } catch(e) { res.status(500).json({ error: "Failed to fetch jobs" }); }
+    } catch (e) { res.status(500).json({ error: "Failed to fetch jobs" }); }
 });
 
 // 3. Post a New Job (Sirf Admin ke liye)
@@ -992,7 +1083,7 @@ app.post('/api/admin/add-job', checkAuth, async (req, res) => {
         const newJob = new Job({ title, type, location, description });
         await newJob.save();
         res.json({ success: true, message: "Job Posted Successfully 🚀" });
-    } catch(e) { res.status(500).json({ success: false, error: "Failed to post job" }); }
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to post job" }); }
 });
 
 // 4. Delete a Job (Sirf Admin ke liye)
@@ -1000,7 +1091,7 @@ app.delete('/api/admin/delete-job/:id', checkAuth, async (req, res) => {
     try {
         await Job.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Job Deleted!" });
-    } catch(e) { res.status(500).json({ success: false, error: "Failed to delete job" }); }
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to delete job" }); }
 });
 
 // ==========================================
@@ -1023,18 +1114,18 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
     try {
         const { orderId } = req.body;
         const order = await Order.findOne({ orderId });
-        
+
         if (!order) return res.json({ success: false, message: "Order not found!" });
         if (!order.email) return res.json({ success: false, message: "Client email not available!" });
 
         const doc = new PDFDocument({ margin: 0, size: 'A4' });
         let buffers = [];
-        
+
         // 1. PDF data ko memory mein collect karo
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', async () => {
             let pdfData = Buffer.concat(buffers);
-            
+
             // 2. Email bhejne ki taiyari
             let mailOptions = {
                 from: process.env.EMAIL_USER,
@@ -1043,15 +1134,10 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
                 text: `Hi ${order.customerName},\n\nAs requested, please find your official invoice attached for Order ${order.orderId}.\n\nThank you for choosing VibeSphere Media.\n\nRegards,\nTeam VibeSphere`,
                 attachments: [{ filename: `Invoice-${order.orderId}.pdf`, content: pdfData }]
             };
-            
-            // 3. Email Send karo
-            try {
-                await transporter.sendMail(mailOptions);
-                res.json({ success: true, message: `Invoice sent successfully to ${order.email}` });
-            } catch (err) {
-                console.error("Email Error:", err);
-                res.json({ success: false, message: "Failed to send email. Check Nodemailer." });
-            }
+
+            // 3. Email Send karo (Background)
+            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            res.json({ success: true, message: `Invoice sent successfully to ${order.email}` });
         });
 
         // 4. Same premium design use karo jo humne PDF ke liye banayi thi
@@ -1061,7 +1147,7 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
             // Fallback agar function na mile
             doc.fontSize(20).text(`VibeSphere Invoice - ${order.orderId}`);
         }
-        
+
         doc.end();
     } catch (e) {
         console.error(e);
@@ -1074,7 +1160,7 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
 app.post('/api/admin/generate-handover', checkAuth, async (req, res) => {
     try {
         const { orderNumber, clientName, projectName, deliveryDate, supportDate, liveLink, remarks } = req.body;
-        
+
         let cert = await Handover.findOne({ orderNumber: orderNumber });
         if (cert) {
             cert.clientName = clientName;
@@ -1108,7 +1194,7 @@ app.post('/api/admin/generate-handover', checkAuth, async (req, res) => {
 app.post('/api/admin/email-handover', checkAuth, async (req, res) => {
     try {
         const { orderNumber, clientName, projectName, deliveryDate, supportDate, liveLink, remarks } = req.body;
-        
+
         const order = await Order.findOne({ orderId: orderNumber });
         if (!order || !order.email) return res.json({ success: false, message: "Email not found for this Order!" });
 
@@ -1142,10 +1228,8 @@ app.post('/api/admin/email-handover', checkAuth, async (req, res) => {
                 text: `Hi ${clientName},\n\nYour project "${projectName}" has been successfully delivered!\n\nPlease find your Official Project Handover Certificate attached to this email.\n\nLive Link: ${liveLink}\n\nThank you for trusting VibeSphere Media.\n\nRegards,\nTeam VibeSphere`,
                 attachments: [{ filename: `VibeSphere-Handover-${orderNumber}.pdf`, content: pdfData }]
             };
-            try {
-                await transporter.sendMail(mailOptions);
-                res.json({ success: true, message: `Handover Certificate sent to ${order.email}` });
-            } catch (err) { res.json({ success: false, message: "Failed to send email." }); }
+            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            res.json({ success: true, message: `Handover Certificate sent to ${order.email}` });
         });
 
         generatePremiumHandoverLayout(doc, cert, qrImage);
@@ -1158,7 +1242,7 @@ app.post('/api/admin/email-handover', checkAuth, async (req, res) => {
 app.get('/api/admin/download-saved-handover/:id', async (req, res) => {
     try {
         const cert = await Handover.findById(req.params.id);
-        if(!cert) return res.status(404).send("Certificate Not Found");
+        if (!cert) return res.status(404).send("Certificate Not Found");
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const qrImage = await QRCode.toDataURL(`${baseUrl}/verify.html?cert=${cert.certId}`);
@@ -1168,8 +1252,8 @@ app.get('/api/admin/download-saved-handover/:id', async (req, res) => {
         res.setHeader('Content-type', 'application/pdf');
         doc.pipe(res);
 
-        generatePremiumHandoverLayout(doc, cert, qrImage); 
-    } catch(e) { res.status(500).send("Error downloading PDF"); }
+        generatePremiumHandoverLayout(doc, cert, qrImage);
+    } catch (e) { res.status(500).send("Error downloading PDF"); }
 });
 
 // ==========================================
@@ -1178,10 +1262,10 @@ app.get('/api/admin/download-saved-handover/:id', async (req, res) => {
 app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
     try {
         const cert = await Handover.findById(req.params.id);
-        if(!cert) return res.json({ success: false, message: "Certificate not found!" });
+        if (!cert) return res.json({ success: false, message: "Certificate not found!" });
 
         const order = await Order.findOne({ orderId: cert.orderNumber });
-        if(!order || !order.email) return res.json({ success: false, message: "Client email not found in Orders!" });
+        if (!order || !order.email) return res.json({ success: false, message: "Client email not found in Orders!" });
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const qrImage = await QRCode.toDataURL(`${baseUrl}/verify.html?cert=${cert.certId}`);
@@ -1189,7 +1273,7 @@ app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
         const doc = new PDFDocument({ margin: 50, size: 'A4' });
         let buffers = [];
         doc.on('data', buffers.push.bind(buffers));
-        
+
         doc.on('end', async () => {
             let pdfData = Buffer.concat(buffers);
             let mailOptions = {
@@ -1199,14 +1283,12 @@ app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
                 text: `Hi ${clientName},\n\nYour project "${projectName}" has been successfully delivered!\n\nPlease find your Official Project Handover Certificate attached to this email.\n\nLive Link: ${liveLink}\n\nThank you for trusting VibeSphere Media.\n\nRegards,\nTeam VibeSphere`,
                 attachments: [{ filename: `VibeSphere-Handover-${orderNumber}.pdf`, content: pdfData }]
             };
-            try {
-                await transporter.sendMail(mailOptions);
-                res.json({ success: true, message: `Certificate resent to ${order.email}` });
-            } catch (err) { res.json({ success: false, message: "Failed to send email." }); }
+            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            res.json({ success: true, message: `Certificate resent to ${order.email}` });
         });
 
-        generatePremiumHandoverLayout(doc, cert, qrImage); 
-    } catch(e) { res.status(500).json({ success: false, message: "Server error" }); }
+        generatePremiumHandoverLayout(doc, cert, qrImage);
+    } catch (e) { res.status(500).json({ success: false, message: "Server error" }); }
 });
 
 // ==========================================
@@ -1219,26 +1301,26 @@ function generatePremiumHandoverLayout(doc, cert, qrImage) {
     const rMarks = cert.remarks || 'No additional remarks.';
 
     doc.font('Helvetica-Bold').fontSize(8).fillColor('#94a3b8').text('CONFIDENTIAL DOCUMENT  |  CLIENT COPY  |  VER 1.0.0', 50, 25);
-    try { if (fs.existsSync(path.join(__dirname, 'public', 'icon.png'))) doc.image(path.join(__dirname, 'public', 'icon.png'), 50, 45, { width: 165 }); } catch(e) {}
+    try { if (fs.existsSync(path.join(__dirname, 'public', 'icon.png'))) doc.image(path.join(__dirname, 'public', 'icon.png'), 50, 45, { width: 165 }); } catch (e) { }
 
-     doc.font('Helvetica').fontSize(10).fillColor('#555555')
-    
-       .text('support@vibespheremedia.in', 50, 110)
-       .text('www.vibespheremedia.in', 50, 125)
-       .text('', 50, 140); 
+    doc.font('Helvetica').fontSize(10).fillColor('#555555')
+
+        .text('support@vibespheremedia.in', 50, 110)
+        .text('www.vibespheremedia.in', 50, 125)
+        .text('', 50, 140);
 
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(24).text('PROJECT', 300, 45, { align: 'right' });
     doc.text('HANDOVER', 300, 70, { align: 'right' });
     doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Official Delivery & Sign-off Document', 300, 98, { align: 'right' });
-    
+
     doc.roundedRect(360, 115, 185, 22, 4).fill('#f8fafc');
     doc.fillColor('#10b981').font('Helvetica-Bold').fontSize(10).text(`CERT ID: ${cert.certId}`, 360, 122, { align: 'center', width: 185 });
     doc.moveTo(50, 150).lineTo(545, 150).strokeColor('#f1f5f9').lineWidth(2).stroke();
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Project Details', 50, 170);
-    doc.roundedRect(50, 190, 495, 110, 8).fillAndStroke('#ffffff', '#e2e8f0'); 
-    
+    doc.roundedRect(50, 190, 495, 110, 8).fillAndStroke('#ffffff', '#e2e8f0');
+
     let rowY = 210;
     doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Order Number:', 70, rowY);
     doc.fillColor('#0f172a').font('Helvetica-Bold').text(cert.orderNumber, 170, rowY);
@@ -1252,7 +1334,7 @@ function generatePremiumHandoverLayout(doc, cert, qrImage) {
     doc.fillColor('#10b981').font('Helvetica-Bold').text(sDate, 400, rowY + 60);
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text('Deliverables & Notes', 50, 320);
-    doc.roundedRect(50, 340, 495, 75, 8).fillAndStroke('#ffffff', '#e2e8f0'); 
+    doc.roundedRect(50, 340, 495, 75, 8).fillAndStroke('#ffffff', '#e2e8f0');
     doc.fillColor('#64748b').font('Helvetica').fontSize(10).text('Live Link :', 70, 360);
     doc.fillColor('#3b82f6').font('Helvetica-Bold').text(lLink, 170, 360);
     doc.fillColor('#64748b').font('Helvetica').text('Important Notes:', 70, 380);
@@ -1260,36 +1342,36 @@ function generatePremiumHandoverLayout(doc, cert, qrImage) {
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11).text('Post-Delivery Support Terms', 50, 440);
     doc.font('Helvetica').fontSize(9).fillColor('#64748b')
-       .text('1. Free technical support is valid strictly up to the date mentioned above.', 50, 460)
-       .text('2. Support covers minor bug fixes. Major structural changes billed separately.', 50, 475)
-       .text('3. Not responsible for third-party plugin issues or unauthorized code edits.', 50, 490);
+        .text('1. Free technical support is valid strictly up to the date mentioned above.', 50, 460)
+        .text('2. Support covers minor bug fixes. Major structural changes billed separately.', 50, 475)
+        .text('3. Not responsible for third-party plugin issues or unauthorized code edits.', 50, 490);
 
     doc.roundedRect(50, 520, 495, 40, 6).fill('#ecfdf5');
     doc.fillColor('#047857').font('Helvetica-Bold').fontSize(9).text('Maintenance Recommendation:', 65, 530);
     doc.fillColor('#065f46').font('Helvetica').fontSize(8.5).text('We strongly recommend our monthly maintenance plan to ensure continuous security and peak performance.', 65, 542);
 
-    doc.image(qrImage, 50, 600, { width: 70 }); 
+    doc.image(qrImage, 50, 600, { width: 70 });
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text('Scan to Verify', 50, 675, { width: 70, align: 'center' });
     doc.font('Helvetica').fontSize(8).fillColor('#3b82f6').text('vibespheremedia.in/verify', 50, 688, { width: 70, align: 'center' });
 
-    const signX = 380; 
+    const signX = 380;
     const signY = 590;
-    try { if (fs.existsSync(path.join(__dirname, 'public', 'signature.png'))) doc.image(path.join(__dirname, 'public', 'signature.png'), signX, signY, { width: 120 }); } catch(e) {}
+    try { if (fs.existsSync(path.join(__dirname, 'public', 'signature.png'))) doc.image(path.join(__dirname, 'public', 'signature.png'), signX, signY, { width: 120 }); } catch (e) { }
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#0f172a').text('Harsh Panwar', signX, signY + 60, { align: 'center', width: 120 });
     doc.font('Helvetica').fontSize(9).fillColor('#64748b').text('Founder & CEO, VibeSphere', signX, signY + 75, { align: 'center', width: 120 });
 
     try {
         doc.save();
-        doc.translate(signX + 60, signY + 70); doc.rotate(-(6 + Math.random() * 5)); 
-        const stampBlue = '#1d4ed8'; 
-        doc.fillOpacity(0.85).strokeOpacity(0.85); 
+        doc.translate(signX + 60, signY + 70); doc.rotate(-(6 + Math.random() * 5));
+        const stampBlue = '#1d4ed8';
+        doc.fillOpacity(0.85).strokeOpacity(0.85);
         doc.roundedRect(-75, -25, 150, 50, 4).lineWidth(2).strokeColor(stampBlue).stroke();
         doc.roundedRect(-71, -21, 142, 42, 2).lineWidth(1).strokeColor(stampBlue).stroke();
         doc.fillColor(stampBlue).font('Helvetica-Bold').fontSize(12).text('VIBESPHERE MEDIA', -75, -14, { width: 150, align: 'center' });
         doc.fillColor(stampBlue).font('Helvetica-Bold').fontSize(8).text('DELIVERED & VERIFIED', -75, 3, { width: 150, align: 'center' });
         doc.fillColor(stampBlue).font('Helvetica').fontSize(7).text(`Date: ${dDate}`, -75, 14, { width: 150, align: 'center' });
-        doc.restore(); 
-    } catch(e) {}
+        doc.restore();
+    } catch (e) { }
 
     doc.moveTo(50, 740).lineTo(545, 740).strokeColor('#e2e8f0').lineWidth(1).stroke();
     doc.font('Helvetica').fontSize(8).fillColor('#94a3b8').text('Thank you for trusting VibeSphere Media with your project!', 50, 750, { align: 'center', width: 495 });
@@ -1324,8 +1406,8 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
 app.get('/api/download-handover/:orderId', async (req, res) => {
     try {
         const cert = await Handover.findOne({ orderNumber: req.params.orderId });
-        
-        if(!cert) {
+
+        if (!cert) {
             return res.status(404).json({ error: "Certificate not generated yet. Please contact support." });
         }
 
@@ -1338,11 +1420,46 @@ app.get('/api/download-handover/:orderId', async (req, res) => {
         doc.pipe(res);
 
         // Ye humara helper function hai jo premium design banata hai
-        generatePremiumHandoverLayout(doc, cert, qrImage); 
-    } catch(e) { 
-        res.status(500).json({ error: "Error downloading Certificate" }); 
+        generatePremiumHandoverLayout(doc, cert, qrImage);
+    } catch (e) {
+        res.status(500).json({ error: "Error downloading Certificate" });
     }
 });
+
+// ==========================================
+// 📩 PUBLIC: WEBSITE CONTACT FORM API
+// ==========================================
+app.post('/api/contact', async (req, res) => {
+    try {
+        const { name, email, phone, subject, message } = req.body;
+
+        let mailOptions = {
+            from: process.env.EMAIL_USER, // Tera verified system email (support@...)
+            to: 'hello@vibespheremedia.in', // Leads is email par aayengi (Tu ise change bhi kar sakta hai)
+            replyTo: email, // 🟢 PRO MOVE: Inbox me 'Reply' dabane par sidha client ko mail jayega!
+            subject: `🔥 New Lead from Website: ${subject || name}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #6c63ff;">New Website Contact Form Submission</h2>
+                    <p><strong>Name:</strong> ${name}</p>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Phone:</strong> ${phone || 'Not Provided'}</p>
+                    <p><strong>Subject:</strong> ${subject || 'General Inquiry'}</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;">
+                    <p><strong>Message:</strong></p>
+                    <p style="background: #f8fafc; padding: 15px; border-radius: 5px;">${message}</p>
+                </div>
+            `
+        };
+
+        transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+        res.json({ success: true, message: "Thank you! Your message has been sent successfully." });
+    } catch (error) {
+        console.error("❌ Contact Form Error:", error);
+        res.status(500).json({ success: false, message: "Oops! Something went wrong. Please try again." });
+    }
+});
+
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao
