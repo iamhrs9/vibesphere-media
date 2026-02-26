@@ -175,7 +175,13 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    tls: {
+        // Render se custom host par connect karne ke liye ye zaroori hai
+        rejectUnauthorized: false 
+    },
+    connectionTimeout: 15000, // Connection ke liye 15 seconds ka time do (Default kam hota hai)
+    greetingTimeout: 15000
 });
 
 // Server start hote hi check karega ki Email properly connect hua ya nahi
