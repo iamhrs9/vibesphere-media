@@ -757,7 +757,7 @@ app.post('/api/login', (req, res) => {
 
 const checkAuth = (req, res, next) => {
     const token = req.headers['authorization'];
-    if (token === "SECRET_VIBESPHERE_KEY_123") next();
+    if (token === ADMIN_TOKEN || token === "SECRET_VIBESPHERE_KEY_123") next();
     else res.status(403).json({ error: "Access Denied" });
 };
 
