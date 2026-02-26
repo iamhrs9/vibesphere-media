@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "6d6bb287-f294-4fe4-ba70-c25bac8977be"
+      }
+    },
+    "android": {
+      "package": "com.vibespheremediaadmin.app"
+    }
+  }
+}

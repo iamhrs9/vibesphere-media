@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">vibesphere-media</string>
-    <string name="title_activity_main">vibesphere-media</string>
-    <string name="package_name">com.vibespheremedia.app</string>
-    <string name="custom_url_scheme">com.vibespheremedia.app</string>
-</resources>

@@ -15,6 +15,10 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+
+
 // ==========================================
 // 🎨 PREMIUM INVOICE DESIGN (BUG FREE)
 // ==========================================
@@ -1263,6 +1267,8 @@ app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
     try {
         const cert = await Handover.findById(req.params.id);
         if (!cert) return res.json({ success: false, message: "Certificate not found!" });
+        // Line ~1269 ke baad add karo (cert fetch hone ke baad):
+        const { projectName, clientName, liveLink, orderNumber } = cert;
 
         const order = await Order.findOne({ orderId: cert.orderNumber });
         if (!order || !order.email) return res.json({ success: false, message: "Client email not found in Orders!" });
