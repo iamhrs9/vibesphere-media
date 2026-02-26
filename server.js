@@ -167,32 +167,72 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// 📧 AUTOMATIC EMAIL SENDER (WALLEHOST SMTP)
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: false, // 587 port ke liye false rakhte hain
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        // Render se custom host par connect karne ke liye ye zaroori hai
-        rejectUnauthorized: false 
-    },
-    connectionTimeout: 15000, // Connection ke liye 15 seconds ka time do (Default kam hota hai)
-    greetingTimeout: 15000
-});
+// 🚀 THE GOD MODE BREEVO API WRAPPER (BYPASSES RENDER BLOCKS)
+// Yeh Nodemailer ki jagah lega aur Port 443 use karega!
 
-// Server start hote hi check karega ki Email properly connect hua ya nahi
-transporter.verify(function (error, success) {
-    if (error) {
-        console.log("❌ Email SMTP Connection Error:", error);
-    } else {
-        console.log("✅ Custom Business Email (SMTP) Connected Successfully!");
+const transporter = {
+    verify: function (callback) {
+        if (process.env.BREVO_API_KEY) {
+            console.log("✅ Brevo API Ready to fire on Port 443!");
+            if (callback) callback(null, true);
+        } else {
+            console.log("❌ BREVO_API_KEY is missing in .env!");
+        }
+    },
+    sendMail: async function (mailOptions) {
+        const apiKey = process.env.BREVO_API_KEY;
+        
+        // 1. PDF Attachments ko Base64 mein convert karna (Brevo API ke liye)
+        let formattedAttachments = [];
+        if (mailOptions.attachments && mailOptions.attachments.length > 0) {
+            formattedAttachments = mailOptions.attachments.map(att => ({
+                content: att.content.toString('base64'), // Buffer to Base64
+                name: att.filename
+            }));
+        }
+
+        // 2. Data pack karna
+        const payload = {
+            sender: { email: process.env.EMAIL_USER, name: "VibeSphere Media" },
+            to: [{ email: mailOptions.to }],
+            subject: mailOptions.subject,
+            textContent: mailOptions.text || "",
+            htmlContent: mailOptions.html || "",
+        };
+// 🟢 THE FIX: Brevo ko khush karne ke liye smart content handling
+        if (mailOptions.html) {
+            payload.htmlContent = mailOptions.html;
+        } else if (mailOptions.text) {
+            payload.textContent = mailOptions.text;
+            // Plain text ko automatic HTML mein convert kar diya (\n ko <br> bana kar)
+            payload.htmlContent = `<p style="font-family: sans-serif; color: #333;">${mailOptions.text.replace(/\n/g, '<br>')}</p>`; 
+        } else {
+            payload.htmlContent = "<p>Message from VibeSphere Media</p>";
+        }
+        if (formattedAttachments.length > 0) payload.attachment = formattedAttachments;
+        if (mailOptions.replyTo) payload.replyTo = { email: mailOptions.replyTo };
+
+        // 3. Render ke bahar API shoot karna!
+        return fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': apiKey,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.messageId) console.log('✅ Email Fired Successfully via API:', data.messageId);
+            else console.log('⚠️ API Response:', data);
+        })
+        .catch(err => console.error('❌ Brevo API Error:', err));
     }
-});
+};
 
+// Check if API key is loaded
+transporter.verify();
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
