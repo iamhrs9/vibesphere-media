@@ -127,6 +127,8 @@ function buildProfessionalInvoice(doc, order) {
     // --- 7. FOOTER ---
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#383d46')
         .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
+
+    doc.end();
 }
 // --- 1. Variables ---
 let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -720,6 +722,9 @@ app.post('/api/verify-payment', async (req, res) => {
 
                 // Email send karo (Background me)
                 transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+
+                // IMPORTANT: res.json MUST be here so it waits for PDF generating
+                res.json({ success: true });
             });
 
             // Make the PDF content (Same as download logic)
@@ -737,9 +742,10 @@ app.post('/api/verify-payment', async (req, res) => {
             doc.text(`Amount Paid: ${newOrder.price}`);
             doc.end();
 
-        } catch (emailErr) { console.log("Failed to process email", emailErr); }
-
-        res.json({ success: true });
+        } catch (emailErr) {
+            console.log("Failed to process email", emailErr);
+            res.json({ success: true }); // Fallback response if PDF generation completely fails
+        }
     } else {
         res.json({ success: false });
     }
@@ -787,8 +793,6 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
 
         // Naya Premium Design call karo
         buildProfessionalInvoice(doc, order);
-
-        doc.end();
     } catch (e) {
         console.error("PDF Error:", e);
         res.status(500).send("Error generating invoice");
@@ -1150,9 +1154,8 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
         } else {
             // Fallback agar function na mile
             doc.fontSize(20).text(`VibeSphere Invoice - ${order.orderId}`);
+            doc.end();
         }
-
-        doc.end();
     } catch (e) {
         console.error(e);
         res.status(500).json({ success: false, message: "Server error" });
@@ -1355,16 +1358,24 @@ function generatePremiumHandoverLayout(doc, cert, qrImage) {
     doc.roundedRect(50, 520, 495, 40, 6).fill('#ecfdf5');
     doc.fillColor('#047857').font('Helvetica-Bold').fontSize(9).text('Maintenance Recommendation:', 65, 530);
     doc.fillColor('#065f46').font('Helvetica').fontSize(8.5).text('We strongly recommend our monthly maintenance plan to ensure continuous security and peak performance.', 65, 542);
-
+    // ==========================================
+    // 🟢 NAYA ADD KIYA: Client Dashboard Tracker Note
+    // ==========================================
+    // ==========================================
+    // 🟢 FIXED: Client Dashboard Tracker Note
+    // ==========================================
+    const trackerY = 565; // Fixed Y position for Handover PDF
+    doc.rect(50, trackerY, 490, 25).fill('#f8fafc'); // Light gray SaaS box
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9)
+        .text(' Track Order History & Download Certificates at:', 60, trackerY + 8);
+    doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(9)
+        .text('vibespheremedia.in/dashboard', 330, trackerY + 8);
     doc.image(qrImage, 50, 600, { width: 70 });
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text('Scan to Verify', 50, 675, { width: 70, align: 'center' });
     doc.font('Helvetica').fontSize(8).fillColor('#3b82f6').text('vibespheremedia.in/verify', 50, 688, { width: 70, align: 'center' });
 
     const signX = 380;
     const signY = 590;
-    try { if (fs.existsSync(path.join(__dirname, 'public', 'signature.png'))) doc.image(path.join(__dirname, 'public', 'signature.png'), signX, signY, { width: 120 }); } catch (e) { }
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#0f172a').text('Harsh Panwar', signX, signY + 60, { align: 'center', width: 120 });
-    doc.font('Helvetica').fontSize(9).fillColor('#64748b').text('Founder & CEO, VibeSphere', signX, signY + 75, { align: 'center', width: 120 });
 
     try {
         doc.save();
@@ -1403,8 +1414,8 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
             buildProfessionalInvoice(doc, order);
         } else {
             doc.fontSize(20).text(`VibeSphere Invoice - ${order.orderId}`, 50, 50);
+            doc.end();
         }
-        doc.end();
     } catch (e) { res.status(500).json({ error: "Error generating invoice" }); }
 });
 
