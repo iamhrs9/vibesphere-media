@@ -5,25 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - VibeSphere</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 
-    <script src="https://cdn.tiny.cloud/1/1w8pckp2kybf64f8g1fr4374ima09gr8xgr0ru01fecpzd0i/tinymce/6/tinymce.min.js"
-        referrerpolicy="origin"></script>
-    <script>
-        // --- SIDEBAR TOGGLE LOGIC ---
-        function toggleSidebar() {
-            document.querySelector('.tabs').classList.toggle('open');
-        }
-
-        function closeSidebarOnMobile() {
-            if (window.innerWidth <= 768) {
-                document.querySelector('.tabs').classList.remove('open');
-            }
-        }
-    </script>
+    <script src="https://cdn.tiny.cloud/1/1w8pckp2kybf64f8g1fr4374ima09gr8xgr0ru01fecpzd0i/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
     <style>
+        /* ==========================================
+           🎨 GLOBAL STYLES
+           ========================================== */
         * {
             font-family: 'Poppins', sans-serif;
             margin: 0;
@@ -36,7 +27,15 @@
             color: #333;
         }
 
-        /* Login Modal */
+        /* Input Tap Target Minimums */
+        input, select, textarea, button {
+            min-height: 44px;
+            font-size: 16px;
+        }
+
+        /* ==========================================
+           🔒 LOGIN SCREEN
+           ========================================== */
         #login-screen {
             position: fixed;
             top: 0;
@@ -56,14 +55,18 @@
             border-radius: 12px;
             text-align: center;
             width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
+        .login-box h2 { color: #333; margin-bottom: 20px; }
+        
         .login-box input {
             width: 100%;
             padding: 12px;
             margin: 15px 0;
             border: 1px solid #ddd;
             border-radius: 8px;
+            outline: none;
         }
 
         .login-box button {
@@ -74,9 +77,14 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
         }
+        .login-box button:hover { background: #444; }
 
-        /* Dashboard */
+        /* ==========================================
+           📊 DASHBOARD LAYOUT
+           ========================================== */
         .dashboard {
             display: none;
             max-width: 1200px;
@@ -91,9 +99,7 @@
             margin-bottom: 30px;
         }
 
-        .header h1 {
-            color: #6c63ff;
-        }
+        .header h1 { color: #6c63ff; }
 
         .logout-btn {
             background: #ff4757;
@@ -102,9 +108,12 @@
             border: none;
             border-radius: 6px;
             cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
         }
+        .logout-btn:hover { background: #ff6b81; }
 
-        /* Tabs (Default Desktop Horizontal / Lete Hue) */
+        /* --- TABS NAVIGATION --- */
         .tabs {
             display: flex;
             gap: 20px;
@@ -113,7 +122,6 @@
             padding-bottom: 10px;
             flex-wrap: wrap;
             flex-direction: row;
-            /* Fix: Horizontal tab layout */
         }
 
         .tab {
@@ -124,26 +132,22 @@
             transition: 0.3s;
         }
 
-        .tab:hover {
-            color: #6c63ff;
-        }
-
+        .tab:hover { color: #6c63ff; }
         .tab.active {
             color: #6c63ff;
             border-bottom: 3px solid #6c63ff;
         }
 
-        /* Sections */
-        .section {
-            display: none;
-        }
-
+        /* --- SECTIONS --- */
+        .section { display: none; }
         .section.active {
             display: block;
             animation: fadeIn 0.5s;
         }
 
-        /* Tables */
+        /* ==========================================
+           📋 TABLES & CARDS
+           ========================================== */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -154,8 +158,7 @@
             margin-top: 15px;
         }
 
-        th,
-        td {
+        th, td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #eee;
@@ -166,18 +169,7 @@
             color: white;
         }
 
-        tr:hover {
-            background: #f9f9f9;
-        }
-
-        /* Review Card Style inside Admin */
-        .review-row img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #ddd;
-        }
+        tr:hover { background: #f9f9f9; }
 
         .delete-btn {
             background: #ff4757;
@@ -188,82 +180,9 @@
             cursor: pointer;
             transition: 0.3s;
         }
+        .delete-btn:hover { background: #ff6b81; }
 
-        .delete-btn:hover {
-            background: #ff6b81;
-        }
-
-        /* --- BLOG FORM STYLES --- */
-        .blog-editor {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            border-color: #6c63ff;
-            outline: none;
-        }
-
-        .btn-publish {
-            background: #6c63ff;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .btn-publish:hover {
-            background: #5a52d5;
-            transform: translateY(-2px);
-        }
-
-        .btn-cancel {
-            background: #64748b;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            display: none;
-            margin-left: 10px;
-        }
-
-        /* 🟢 Editor Style Fix */
-        .tox-tinymce {
-            border-radius: 8px !important;
-            border: 1px solid #ddd !important;
-        }
-
-        /* --- STAFF MANAGEMENT STYLES --- */
+        /* --- FORMS & STAFF CARDS --- */
         .staff-grid {
             display: flex;
             gap: 20px;
@@ -287,34 +206,66 @@
             padding-bottom: 10px;
         }
 
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            border-color: #6c63ff;
+        }
+
+        .btn-publish {
+            background: #6c63ff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .btn-publish:hover { background: #5a52d5; transform: translateY(-2px); }
+
+        .btn-cancel {
+            background: #64748b;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            margin-left: 10px;
+        }
+
+        /* TinyMCE Fix */
+        .tox-tinymce {
+            border-radius: 8px !important;
+            border: 1px solid #ddd !important;
+        }
+
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Input Tap Target Minimums */
-        input,
-        select,
-        textarea,
-        button {
-            min-height: 44px;
-            font-size: 16px;
-        }
-
-        /* --- MOBILE RESPONSIVE ADMIN DASHBOARD --- */
+        /* ==========================================
+           📱 MOBILE RESPONSIVENESS
+           ========================================== */
         @media (max-width: 768px) {
-
-            /* 1. Header & Hamburger */
-            .hamburger-btn {
-                display: inline-block !important;
-            }
+            .hamburger-btn { display: inline-block !important; }
 
             .header {
                 margin-bottom: 20px;
@@ -323,16 +274,8 @@
                 flex-wrap: wrap;
             }
 
-            .header h1 {
-                font-size: 1.5rem;
-            }
+            .header h1 { font-size: 1.5rem; }
 
-            .logout-btn {
-                padding: 8px 15px;
-                font-size: 0.9rem;
-            }
-
-            /* 2. Responsive Sidebar (Hidden by default) */
             .tabs {
                 position: fixed;
                 top: 0;
@@ -350,9 +293,7 @@
                 flex-wrap: nowrap;
             }
 
-            .tabs.open {
-                left: 0;
-            }
+            .tabs.open { left: 0; }
 
             .tab {
                 width: 100%;
@@ -361,7 +302,6 @@
                 border-bottom: 1px solid #f1f5f9;
             }
 
-            /* Sidebar Closer */
             .tabs::before {
                 content: "Menu";
                 display: block;
@@ -373,41 +313,19 @@
                 padding-bottom: 10px;
             }
 
-            /* 3. Stacking Flex/Grid Layouts */
-            .staff-grid {
-                flex-direction: column;
-            }
+            .staff-grid { flex-direction: column; }
+            .staff-card { width: 100%; min-width: unset; margin-bottom: 15px; padding: 15px; }
 
-            .staff-card {
-                width: 100%;
-                min-width: unset;
-                margin-bottom: 15px;
-                padding: 15px;
-            }
-
-            /* Multi-column forms to stack */
-            #secureHandoverForm>div[style*="display: flex"] {
+            /* Stack Form Fields on Mobile */
+            #secureHandoverForm > div[style*="display: flex"],
+            #addJobForm > div[style*="display: flex"] {
                 flex-direction: column;
                 gap: 10px !important;
             }
 
-            #addJobForm>div[style*="display: flex"] {
-                flex-direction: column;
-                gap: 10px !important;
-            }
-
-            .blog-editor {
-                padding: 15px;
-            }
-
-            /* Modals adjust */
-            .login-box {
-                width: 90%;
-                padding: 25px;
-            }
+            .login-box { width: 90%; padding: 25px; }
         }
     </style>
-
 </head>
 
 <body>
@@ -422,10 +340,10 @@
     </div>
 
     <div class="dashboard" id="dashboard">
+        
         <div class="header mobile-header-parent">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <i class="ri-menu-line hamburger-btn" onclick="toggleSidebar()"
-                    style="display: none; font-size: 1.8rem; cursor: pointer; color: #6c63ff;"></i>
+                <i class="ri-menu-line hamburger-btn" onclick="toggleSidebar()" style="display: none; font-size: 1.8rem; cursor: pointer; color: #6c63ff;"></i>
                 <h1>VibeSphere Admin</h1>
             </div>
             <button onclick="logout()" class="logout-btn">Logout <i class="ri-logout-box-r-line"></i></button>
@@ -433,14 +351,11 @@
 
         <div class="tabs">
             <div class="tab active" onclick="switchTab('reviews', this); closeSidebarOnMobile()">User Reviews</div>
-            <div class="tab" onclick="switchTab('orders', this); closeSidebarOnMobile()">Orders (Database)</div>
+            <div class="tab" onclick="switchTab('orders', this); closeSidebarOnMobile()">Orders (DB)</div>
             <div class="tab" onclick="switchTab('blogs', this); closeSidebarOnMobile()">Write Blog ✍️</div>
-            <div class="tab" onclick="switchTab('staff-section', this); closeSidebarOnMobile(); fetchStaffData();">Staff
-                Mgmt 👥</div>
-            <div class="tab" onclick="switchTab('jobs-section', this); closeSidebarOnMobile(); fetchAdminJobs();">
-                Careers 💼</div>
-            <div class="tab" onclick="switchTab('handover-doc', this); closeSidebarOnMobile(); fetchHandovers();">
-                Deliver Project 📄</div>
+            <div class="tab" onclick="switchTab('staff-section', this); closeSidebarOnMobile(); fetchStaffData();">Staff Mgmt 👥</div>
+            <div class="tab" onclick="switchTab('jobs-section', this); closeSidebarOnMobile(); fetchAdminJobs();">Careers 💼</div>
+            <div class="tab" onclick="switchTab('handover-doc', this); closeSidebarOnMobile(); fetchHandovers();">Deliver Project 📄</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -460,59 +375,46 @@
                 </table>
             </div>
         </div>
+
         <div id="handover-doc" class="section">
             <h3 style="color: #3b82f6; margin-bottom: 20px;">Generate Verified Handover PDF</h3>
-            <div class="blog-editor">
+            <div class="staff-card" style="padding: 30px;">
                 <form id="secureHandoverForm" onsubmit="generateHandover(event)">
                     <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <input type="text" id="hOrder" placeholder="Order No (e.g. #ORD-123)" required
-                            style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                        <input type="text" id="hClient" placeholder="Client Name" required
-                            style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="text" id="hOrder" placeholder="Order No (e.g. #ORD-123)" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="text" id="hClient" placeholder="Client Name" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                     </div>
                     <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <input type="text" id="hProject" placeholder="Project Title" required
-                            style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                        <input type="date" id="hDelDate" required
-                            style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
-                            title="Delivery Date">
-                        <input type="date" id="hSupDate" required
-                            style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
-                            title="Support Valid Till">
+                        <input type="text" id="hProject" placeholder="Project Title" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="date" id="hDelDate" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" title="Delivery Date">
+                        <input type="date" id="hSupDate" required style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" title="Support Valid Till">
                     </div>
-                    <input type="text" id="hLink" placeholder="Live Link / Proof URL" required
-                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
-                    <textarea id="hNotes" rows="2" placeholder="Admin Notes (Optional)"
-                        style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                    <input type="text" id="hLink" placeholder="Live Link / Proof URL" required style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                    <textarea id="hNotes" rows="2" placeholder="Admin Notes (Optional)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
 
                     <div style="display: flex; gap: 15px;">
-                        <button type="submit" id="btnHandover" class="btn-publish"
-                            style="flex: 1; background: #6c63ff;">📥 Download PDF</button>
-                        <button type="button" id="btnEmailHandover" class="btn-publish"
-                            style="flex: 1; background: #10b981;" onclick="emailHandover(event)">📧 Email to
-                            Client</button>
+                        <button type="submit" id="btnHandover" class="btn-publish" style="flex: 1; background: #6c63ff;">📥 Download PDF</button>
+                        <button type="button" id="btnEmailHandover" class="btn-publish" style="flex: 1; background: #10b981;" onclick="emailHandover(event)">📧 Email to Client</button>
                     </div>
                 </form>
-                <div class="staff-card" style="margin-top: 40px; border-top: 4px solid #ff4757;">
-                    <h3>🗑️ Manage Generated Certificates</h3>
-                    <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">If you delete a certificate here,
-                        its QR Code will instantly become invalid.</p>
-                    <div class="table-responsive"
-                        style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Cert ID</th>
-                                    <th>Order No</th>
-                                    <th>Client & Project</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="certificatesTableBody">
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+
+            <div class="staff-card" style="margin-top: 40px; border-top: 4px solid #ff4757;">
+                <h3>🗑️ Manage Generated Certificates</h3>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">If you delete a certificate here, its QR Code will instantly become invalid.</p>
+                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Cert ID</th>
+                                <th>Order No</th>
+                                <th>Client & Project</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="certificatesTableBody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -539,8 +441,7 @@
 
         <div id="blogs" class="section">
             <h3 id="formTitle">Create New Blog Post</h3>
-
-            <div class="blog-editor">
+            <div class="staff-card" style="padding: 30px;">
                 <form id="blogForm">
                     <input type="hidden" id="editBlogId">
 
@@ -566,8 +467,7 @@
 
                     <div style="display: flex;">
                         <button type="submit" class="btn-publish" id="submitBtn">Publish Blog 🚀</button>
-                        <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel
-                            Edit</button>
+                        <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel Edit</button>
                     </div>
                 </form>
             </div>
@@ -617,8 +517,7 @@
 
                 <div class="staff-card">
                     <h3>📊 Staff Work Chart</h3>
-                    <div class="table-responsive"
-                        style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
                         <table>
                             <thead>
                                 <tr>
@@ -628,14 +527,13 @@
                                     <th>Pending Calls</th>
                                     <th>Action</th>
                                 </tr>
-
                             </thead>
-                            <tbody id="performanceTableBody">
-                            </tbody>
+                            <tbody id="performanceTableBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
             <div class="staff-card" style="margin-top: 20px;">
                 <h3>📋 Manage Sent Notices</h3>
                 <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
@@ -648,11 +546,11 @@
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="noticesTableBody">
-                        </tbody>
+                        <tbody id="noticesTableBody"></tbody>
                     </table>
                 </div>
             </div>
+
             <div class="staff-card" style="margin-top: 20px;">
                 <h3>🛡️ Manage Staff Access</h3>
                 <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
@@ -665,17 +563,15 @@
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="staffTableBody">
-                        </tbody>
+                        <tbody id="staffTableBody"></tbody>
                     </table>
                 </div>
             </div>
-            <div class="staff-grid" style="margin-top: 20px;">
 
+            <div class="staff-grid" style="margin-top: 20px;">
                 <div class="staff-card" style="border-top: 4px solid #3b82f6;">
                     <h3>🎯 Assign New Lead</h3>
-                    <form id="assignLeadForm" style="display: flex; flex-direction: column; gap: 15px;"
-                        onsubmit="submitLead(event)">
+                    <form id="assignLeadForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitLead(event)">
                         <div class="form-group" style="margin-bottom: 0;">
                             <input type="text" id="leadClientName" placeholder="Client / Business Name" required>
                         </div>
@@ -695,39 +591,76 @@
                                 <option value="">-- Assign to Staff --</option>
                             </select>
                         </div>
-                        <button type="submit" id="btnLead" class="btn-publish"
-                            style="width: 100%; background: #3b82f6;">Assign Lead 🚀</button>
+                        <button type="submit" id="btnLead" class="btn-publish" style="width: 100%; background: #3b82f6;">Assign Lead 🚀</button>
                     </form>
                 </div>
 
                 <div class="staff-card" style="border-top: 4px solid #10b981;">
                     <h3>📢 Post Notice (Board)</h3>
-                    <form id="addNoticeForm" style="display: flex; flex-direction: column; gap: 15px;"
-                        onsubmit="submitNotice(event)">
+                    <form id="addNoticeForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitNotice(event)">
                         <div class="form-group" style="margin-bottom: 0;">
-                            <input type="text" id="noticeTitle" placeholder="Notice Title (e.g., Target Update!)"
-                                required>
+                            <input type="text" id="noticeTitle" placeholder="Notice Title (e.g., Target Update!)" required>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <textarea id="noticeMessage" rows="5" placeholder="Type your full message here..."
-                                required></textarea>
+                            <textarea id="noticeMessage" rows="5" placeholder="Type your full message here..." required></textarea>
                         </div>
-                        <button type="submit" id="btnNotice" class="btn-publish"
-                            style="width: 100%; background: #10b981;">Send Notice 🔔</button>
+                        <button type="submit" id="btnNotice" class="btn-publish" style="width: 100%; background: #10b981;">Send Notice 🔔</button>
                     </form>
                 </div>
-
             </div>
         </div>
 
-    </div>
-    <div id="staffWorkModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
-        <div
-            style="background: white; width: 90%; max-width: 800px; padding: 25px; border-radius: 12px; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-            <button onclick="closeStaffWork()"
-                style="position: absolute; right: 20px; top: 20px; background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer;">Close
-                ❌</button>
+        <div id="jobs-section" class="section">
+            <h2>💼 Manage Job Postings</h2>
+            <div class="staff-grid" style="margin-top: 20px;">
+                <div class="staff-card" style="border-top: 4px solid #8b5cf6; max-width: 400px;">
+                    <h3>Post a New Job</h3>
+                    <form id="addJobForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitJob(event)">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="jobTitle" placeholder="Job Title (e.g. Video Editor)" required>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="jobType" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline:none;">
+                                <option value="Full-time">Full-time</option>
+                                <option value="Part-time">Part-time</option>
+                                <option value="Internship">Internship</option>
+                                <option value="Freelance">Freelance</option>
+                            </select>
+                            <select id="jobLocation" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline:none;">
+                                <option value="Remote">Remote</option>
+                                <option value="On-site">On-site</option>
+                                <option value="Hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <textarea id="jobDesc" rows="4" placeholder="Short description of the role..." required></textarea>
+                        </div>
+                        <button type="submit" id="btnJob" class="btn-publish" style="background: #8b5cf6;">Post Job 🚀</button>
+                    </form>
+                </div>
+
+                <div class="staff-card" style="flex: 1;">
+                    <h3>Active Job Postings</h3>
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Role</th>
+                                    <th>Type & Location</th>
+                                    <th>Posted On</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> <div id="staffWorkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; width: 90%; max-width: 800px; padding: 25px; border-radius: 12px; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <button onclick="closeStaffWork()" style="position: absolute; right: 20px; top: 20px; background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">Close ❌</button>
             <h2 id="workModalTitle" style="margin-bottom: 20px; color: #6c63ff;">Work Details</h2>
             <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
                 <table>
@@ -737,76 +670,46 @@
                             <th>Service</th>
                             <th>Status</th>
                             <th>Staff Review (Notes)</th>
-                        </tr>
+                            <th>Action</th> </tr>
                     </thead>
-                    <tbody id="workModalBody">
-                    </tbody>
+                    <tbody id="workModalBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
-    <div id="jobs-section" class="section">
-        <h2>💼 Manage Job Postings</h2>
 
-        <div class="staff-grid" style="margin-top: 20px;">
-            <div class="staff-card" style="border-top: 4px solid #8b5cf6; max-width: 400px;">
-                <h3>Post a New Job</h3>
-                <form id="addJobForm" style="display: flex; flex-direction: column; gap: 15px;"
-                    onsubmit="submitJob(event)">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" id="jobTitle" placeholder="Job Title (e.g. Video Editor)" required>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <select id="jobType" required
-                            style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                            <option value="Full-time">Full-time</option>
-                            <option value="Part-time">Part-time</option>
-                            <option value="Internship">Internship</option>
-                            <option value="Freelance">Freelance</option>
-                        </select>
-                        <select id="jobLocation" required
-                            style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                            <option value="Remote">Remote</option>
-                            <option value="On-site">On-site</option>
-                            <option value="Hybrid">Hybrid</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <textarea id="jobDesc" rows="4" placeholder="Short description of the role..."
-                            required></textarea>
-                    </div>
-                    <button type="submit" id="btnJob" class="btn-publish" style="background: #8b5cf6;">Post Job
-                        🚀</button>
-                </form>
-            </div>
-
-            <div class="staff-card" style="flex: 1;">
-                <h3>Active Job Postings</h3>
-                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Role</th>
-                                <th>Type & Location</th>
-                                <th>Posted On</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="jobsTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div>
-    <script>
+   <script>
         const API_URL = '/api';
-        let AUTH_TOKEN = localStorage.getItem('adminToken');
+        let AUTH_TOKEN = sessionStorage.getItem('adminToken'); // 🟢 Bank-Level Security (Session)
         let allBlogs = [];
-        let globalPerformanceData = {}; // 🟢 Data save karne ke liye global variable
+        let globalPerformanceData = {}; 
 
-        // 🟢 1. Initialize TinyMCE (For Blogs)
+        // ==========================================
+        // 🛠️ UI & SIDEBAR TOGGLE LOGIC
+        // ==========================================
+        function toggleSidebar() {
+            document.querySelector('.tabs').classList.toggle('open');
+        }
+
+        function closeSidebarOnMobile() {
+            if (window.innerWidth <= 768) {
+                document.querySelector('.tabs').classList.remove('open');
+            }
+        }
+
+        function switchTab(tabName, element) {
+            closeSidebarOnMobile();
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            if (element) element.classList.add('active');
+        }
+
+        // ==========================================
+        // 🔒 AUTHENTICATION & SECURITY
+        // ==========================================
+        // 1. Initialize TinyMCE (For Blogs)
         tinymce.init({
             selector: '#bContent',
             height: 400,
@@ -833,7 +736,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    localStorage.setItem('adminToken', data.token);
+                    sessionStorage.setItem('adminToken', data.token); // 🟢 Session Storage
                     AUTH_TOKEN = data.token;
                     location.reload();
                 } else {
@@ -843,29 +746,43 @@
         }
 
         function logout() {
-            localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminToken'); // Naya wala token uda do
+            localStorage.removeItem('adminToken');   // Purana kachra bhi saaf kar do
             location.reload();
         }
 
-        function switchTab(tabName, element) {
-            closeSidebarOnMobile();
-            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        // 🛡️ BANK-LEVEL AUTO LOGOUT (15 Minutes)
+        let inactivityTime = function () {
+            let time;
+            window.onload = resetTimer;
+            document.onmousemove = resetTimer;
+            document.onkeypress = resetTimer;
+            document.ontouchstart = resetTimer; 
 
-            document.getElementById(tabName).classList.add('active');
-            if (element) element.classList.add('active');
-        }
+            function autoLogout() {
+                alert("🔒 Security Alert: Session Expired due to inactivity.");
+                sessionStorage.removeItem("adminToken"); 
+                localStorage.removeItem("adminToken"); 
+                window.location.reload(); 
+            }
+
+            function resetTimer() {
+                clearTimeout(time);
+                time = setTimeout(autoLogout, 15 * 60 * 1000); 
+            }
+        };
+        inactivityTime();   
 
         function loadData() {
             fetchReviews();
             fetchOrders();
             fetchBlogs();
-            fetchStaffData(); // Naya: Staff data bhi load karo
+            fetchStaffData();
             fetchNoticesAdmin();
         }
 
         // ==========================================
-        // 1. REVIEWS MANAGEMENT
+        // ⭐ 1. REVIEWS MANAGEMENT
         // ==========================================
         async function fetchReviews() {
             try {
@@ -895,7 +812,7 @@
         }
 
         // ==========================================
-        // 2. ORDERS MANAGEMENT
+        // 🛒 2. ORDERS MANAGEMENT
         // ==========================================
         async function fetchOrders() {
             try {
@@ -917,15 +834,13 @@
                         <td>${o.package}</td>
                         <td>${o.price}</td>
                         <td style="display:flex; gap:10px; align-items:center;">
-    <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border-radius:5px; padding:5px;">
-        <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-        <option value="Done" ${o.status === 'Done' ? 'selected' : ''}>Done</option>
-    </select>
-    <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Download Invoice">📥 PDF</button>
-<button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer; font-size:16px;" title="Resend Invoice Email">📧</button>
-    </td>
-
-
+                            <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border-radius:5px; padding:5px; outline:none;">
+                                <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Done" ${o.status === 'Done' ? 'selected' : ''}>Done</option>
+                            </select>
+                            <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Download Invoice">📥 PDF</button>
+                            <button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer; font-size:16px;" title="Resend Invoice Email">📧</button>
+                        </td>
                     </tr>`;
                 });
             } catch (e) { }
@@ -936,8 +851,22 @@
             fetchOrders();
         }
 
+        window.resendInvoice = async function (orderId) {
+            if (!confirm(`Do you want to resend the invoice to the client for ${orderId}?`)) return;
+            try {
+                const res = await fetch('/api/admin/resend-invoice', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId })
+                });
+                const result = await res.json();
+                if (result.success) alert("✅ " + result.message);
+                else alert("❌ Error: " + result.message);
+            } catch (e) { alert("Server connection failed"); }
+        };
+
         // ==========================================
-        // 3. BLOGS MANAGEMENT
+        // ✍️ 3. BLOGS MANAGEMENT
         // ==========================================
         async function fetchBlogs() {
             try {
@@ -956,7 +885,7 @@
                         <td>${new Date(blog.date).toLocaleDateString()}</td>
                         <td>
                             <button style="background:#3b82f6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" onclick="prepareEdit('${blog._id}')">Edit</button>
-                            <button style="background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" onclick="deleteBlog('${blog._id}')">Del</button>
+                            <button class="delete-btn" onclick="deleteBlog('${blog._id}')">Del</button>
                         </td>
                     </tr>`;
                 });
@@ -1030,67 +959,56 @@
         }
 
         // ==========================================
-        // 🟢 4. STAFF MANAGEMENT 
+        // 👥 4. STAFF MANAGEMENT
         // ==========================================
         async function fetchStaffData() {
             try {
-                // A. Fetch Staff List
                 const staffRes = await fetch('/api/admin/staff', { headers: { 'Authorization': AUTH_TOKEN } });
                 const staffData = await staffRes.json();
-
                 const staffTbody = document.getElementById('staffTableBody');
                 staffTbody.innerHTML = '';
 
-                // Dropdown clear karo
                 const assignDropdown = document.getElementById('leadAssignTo');
                 assignDropdown.innerHTML = '<option value="">-- Assign to Staff --</option>';
 
                 if (staffData.success && staffData.staff) {
                     staffData.staff.forEach(s => {
-                        // Table update
                         staffTbody.innerHTML += `
-                    <tr>
-                        <td><strong>${s.name}</strong></td>
-                        <td>${s.email}</td>
-                        <td><span style="background:#e0e7ff; color:#4f46e5; padding:3px 8px; border-radius:10px; font-size:12px;">${s.role}</span></td>
-                        <td>
-                            <button onclick="deleteStaff('${s._id}')" class="delete-btn">Delete ID</button>
-                        </td>
-                    </tr>`;
-
-                        // Dropdown me options add karo
+                        <tr>
+                            <td><strong>${s.name}</strong></td>
+                            <td>${s.email}</td>
+                            <td><span style="background:#e0e7ff; color:#4f46e5; padding:3px 8px; border-radius:10px; font-size:12px;">${s.role}</span></td>
+                            <td><button onclick="deleteStaff('${s._id}')" class="delete-btn">Delete ID</button></td>
+                        </tr>`;
                         assignDropdown.innerHTML += `<option value="${s.email}">${s.name} (${s.role})</option>`;
                     });
                 }
 
-                // B. Fetch Performance Chart
                 const perfRes = await fetch('/api/admin/staff-performance', { headers: { 'Authorization': AUTH_TOKEN } });
                 const perfData = await perfRes.json();
-
                 const perfTbody = document.getElementById('performanceTableBody');
                 perfTbody.innerHTML = '';
 
                 if (perfData.success && perfData.performance) {
-                    globalPerformanceData = perfData.performance; // Data save kiya
+                    globalPerformanceData = perfData.performance; 
 
                     for (let email in perfData.performance) {
                         let p = perfData.performance[email];
                         perfTbody.innerHTML += `
-                    <tr>
-                        <td><strong>${email}</strong></td>
-                        <td style="font-weight:bold;">${p.total}</td>
-                        <td style="color:#16a34a;">${p.completed} ✓</td>
-                        <td style="color:#dc2626;">${p.pending} ⏳</td>
-                        <td>
-                            <button onclick="viewStaffWork('${email}')" class="btn-publish" style="padding: 5px 10px; font-size: 12px;">View Details 👁️</button>
-                        </td>
-                    </tr>`;
+                        <tr>
+                            <td><strong>${email}</strong></td>
+                            <td style="font-weight:bold;">${p.total}</td>
+                            <td style="color:#16a34a;">${p.completed} ✓</td>
+                            <td style="color:#dc2626;">${p.pending} ⏳</td>
+                            <td>
+                                <button onclick="viewStaffWork('${email}')" class="btn-publish" style="padding: 5px 10px; font-size: 12px;">View Details 👁️</button>
+                            </td>
+                        </tr>`;
                     }
                 }
             } catch (e) { console.error("Error fetching staff data:", e); }
         }
 
-        // Add New Staff
         document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
@@ -1113,39 +1031,24 @@
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('addStaffForm').reset();
-                    fetchStaffData(); // Form reset karke list ko refresh karo
-                } else {
-                    alert("❌ Error: " + result.error);
-                }
+                    fetchStaffData(); 
+                } else { alert("❌ Error: " + result.error); }
             } catch (err) { alert("Server connection failed"); }
-
             btn.innerText = "Create Staff ID";
         });
 
-        // Delete Staff
         window.deleteStaff = async function (id) {
             if (!confirm("Are you sure? Is staff ka access delete ho jayega!")) return;
-
             try {
-                const res = await fetch(`/api/admin/delete-staff/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': AUTH_TOKEN }
-                });
+                const res = await fetch(`/api/admin/delete-staff/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                 const result = await res.json();
-                if (result.success) {
-                    fetchStaffData(); // List ko turant refresh karo
-                }
+                if (result.success) fetchStaffData(); 
             } catch (e) { alert("Failed to delete staff."); }
         }
 
-        // ==========================================
-        // 🟢 5. ASSIGN LEADS & NOTICES 
-        // ==========================================
-
-        // 1. Submit Lead Function
+        // --- Assign Leads & Notices ---
         window.submitLead = async function (e) {
             e.preventDefault();
-
             const btn = document.getElementById('btnLead');
             btn.innerText = "Assigning...";
 
@@ -1163,24 +1066,17 @@
                     body: JSON.stringify(taskData)
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('assignLeadForm').reset();
-                    fetchStaffData(); // Naya lead aate hi chart update ho jayega
-                } else {
-                    alert("❌ Error: " + result.error);
-                }
-            } catch (err) {
-                alert("Server connection failed");
-            }
+                    fetchStaffData(); 
+                } else { alert("❌ Error: " + result.error); }
+            } catch (err) { alert("Server connection failed"); }
             btn.innerText = "Assign Lead 🚀";
         };
 
-        // 2. Submit Notice Function
         window.submitNotice = async function (e) {
             e.preventDefault();
-
             const btn = document.getElementById('btnNotice');
             btn.innerText = "Posting...";
 
@@ -1196,27 +1092,16 @@
                     body: JSON.stringify(noticeData)
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('addNoticeForm').reset();
-                } else {
-                    alert("❌ Error: " + result.error);
-                }
-            } catch (err) {
-                alert("Server connection failed");
-            }
+                    fetchNoticesAdmin(); 
+                } else { alert("❌ Error: " + result.error); }
+            } catch (err) { alert("Server connection failed"); }
             btn.innerText = "Send Notice 🔔";
-            if (result.success) {
-                alert("✅ " + result.message);
-                document.getElementById('addNoticeForm').reset();
-                fetchNoticesAdmin(); // 🚨 YEH LINE ADD KARNI HAI (Naya notice turant table me dikhega)
-            }
         }
 
-        // ==========================================
-        // 🟢 6. VIEW DETAILED STAFF WORK
-        // ==========================================
+        // --- 🟢 View & Delete Detailed Staff Work (MODAL) ---
         window.viewStaffWork = function (email) {
             const data = globalPerformanceData[email];
             if (!data || !data.details) return;
@@ -1226,7 +1111,7 @@
             tbody.innerHTML = '';
 
             if (data.details.length === 0) {
-                tbody.innerHTML = '<tr><td colspan=\"4\" style=\"text-align:center;\">No leads assigned yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No leads assigned yet.</td></tr>';
             } else {
                 data.details.forEach(task => {
                     let statusColor = '#333';
@@ -1240,8 +1125,10 @@
                         <td>${task.servicePitch}</td>
                         <td style="color:${statusColor}; font-weight:bold; text-transform:uppercase; font-size:12px;">${task.status}</td>
                         <td style="background: #f9f9f9; font-style: italic;">${task.notes || '<span style="color:#999;">No review yet</span>'}</td>
-                    </tr>
-                `;
+                        <td>
+                            <button onclick="deleteLead('${task._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">🗑️ Delete</button>
+                        </td>
+                    </tr>`;
                 });
             }
             document.getElementById('staffWorkModal').style.display = 'flex';
@@ -1249,12 +1136,21 @@
 
         window.closeStaffWork = function () {
             document.getElementById('staffWorkModal').style.display = 'none';
-        }
-        // ==========================================
-        // 🟢 7. MANAGE NOTICES (FETCH & DELETE)
-        // ==========================================
+        };
 
-        // 1. Fetch Notices for Admin
+        window.deleteLead = async function (taskId) {
+            if (!confirm("Are you sure? Yeh lead staff ke dashboard se bhi hamesha ke liye delete ho jayegi!")) return;
+            try {
+                const res = await fetch(`/api/admin/delete-task/${taskId}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
+                const result = await res.json();
+                if (result.success) {
+                    closeStaffWork(); 
+                    fetchStaffData(); 
+                } else { alert("❌ Error: " + result.error); }
+            } catch (e) { alert("Failed to connect to server"); }
+        };
+
+        // --- Fetch & Delete Notices ---
         async function fetchNoticesAdmin() {
             try {
                 const res = await fetch('/api/admin/notices', { headers: { 'Authorization': AUTH_TOKEN } });
@@ -1269,37 +1165,30 @@
                     }
                     data.notices.forEach(n => {
                         tbody.innerHTML += `
-                    <tr>
-                        <td>${new Date(n.date).toLocaleDateString()}</td>
-                        <td><strong>${n.title}</strong></td>
-                        <td>${n.message}</td>
-                        <td><button onclick="deleteNotice('${n._id}')" class="delete-btn">Delete</button></td>
-                    </tr>`;
+                        <tr>
+                            <td>${new Date(n.date).toLocaleDateString()}</td>
+                            <td><strong>${n.title}</strong></td>
+                            <td>${n.message}</td>
+                            <td><button onclick="deleteNotice('${n._id}')" class="delete-btn">Delete</button></td>
+                        </tr>`;
                     });
                 }
             } catch (e) { console.error("Error fetching notices"); }
         }
 
-        // 2. Delete Notice Function
         window.deleteNotice = async function (id) {
             if (confirm("Are you sure? Yeh notice sabke dashboard se hat jayega!")) {
                 try {
-                    const res = await fetch(`/api/admin/delete-notice/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': AUTH_TOKEN }
-                    });
+                    const res = await fetch(`/api/admin/delete-notice/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                     const result = await res.json();
-                    if (result.success) {
-                        fetchNoticesAdmin(); // Delete hone ke baad table refresh karo
-                    }
+                    if (result.success) fetchNoticesAdmin(); 
                 } catch (e) { alert("Failed to delete notice"); }
             }
         };
-        // ==========================================
-        // 🟢 8. MANAGE CAREERS / JOBS
-        // ==========================================
 
-        // 1. Fetch & Show Jobs in Admin
+        // ==========================================
+        // 💼 5. MANAGE CAREERS / JOBS
+        // ==========================================
         window.fetchAdminJobs = async function () {
             try {
                 const res = await fetch('/api/jobs');
@@ -1314,18 +1203,17 @@
                     }
                     data.jobs.forEach(job => {
                         tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${job.title}</strong></td>
-                        <td>${job.type} • ${job.location}</td>
-                        <td>${new Date(job.date).toLocaleDateString()}</td>
-                        <td><button onclick="deleteJob('${job._id}')" class="delete-btn">Remove</button></td>
-                    </tr>`;
+                        <tr>
+                            <td><strong>${job.title}</strong></td>
+                            <td>${job.type} • ${job.location}</td>
+                            <td>${new Date(job.date).toLocaleDateString()}</td>
+                            <td><button onclick="deleteJob('${job._id}')" class="delete-btn">Remove</button></td>
+                        </tr>`;
                     });
                 }
             } catch (e) { console.error("Error fetching jobs"); }
         }
 
-        // 2. Submit New Job
         window.submitJob = async function (e) {
             e.preventDefault();
             const btn = document.getElementById('btnJob');
@@ -1345,30 +1233,28 @@
                     body: JSON.stringify(jobData)
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('addJobForm').reset();
-                    fetchAdminJobs(); // Table update
+                    fetchAdminJobs(); 
                 } else { alert("❌ Error: " + result.error); }
             } catch (err) { alert("Server connection failed"); }
-
             btn.innerText = "Post Job 🚀";
         };
 
-        // 3. Delete Job
         window.deleteJob = async function (id) {
             if (confirm("Are you sure? This job will be removed from the public website!")) {
                 try {
-                    const res = await fetch(`/api/admin/delete-job/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': AUTH_TOKEN }
-                    });
+                    const res = await fetch(`/api/admin/delete-job/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                     const result = await res.json();
                     if (result.success) fetchAdminJobs();
                 } catch (e) { alert("Failed to delete job"); }
             }
         };
+
+        // ==========================================
+        // 📄 6. HANDOVER CERTIFICATES
+        // ==========================================
         async function generateHandover(e) {
             e.preventDefault();
             const btn = document.getElementById('btnHandover');
@@ -1385,7 +1271,6 @@
             };
 
             try {
-                // Secure API Call (Auth Token sent)
                 const res = await fetch('/api/admin/generate-handover', {
                     method: 'POST',
                     headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
@@ -1393,7 +1278,6 @@
                 });
 
                 if (res.ok) {
-                    // PDF Download Logic (Browser Trick)
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -1401,36 +1285,14 @@
                     a.download = `VibeSphere_Handover_${payload.orderNumber}.pdf`;
                     a.click();
                     document.getElementById('secureHandoverForm').reset();
+                    fetchHandovers(); // Table refresh
                 } else { alert("Failed to generate PDF. Check auth."); }
             } catch (err) { alert("Server error"); }
-
-            btn.innerText = "Create & Download Official PDF 🚀";
+            btn.innerText = "📥 Download PDF";
         };
-        // 🟢 RESEND INVOICE FUNCTION
-        window.resendInvoice = async function (orderId) {
-            if (!confirm(`Do you want to resend the invoice to the client for ${orderId}?`)) return;
 
-            try {
-                const res = await fetch('/api/admin/resend-invoice', {
-                    method: 'POST',
-                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId })
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    alert("✅ " + result.message);
-                } else {
-                    alert("❌ Error: " + result.message);
-                }
-            } catch (e) {
-                alert("Server connection failed");
-            }
-        };
-        // 🟢 EMAIL HANDOVER TO CLIENT DIRECTLY
         window.emailHandover = async function (e) {
             e.preventDefault();
-
             const payload = {
                 orderNumber: document.getElementById('hOrder').value,
                 clientName: document.getElementById('hClient').value,
@@ -1457,29 +1319,21 @@
                     body: JSON.stringify(payload)
                 });
                 const result = await res.json();
-
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('secureHandoverForm').reset();
-                } else {
-                    alert("❌ Error: " + result.message);
-                }
+                    fetchHandovers();
+                } else { alert("❌ Error: " + result.message); }
             } catch (err) { alert("Server connection failed"); }
-
             btn.innerText = "📧 Email to Client";
         }
-        // ==========================================
-        // 🟢 MANAGE HANDOVER CERTIFICATES
-        // ==========================================
 
-        // 1. Fetch Handovers
         window.fetchHandovers = async function () {
             try {
                 const res = await fetch('/api/admin/handovers', { headers: { 'Authorization': AUTH_TOKEN } });
                 const data = await res.json();
                 const tbody = document.getElementById('certificatesTableBody');
                 if (!tbody) return;
-
                 tbody.innerHTML = '';
 
                 if (data.success && data.certs) {
@@ -1489,60 +1343,47 @@
                     }
                     data.certs.forEach(c => {
                         tbody.innerHTML += `
-                    <tr>
-                        <td>${new Date(c.dateGenerated).toLocaleDateString()}</td>
-                        <td><strong style="color: #10b981;">${c.certId}</strong></td>
-                        <td>${c.orderNumber}</td>
-                        <td><strong>${c.clientName}</strong><br><small style="color: #64748b;">${c.projectName}</small></td>
-                        
-<td>
-    <div style="display: flex; gap: 8px;">
-        <button onclick="window.open('/api/admin/download-saved-handover/${c._id}')" title="Download PDF" style="background:#8b5cf6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📥</button>
-        <button onclick="reEmailSavedHandover('${c._id}')" title="Resend to Client" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📧</button>
-        <button onclick="deleteHandover('${c._id}')" title="Delete Certificate" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
-    </div>
-</td>
-                    </tr>`;
+                        <tr>
+                            <td>${new Date(c.dateGenerated).toLocaleDateString()}</td>
+                            <td><strong style="color: #10b981;">${c.certId}</strong></td>
+                            <td>${c.orderNumber}</td>
+                            <td><strong>${c.clientName}</strong><br><small style="color: #64748b;">${c.projectName}</small></td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <button onclick="window.open('/api/admin/download-saved-handover/${c._id}')" title="Download PDF" style="background:#8b5cf6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📥</button>
+                                    <button onclick="reEmailSavedHandover('${c._id}')" title="Resend to Client" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">📧</button>
+                                    <button onclick="deleteHandover('${c._id}')" class="delete-btn" title="Delete Certificate" style="padding:6px 10px; border-radius:4px;">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>`;
                     });
                 }
             } catch (e) { console.error("Error fetching certificates"); }
         };
 
-        // 2. Delete Handover
         window.deleteHandover = async function (id) {
             if (confirm("Are you sure? Agar aapne isko delete kiya toh client ka QR Code scan hone par FAKE batayega!")) {
                 try {
-                    const res = await fetch(`/api/admin/delete-handover/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': AUTH_TOKEN }
-                    });
+                    const res = await fetch(`/api/admin/delete-handover/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                     const result = await res.json();
-                    if (result.success) {
-                        fetchHandovers(); // Table turant refresh karo
-                    } else {
-                        alert("Error: " + result.error);
-                    }
+                    if (result.success) fetchHandovers(); 
+                    else alert("Error: " + result.error);
                 } catch (e) { alert("Failed to delete certificate"); }
             }
         };
-        // 3. 📧 Re-Email Saved Handover
+
         window.reEmailSavedHandover = async function (id) {
             if (!confirm("Resend this handover certificate to the client's email?")) return;
-
             try {
-                const res = await fetch(`/api/admin/re-email-handover/${id}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': AUTH_TOKEN }
-                });
+                const res = await fetch(`/api/admin/re-email-handover/${id}`, { method: 'POST', headers: { 'Authorization': AUTH_TOKEN } });
                 const result = await res.json();
-                if (result.success) {
-                    alert("✅ " + result.message);
-                } else {
-                    alert("❌ Error: " + result.message);
-                }
+                if (result.success) alert("✅ " + result.message);
+                else alert("❌ Error: " + result.message);
             } catch (e) { alert("Failed to connect to server"); }
         };
     </script>
+
+    
 </body>
 
 </html>

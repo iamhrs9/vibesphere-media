@@ -15,7 +15,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const rateLimit = require('express-rate-limit'); // 🟢 NAYA LOCK ADD KIYA
 app.use(cors());
 
 
@@ -139,7 +139,34 @@ app.use(cors());
 // ✅ 10MB Limit for Photos
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// ==========================================
+// 🟢 GLOBAL EMAIL CASE-SENSITIVITY FIX (MASTER MIDDLEWARE)
+// ==========================================
+app.use((req, res, next) => {
+    if (req.body) {
+        // 1. Agar normal email field hai (Signup, Login, Forgot Pass, Staff Auth)
+        if (typeof req.body.email === 'string') {
+            req.body.email = req.body.email.toLowerCase().trim();
+        }
+        // 2. Agar Order Details ke andar email hai (Payment ke time)
+        if (req.body.orderDetails && typeof req.body.orderDetails.email === 'string') {
+            req.body.orderDetails.email = req.body.orderDetails.email.toLowerCase().trim();
+        }
+    }
+    next();
+});
 
+// ==========================================
+// 🛡️ ANTI-SPAM: OTP RATE LIMITER
+// ==========================================
+// Ek IP address se 15 minute mein sirf 3 baar OTP maang sakte hain
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3, // Maximum 3 requests allowed per IP
+    message: { success: false, message: "🚨 Too many OTP requests from this IP! Please wait 15 minutes to prevent spam." },
+    standardHeaders: true, 
+    legacyHeaders: false, 
+});
 // Frontend files serve
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
 
@@ -163,6 +190,8 @@ const userSchema = new mongoose.Schema({
     googleId: String,
     resetOtp: String,
     resetOtpExpiry: Date,
+    otpRequestCount: { type: Number, default: 0 }, // 🟢 24 ghante ka counter
+    otpWindowStart: Date,                          // 🟢 24 ghante ka timer
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -199,19 +228,26 @@ const transporter = {
             textContent: mailOptions.text || "",
             htmlContent: mailOptions.html || "",
         };
-// 🟢 THE FIX: Brevo ko khush karne ke liye smart content handling
+// 🟢 THE GOD MODE FIX: Brevo ko dono chahiye (HTML + Text), hum dono denge!
+        
+        // 1. Set HTML Content
         if (mailOptions.html) {
             payload.htmlContent = mailOptions.html;
         } else if (mailOptions.text) {
-            payload.textContent = mailOptions.text;
-            // Plain text ko automatic HTML mein convert kar diya (\n ko <br> bana kar)
             payload.htmlContent = `<p style="font-family: sans-serif; color: #333;">${mailOptions.text.replace(/\n/g, '<br>')}</p>`; 
         } else {
             payload.htmlContent = "<p>Message from VibeSphere Media</p>";
         }
-        if (formattedAttachments.length > 0) payload.attachment = formattedAttachments;
-        if (mailOptions.replyTo) payload.replyTo = { email: mailOptions.replyTo };
 
+        // 2. Set Plain Text Content (Spam filter bypass karne ke liye)
+        if (mailOptions.text) {
+            payload.textContent = mailOptions.text;
+        } else if (mailOptions.html) {
+            // Agar sirf HTML aayi hai, toh tags (<p>, <div>) ko hata kar plain text bana do
+            payload.textContent = mailOptions.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        } else {
+            payload.textContent = "Message from VibeSphere Media";
+        }
         // 3. Render ke bahar API shoot karna!
         return fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
@@ -267,7 +303,8 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // 2a. Client Forgot Password (Send OTP)
-app.post('/api/auth/forgot-password', async (req, res) => {
+// 2a. Client Forgot Password (Send OTP) - 24H ACCOUNT LIMIT SECURED
+app.post('/api/auth/forgot-password', otpLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
@@ -276,23 +313,49 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             return res.json({ success: false, message: "No account found with that email." });
         }
 
-        // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+        // 🟢 THE 24-HOUR LOGIC MAGIC
+        const now = Date.now();
+        const windowTime = 24 * 60 * 60 * 1000; // 24 Ghante milliseconds mein
 
+        // Agar timer shuru nahi hua, ya 24 ghante poore ho gaye, toh khata zero kar do
+        if (!user.otpWindowStart || (now - user.otpWindowStart.getTime() > windowTime)) {
+            user.otpWindowStart = now;
+            user.otpRequestCount = 0;
+        }
+
+        // Agar 24 ghante ke andar 3 baar OTP maang liya hai, toh sidha block
+        if (user.otpRequestCount >= 3) {
+            return res.json({ success: false, message: "🚨 Limit Reached! You can only request 3 OTPs per 24 hours for security." });
+        }
+
+        // Limit cross nahi hui, toh counter badhao
+        user.otpRequestCount += 1;
+        // 🟢 ---------------------------
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.resetOtp = await bcrypt.hash(otp, 10);
-        user.resetOtpExpiry = otpExpiry;
+        user.resetOtpExpiry = new Date(now + 15 * 60 * 1000); // 15 mins
         await user.save();
 
         let mailOptions = {
             from: process.env.EMAIL_USER,
             to: user.email,
-            subject: "Password Reset OTP - VibeSphere Media",
+            subject: "🔒 Secure Password Reset - VibeSphere Media",
             html: `
-                <h3>Hello ${user.name},</h3>
-                <p>You requested a password reset. Your OTP is: <strong>${otp}</strong></p>
-                <p>This OTP will expire in 15 minutes.</p>
-                <p>If you didn't request this, please ignore this email.</p>
+                <div style="font-family: 'Poppins', Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 40px 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; border-top: 5px solid #6c63ff;">
+                        <h2 style="color: #1e293b; margin-top: 0; font-size: 26px; font-weight: 700;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                        <h3 style="color: #475569; font-size: 16px; font-weight: 500; margin-bottom: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">Account Recovery</h3>
+                        <p style="color: #334155; font-size: 16px; line-height: 1.6; text-align: left;">Hi <strong>${user.name}</strong>,</p>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.6; text-align: left;">We received a request to reset the password for your VibeSphere Media client account. Use the OTP below to securely change your password:</p>
+                        <div style="margin: 30px 0; padding: 25px; background: linear-gradient(135deg, #f3e8ff, #e0e7ff); border-radius: 12px;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #4f46e5; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Verification Code</p>
+                            <h1 style="margin: 0; color: #1e293b; font-size: 28px; letter-spacing: 8px; font-weight: 700;">${otp}</h1>
+                        </div>
+                        <p style="color: #ef4444; font-size: 14px; font-weight: 600; display: inline-block; padding: 8px 15px; background: #fee2e2; border-radius: 50px;">⏳ Valid for 15 minutes</p>
+                        <p style="color: #64748b; font-size: 13px; line-height: 1.6; text-align: left; margin-top: 30px;">If you didn't request this, you can safely ignore this email.</p>
+                    </div>
+                </div>
             `
         };
 
@@ -301,7 +364,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     } catch (e) { res.status(500).json({ success: false, message: "Error processing forgot password request." }); }
 });
-
 // 2b. Client Reset Password (Verify OTP & Change)
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
@@ -409,6 +471,10 @@ const staffSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'Sales Executive' },
     profilePhoto: { type: String, default: '' },
+    resetOtp: String,         // 🟢 YAHAN ADD KIYA OTP KE LIYE
+    resetOtpExpiry: Date,     // 🟢 YAHAN ADD KIYA EXPIRY KE LIYE
+    otpRequestCount: { type: Number, default: 0 }, // 🟢 24 ghante ka counter
+    otpWindowStart: Date,                          // 🟢 24 ghante ka timer
     date: { type: Date, default: Date.now }
 });
 const Staff = mongoose.model('Staff', staffSchema);
@@ -510,6 +576,83 @@ app.post('/api/staff/update-photo', async (req, res) => {
         res.json({ success: true, message: "Photo updated!" });
     } catch (e) { res.status(500).json({ success: false }); }
 });
+// 🟢 STAFF FORGOT PASSWORD (SEND OTP) - 24H ACCOUNT LIMIT SECURED
+app.post('/api/staff/forgot-password', otpLimiter, async (req, res) => {
+    try {
+        const { email } = req.body;
+        const staff = await Staff.findOne({ email });
+
+        if (!staff) return res.json({ success: false, message: "No staff account found with this email." });
+
+        // 🟢 THE 24-HOUR LOGIC MAGIC (For Staff)
+        const now = Date.now();
+        const windowTime = 24 * 60 * 60 * 1000;
+
+        if (!staff.otpWindowStart || (now - staff.otpWindowStart.getTime() > windowTime)) {
+            staff.otpWindowStart = now;
+            staff.otpRequestCount = 0;
+        }
+
+        if (staff.otpRequestCount >= 3) {
+            return res.json({ success: false, message: "🚨 Limit Reached! Staff accounts can only request 3 OTPs per 24 hours." });
+        }
+
+        staff.otpRequestCount += 1;
+        // 🟢 ---------------------------
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        staff.resetOtp = await bcrypt.hash(otp, 10);
+        staff.resetOtpExpiry = new Date(now + 15 * 60 * 1000); 
+        await staff.save();
+
+        let mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: staff.email,
+            subject: "🔒 Staff Password Reset - VibeSphere Media",
+            html: `
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f7fe; padding: 40px 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center;">
+                        <h2 style="color: #1e293b; margin-top: 0; font-size: 28px; letter-spacing: -0.5px;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                        <h3 style="color: #334155; font-size: 18px; font-weight: 600; margin-bottom: 25px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">Password Reset Request</h3>
+                        <p style="color: #475569; font-size: 16px; line-height: 1.6; text-align: left;">Hello <strong>${staff.name}</strong>,</p>
+                        <p style="color: #475569; font-size: 16px; line-height: 1.6; text-align: left;">We received a request to reset the password for your staff portal. Please use the secure verification code below to proceed:</p>
+                        <div style="margin: 35px 0; padding: 25px; background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 10px;">
+                            <p style="margin: 0 0 10px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Your 6-Digit OTP</p>
+                            <h1 style="margin: 0; color: #6c63ff; font-size: 28px; letter-spacing: 8px;">${otp}</h1>
+                        </div>
+                        <p style="color: #dc2626; font-size: 14px; font-weight: 600;">⏳ This OTP is valid for exactly 15 minutes.</p>
+                        <p style="color: #64748b; font-size: 14px; line-height: 1.5; text-align: left; margin-top: 35px;">If you did not request this password reset, please ignore this email.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "OTP sent to your email! Please check inbox/spam." });
+    } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
+});
+
+// 🟢 STAFF RESET PASSWORD (VERIFY OTP & UPDATE)
+app.post('/api/staff/reset-password', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const staff = await Staff.findOne({ email });
+
+        if (!staff || !staff.resetOtp || staff.resetOtpExpiry < Date.now()) 
+            return res.json({ success: false, message: "Invalid or Expired OTP." });
+
+        if (await bcrypt.compare(otp, staff.resetOtp)) {
+            staff.password = await bcrypt.hash(newPassword, 10); // Naya password encrypt karo
+            staff.resetOtp = undefined; // Kachra saaf
+            staff.resetOtpExpiry = undefined;
+            await staff.save();
+            res.json({ success: true, message: "Password updated successfully! You can login now." });
+        } else {
+            res.json({ success: false, message: "Incorrect OTP." });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Reset Failed" }); }
+});
+
 // --- 3. Razorpay Setup ---
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -988,31 +1131,45 @@ app.delete('/api/admin/delete-staff/:id', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: "Failed to delete" }); }
 });
 
-// 4. Get Staff Performance (Work Chart) - UPDATED FOR FULL DETAILS
+// 4. Get Staff Performance (Work Chart) - FIXED TO SHOW 0 LEADS
 app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
     try {
-        const tasks = await Task.find().sort({ dateAssigned: -1 });
+        // 1. Pehle saare staff ko lao aur sabka khata 0 se shuru karo
+        const allStaff = await Staff.find();
         const performance = {};
+
+        allStaff.forEach(staff => {
+            performance[staff.email] = { total: 0, completed: 0, pending: 0, details: [] };
+        });
+
+        // 2. Ab saari leads (tasks) lao aur jiske naam par hai usme jod do
+        const tasks = await Task.find().sort({ dateAssigned: -1 });
 
         tasks.forEach(task => {
             const email = task.assignedTo;
-            if (!email) return;
-
-            if (!performance[email]) {
-                // 'details' naam ka array add kiya hai jisme saari leads hongi
-                performance[email] = { total: 0, completed: 0, pending: 0, details: [] };
+            
+            // Agar email assigned hai, tabhi aage badho
+            if (email) {
+                // Agar ye staff abhi bhi system me hai
+                if (performance[email]) {
+                    performance[email].total++;
+                    if (task.status === 'interested' || task.status === 'rejected') {
+                        performance[email].completed++;
+                    } else {
+                        performance[email].pending++;
+                    }
+                    performance[email].details.push(task);
+                } else {
+                    // (Edge Case) Agar staff delete ho chuka hai, par uski purani lead padi hai
+                    performance[email] = { total: 1, completed: 0, pending: 1, details: [task] };
+                    if (task.status === 'interested' || task.status === 'rejected') {
+                        performance[email].completed = 1;
+                        performance[email].pending = 0;
+                    }
+                }
             }
-            performance[email].total++;
-
-            if (task.status === 'interested' || task.status === 'rejected') {
-                performance[email].completed++;
-            } else {
-                performance[email].pending++;
-            }
-
-            // Lead ka poora data (aur staff ka review/notes) array mein save karo
-            performance[email].details.push(task);
         });
+
         res.json({ success: true, performance: performance });
     } catch (e) { res.status(500).json({ error: "Failed to fetch performance" }); }
 });
@@ -1043,6 +1200,17 @@ app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
         await newNotice.save();
         res.json({ success: true, message: "Notice Posted on Staff Board!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to post notice" }); }
+});
+
+// 🟢 YAHAN PASTE KARNA HAI TERA NAYA CODE:
+// 7. Delete a Assigned Lead (Task)
+app.delete('/api/admin/delete-task/:id', checkAuth, async (req, res) => {
+    try {
+        await Task.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Lead Deleted Successfully!" });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Failed to delete lead" }); 
+    }
 });
 // ==========================================
 // 📜 MANAGE HANDOVERS / CERTIFICATES (ADMIN)

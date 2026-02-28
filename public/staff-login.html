@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Portal Login | VibeSphere Media</title>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body.staff-login-bg {
             background: #f4f7fe;
@@ -32,80 +32,176 @@
         .input-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 8px; }
         .input-group input { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: 0.3s; box-sizing: border-box; }
         .input-group input:focus { border-color: #7d5fff; box-shadow: 0 0 0 3px rgba(125, 95, 255, 0.1); }
-        .btn-login { width: 100%; padding: 14px; background: #1e293b; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; }
+        .btn-login { width: 100%; padding: 14px; background: #1e293b; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; margin-bottom: 10px;}
         .btn-login:hover { background: #7d5fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(125, 95, 255, 0.3); }
-        .back-link { display: inline-block; margin-top: 20px; font-size: 14px; color: #7d5fff; text-decoration: none; font-weight: 500; }
+        .back-link { display: inline-block; margin-top: 20px; font-size: 14px; color: #7d5fff; text-decoration: none; font-weight: 500; cursor: pointer; }
         .back-link:hover { text-decoration: underline; }
+        .hidden { display: none; }
     </style>
 </head>
 <body class="staff-login-bg">
 
     <div class="login-card">
         <h2>VibeSphere<span>.</span></h2>
-        <p>Secure Staff Portal Login</p>
         
-        <form id="staffLoginForm">
-            <div class="input-group">
-                <label>Staff ID / Email</label>
-                <input type="email" id="staffEmail" placeholder="e.g. rahul@vibespheremedia.com" required>
-            </div>
-            <div class="input-group">
-                <label>Password</label>
-                <input type="password" id="staffPassword" placeholder="••••••••" required>
-            </div>
-            
-            <p id="error-msg" style="color: #dc2626; font-size: 13px; text-align: left; display: none; margin-bottom: 15px; font-weight: 500;">Invalid email or password.</p>
-            
-            <button type="submit" class="btn-login" id="loginBtn">Login to Dashboard</button>
-        </form>
-        
-        <a href="/" class="back-link"><i class="ri-arrow-left-line"></i> Back to Main Website</a>
+        <div id="loginSection">
+            <p>Secure Staff Portal Login</p>
+            <form id="staffLoginForm">
+                <div class="input-group">
+                    <label>Staff Email</label>
+                    <input type="email" id="staffEmail" placeholder="e.g. rahul@vibespheremedia.in" required>
+                </div>
+                <div class="input-group">
+                    <label style="display: flex; justify-content: space-between;">
+                        Password
+                        <a onclick="showForgot()" style="color: #7d5fff; font-weight: 500; cursor: pointer; text-decoration: none; font-size: 12px;">Forgot?</a>
+                    </label>
+                    <input type="password" id="staffPassword" placeholder="••••••••" required>
+                </div>
+                
+                <p id="error-msg" style="color: #dc2626; font-size: 13px; text-align: left; display: none; margin-bottom: 15px; font-weight: 500;">Invalid email or password.</p>
+                <button type="submit" class="btn-login" id="loginBtn">Login to Dashboard</button>
+            </form>
+            <a href="/" class="back-link"><i class="ri-arrow-left-line"></i> Back to Main Website</a>
+        </div>
+
+        <div id="forgotSection" class="hidden">
+            <p>Reset Your Password</p>
+            <form id="forgotForm">
+                <div class="input-group">
+                    <label>Enter your registered Email</label>
+                    <input type="email" id="forgotEmail" placeholder="Email Address" required>
+                    
+                    <p style="color: #ea580c; font-size: 12px; margin-top: 8px; margin-bottom: 0; font-weight: 500;">
+                        <i class="ri-information-line"></i> Security: Maximum 3 OTP requests per 24 hours.
+                    </p>
+                </div>
+                <button type="submit" class="btn-login" id="forgotBtn">Send OTP</button>
+            </form>
+            <a onclick="showLogin()" class="back-link"><i class="ri-arrow-left-line"></i> Back to Login</a>
+        </div>
+
+        <div id="resetSection" class="hidden">
+            <p>Verify OTP & Update Password</p>
+            <form id="resetForm">
+                <div class="input-group">
+                    <label>Enter 6-digit OTP</label>
+                    <input type="text" id="resetOtp" placeholder="XXXXXX" required>
+                </div>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="resetNewPass" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-login" id="resetBtn">Update Password</button>
+            </form>
+            <a onclick="showLogin()" class="back-link"><i class="ri-arrow-left-line"></i> Cancel</a>
+        </div>
+
     </div>
-<script>
+
+    <script>
+        // UI Navigation
+        function showLogin() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('forgotSection').classList.add('hidden');
+            document.getElementById('resetSection').classList.add('hidden');
+        }
+
+        function showForgot() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('forgotSection').classList.remove('hidden');
+        }
+
+        function showReset() {
+            document.getElementById('forgotSection').classList.add('hidden');
+            document.getElementById('resetSection').classList.remove('hidden');
+        }
+
+        // 1. LOGIN API
         document.getElementById('staffLoginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Page ko reload hone se rokna
-            
+            e.preventDefault();
             const email = document.getElementById('staffEmail').value;
             const password = document.getElementById('staffPassword').value;
             const btn = document.getElementById('loginBtn');
             const errorMsg = document.getElementById('error-msg');
             
-            // Button ka text change karo
             btn.innerText = "Verifying...";
             errorMsg.style.display = 'none';
 
             try {
-                // Backend API ko data bhejna
                 const response = await fetch('/api/staff/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, password: password })
+                    body: JSON.stringify({ email, password })
                 });
-                
                 const data = await response.json();
                 
                 if(data.success) {
-                    // 🎉 Login Success! 
-                    // Staff ki details browser ke LocalStorage me save kar lenge taaki dashboard ko pata rahe kaun aaya hai
                     localStorage.setItem('staffData', JSON.stringify(data.staff));
-                    
                     btn.innerText = "Success! Redirecting...";
-                    btn.style.background = "#16a34a"; // Green color
-                    
-                    setTimeout(() => {
-                        window.location.href = 'staff-dashboard';
-                    }, 1000);
+                    btn.style.background = "#16a34a";
+                    setTimeout(() => { window.location.href = 'staff-dashboard.html'; }, 1000);
                 } else {
-                    // ❌ Login Failed (Galat password ya email)
                     errorMsg.innerText = data.message || "Invalid Email or Password";
                     errorMsg.style.display = 'block';
                     btn.innerText = "Login to Dashboard";
                 }
             } catch(err) {
-                errorMsg.innerText = "Server disconnected! Please start your node server.";
+                errorMsg.innerText = "Server Error!";
                 errorMsg.style.display = 'block';
                 btn.innerText = "Login to Dashboard";
             }
+        });
+
+        // 2. FORGOT PASSWORD API
+        let savedResetEmail = "";
+        document.getElementById('forgotForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmail').value;
+            const btn = document.getElementById('forgotBtn');
+            btn.innerText = "Sending OTP...";
+
+            try {
+                const response = await fetch('/api/staff/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                alert(data.message);
+                
+                if(data.success) {
+                    savedResetEmail = email; // Store for next step
+                    showReset(); // OTP verification form dikhao
+                }
+            } catch(err) { alert("Server Error"); }
+            btn.innerText = "Send OTP";
+        });
+
+        // 3. RESET PASSWORD API
+        document.getElementById('resetForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const otp = document.getElementById('resetOtp').value;
+            const newPassword = document.getElementById('resetNewPass').value;
+            const btn = document.getElementById('resetBtn');
+            btn.innerText = "Verifying...";
+
+            try {
+                const response = await fetch('/api/staff/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: savedResetEmail, otp, newPassword })
+                });
+                const data = await response.json();
+                alert(data.message);
+                
+                if(data.success) {
+                    showLogin(); // Wapas login par bhejo
+                    document.getElementById('resetOtp').value = '';
+                    document.getElementById('resetNewPass').value = '';
+                }
+            } catch(err) { alert("Server Error"); }
+            btn.innerText = "Update Password";
         });
     </script>
 </body>
