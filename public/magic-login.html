@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticating... | VibeSphere</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; background: #f4f7fe; font-family: 'Poppins', sans-serif; margin: 0;
+        }
+        .loader-box { 
+            text-align: center; background: white; padding: 40px; 
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            width: 90%; max-width: 400px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #6c63ff; 
+            border-radius: 50%; width: 40px; height: 40px; 
+            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="loader-box">
+        <div class="spinner" id="spinner"></div>
+        <h2 style="color: #1e293b; margin-top: 0;">✨ Magic Login</h2>
+        <p id="statusMsg" style="color: #64748b; font-size: 15px;">Verifying your secure link...</p>
+    </div>
+
+    <script>
+        async function verifyMagicLink() {
+            // URL se Email aur Token uthao
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+            const token = urlParams.get('token');
+
+            const statusText = document.getElementById('statusMsg');
+            const spinner = document.getElementById('spinner');
+
+            if (!email || !token) {
+                spinner.style.display = 'none';
+                statusText.innerHTML = "❌ Invalid Link! Token is missing.";
+                statusText.style.color = "red";
+                return;
+            }
+
+            try {
+                // Backend ko token bhejo verify karne ke liye
+                const res = await fetch('/api/auth/verify-magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    statusText.innerHTML = "✅ Login Successful! Redirecting...";
+                    statusText.style.color = "#10b981";
+                    
+                    // 🟢 TERA LOGIN LOGIC: Token aur user data browser memory mein save kar lo
+                    // Dhyan de: Agar tera frontend sessionStorage use karta hai toh ye rakhna
+                    sessionStorage.setItem('clientToken', data.token);
+                    sessionStorage.setItem('clientEmail', data.user.email);
+                    
+                    // 1 second baad Client Dashboard par bhej do
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html'; // 👈 YAHAN APNE CLIENT DASHBOARD KA NAAM DAAL DENA
+                    }, 1500);
+
+                } else {
+                    spinner.style.display = 'none';
+                    statusText.innerHTML = "❌ " + data.message;
+                    statusText.style.color = "red";
+                }
+            } catch (e) {
+                spinner.style.display = 'none';
+                statusText.innerHTML = "❌ Server error! Could not connect.";
+                statusText.style.color = "red";
+            }
+        }
+
+        // Page load hote hi function chala do
+        window.onload = verifyMagicLink;
+    </script>
+</body>
+</html>

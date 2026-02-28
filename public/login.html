@@ -161,34 +161,36 @@
         <div class="auth-box">
 
             <div id="loginForm">
-                <div style="font-size: 3rem; margin-bottom: 10px;">👋</div>
-                <h2>Welcome Back</h2>
-                <p style="color:#64748b; margin-bottom: 25px; font-size: 0.9rem;">Login to manage your orders</p>
+    <div style="font-size: 3rem; margin-bottom: 10px;">👋</div>
+    <h2>Welcome Back</h2>
+    <p style="color:#64748b; margin-bottom: 25px; font-size: 0.9rem;">Login to manage your orders</p>
 
-                <input type="email" id="lEmail" placeholder="Email Address">
-                <div class="password-group">
-                    <input type="password" id="lPass" placeholder="Password">
-                    <i class="ri-eye-line toggle-eye" onclick="togglePass('lPass', this)"></i>
-                </div>
+    <input type="email" id="lEmail" placeholder="Email Address">
+    
+    <div class="password-group">
+        <input type="password" id="lPass" placeholder="Password">
+        <i class="ri-eye-line toggle-eye" onclick="togglePass('lPass', this)"></i>
+    </div>
 
-                <div style="text-align: right; margin-top: -5px; margin-bottom: 15px;">
-                    <a href="#" onclick="showForgotPassword()"
-                        style="color: #6c63ff; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot
-                        Password?</a>
-                </div>
+    <div style="text-align: right; margin-top: -5px; margin-bottom: 15px;">
+        <a href="#" onclick="showForgotPassword()"
+            style="color: #6c63ff; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot
+            Password?</a>
+    </div>
 
-                <button class="btn" onclick="login()">Login Securely</button>
-                <p class="switch" onclick="toggleForm('signupForm')">New here? <span>Create Account</span></p>
+    <button class="btn" onclick="login()">Login Securely</button>
 
-                <div style="margin-top: 25px; display: flex; justify-content: center;">
-                    <div id="g_id_onload"
-                        data-client_id="877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"
-                        data-callback="handleCredentialResponse" data-auto_prompt="false">
-                    </div>
-                    <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="outline"
-                        data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
-                </div>
-            </div>
+    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Forgot password or feeling lazy?</p>
+        <button type="button" onclick="requestMagicLink()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px;">
+            ✨ Email me a Magic Link
+        </button>
+    </div>
+    <p style="text-align: center; color: #475569; font-size: 0.9rem; margin-top: 20px;">
+        Don't have an account? 
+        <a href="#" onclick="toggleForm('signupForm')" style="color: #6c63ff; font-weight: 600; text-decoration: none;">Create one</a>
+    </p>
+</div>
 
             <div id="signupForm" class="hidden">
                 <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
@@ -415,6 +417,34 @@
             } catch (e) { alert("Error resetting password."); }
             btn.innerText = "Update Password";
         }
+        async function requestMagicLink() {
+    // Yahan apne actual email input field ki ID daal dena
+    const email = document.getElementById('lEmail').value;
+    
+    if (!email) {
+        return alert("⚠️ Pehle apna Email ID box mein daaliye!");
+    }
+    
+    alert("Sending magic link... Please wait ⏳");
+    
+    try {
+        const res = await fetch('/api/auth/send-magic-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            alert(data.message); // Success message
+        } else {
+            alert("❌ " + data.message);
+        }
+    } catch (e) {
+        alert("Server error. Try again.");
+    }
+}
+
     </script>
 </body>
 

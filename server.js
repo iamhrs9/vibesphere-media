@@ -193,6 +193,8 @@ const userSchema = new mongoose.Schema({
     otpRequestCount: { type: Number, default: 0 }, 
     otpWindowStart: Date,   
     isBanned: { type: Boolean, default: false }, // 🟢 NAYA LOCK: Default koi ban nahi hoga                       
+   magicToken: String,
+    magicTokenExpiry: Date,
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -222,8 +224,13 @@ const transporter = {
         }
 
         // 2. Data pack karna
+        // 2. Data pack karna
         const payload = {
-            sender: { email: process.env.EMAIL_USER, name: "VibeSphere Media" },
+            // 🟢 NAYA FIX: Ab ye mailOptions se 'founder@' aur tera naam uthayega!
+            sender: { 
+                email: mailOptions.from || process.env.EMAIL_USER, 
+                name: mailOptions.fromName || "VibeSphere Media" 
+            },
             to: [{ email: mailOptions.to }],
             subject: mailOptions.subject,
             textContent: mailOptions.text || "",
@@ -275,6 +282,7 @@ transporter.verify();
 // --- 🔐 CLIENT AUTH & DASHBOARD APIs ---
 
 // 1. Client Signup
+// 1. Client Signup (WITH FOUNDER'S WELCOME EMAIL)
 app.post('/api/auth/signup', async (req, res) => {
     try {
         const { name, email, password, phone } = req.body;
@@ -285,6 +293,36 @@ app.post('/api/auth/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ name, email, password: hashedPassword, phone });
         await newUser.save();
+
+        // ==========================================
+        // 🟢 THE "FOUNDER'S WELCOME" EMAIL MAGIC
+        // ==========================================
+        let mailOptions = {
+            from: process.env.FOUNDER_EMAIL,// 👈 Yahan apna custom founder email daal de
+            fromName: "Harsh Panwar",           // 👈 Seedha tere naam se mail jayega
+            to: newUser.email,
+            subject: "Welcome to VibeSphere! (Quick question for you)",
+            // ⚠️ Dhyan rakhna: Isme hum jaan-boojh kar koi bhari design/colors nahi daal rahe. 
+            // Plain text emails Gmail ke "Promotions" tab ko bypass karke direct "Primary Inbox" me girti hain!
+            html: `
+                <div style="font-family: Arial, sans-serif; font-size: 15px; color: #1e293b; line-height: 1.6; max-width: 600px;">
+                    <p>Hi ${newUser.name},</p>
+                    <p>I'm Harsh, the founder of VibeSphere Media. I noticed you just created an account, and I wanted to personally reach out and welcome you to our platform.</p>
+                    <p>We built VibeSphere to help businesses scale with premium digital growth and web solutions. Whenever you are ready to take the next step, my team and I are here to make it happen.</p>
+                    <p>If you have any questions, need a custom package, or just want to discuss your business goals, <strong>reply directly to this email</strong>. I check this inbox myself.</p>
+                    <p>Excited to see what we build together!</p>
+                    <br>
+                    <p>Best regards,<br>
+                    <strong>Harsh Panwar</strong><br>
+                    Founder & Tech Head, VibeSphere<br>
+                    <a href="https://vibespheremedia.in" style="color: #6c63ff;">vibespheremedia.in</a></p>
+                </div>
+            `
+        };
+
+        // Email background mein shoot kar do
+        transporter.sendMail(mailOptions).catch(err => console.error('Welcome Email Error:', err));
+
         res.json({ success: true, message: "Account Created! Please Login." });
     } catch (e) { res.status(500).json({ success: false, error: "Signup Failed" }); }
 });
@@ -384,6 +422,84 @@ app.post('/api/auth/login', async (req, res) => {
             res.json({ success: false, message: "Invalid Email or Password" });
         }
     } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
+});
+
+// ==========================================
+// ✨ MAGIC LINK LOGIN SYSTEM
+// ==========================================
+
+// 1. Send Magic Link to Email
+app.post('/api/auth/send-magic-link', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) return res.json({ success: false, message: "Account not found! Please signup first." });
+        if (user.isBanned) return res.json({ success: false, message: "🚫 Account restricted by Admin." });
+
+        // 1. Ek dum secure random token banao
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        
+        // 2. Database mein encrypt karke save karo (Bank-Level Security)
+        user.magicToken = await bcrypt.hash(rawToken, 10);
+        user.magicTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minute ke liye valid
+        await user.save();
+
+        // 3. Magic Link URL (Yeh frontend ka page hoga jo hum banayenge)
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const magicLink = `${baseUrl}/magic-login.html?email=${email}&token=${rawToken}`;
+
+        // 4. Premium Slack-style Email Design
+        let mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: "✨ Your VibeSphere Magic Login Link",
+            html: `
+                <div style="font-family: 'Poppins', sans-serif; background-color: #f8fafc; padding: 40px 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #6c63ff;">
+                        <h2 style="color: #1e293b; margin-top: 0; font-size: 24px;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                        <h3 style="color: #475569; font-size: 18px; margin-bottom: 20px;">Secure One-Click Login</h3>
+                        <p style="color: #334155; font-size: 15px;">Hi <strong>${user.name}</strong>,</p>
+                        <p style="color: #475569; font-size: 15px; margin-bottom: 30px;">Click the button below to instantly sign in to your client dashboard. No password required.</p>
+                        
+                        <a href="${magicLink}" style="display: inline-block; background-color: #6c63ff; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 16px; letter-spacing: 0.5px; transition: 0.3s;">🚀 Sign In Automatically</a>
+                        
+                        <p style="color: #ef4444; font-size: 13px; font-weight: 600; margin-top: 30px;">⏳ This magic link will expire in 15 minutes.</p>
+                        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+                        <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} VibeSphere Media. Secure Login Auth.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "✨ Magic Link sent! Check your inbox." });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to send link" }); }
+});
+// 2. Verify Magic Link & Login
+app.post('/api/auth/verify-magic-link', async (req, res) => {
+    try {
+        const { email, token } = req.body;
+        const user = await User.findOne({ email });
+
+        // Check karo token hai ya expire ho gaya
+        if (!user || !user.magicToken || user.magicTokenExpiry < Date.now()) {
+            return res.json({ success: false, message: "Link expired or invalid. Please request a new one." });
+        }
+
+        // Token match karo
+        if (await bcrypt.compare(token, user.magicToken)) {
+            // Success! Kachra saaf karo taaki token dobara use na ho
+            user.magicToken = undefined;
+            user.magicTokenExpiry = undefined;
+            await user.save();
+
+            // Seedha login de do
+            res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
+        } else {
+            res.json({ success: false, message: "Invalid Magic Link." });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Verification Failed" }); }
 });
 // 2a. Client Forgot Password (Send OTP) - 24H ACCOUNT LIMIT SECURED
 app.post('/api/auth/forgot-password', otpLimiter, async (req, res) => {
