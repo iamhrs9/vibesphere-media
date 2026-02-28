@@ -6,7 +6,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
-const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; // ⚠️ Isse baad mein replace karna padega
+const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
@@ -15,7 +15,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const app = express();
 const PORT = process.env.PORT || 3000;
-const rateLimit = require('express-rate-limit'); // 🟢 NAYA LOCK ADD KIYA
+const rateLimit = require('express-rate-limit'); // 
 app.use(cors());
 
 
@@ -103,7 +103,7 @@ function buildProfessionalInvoice(doc, order) {
         .text('Total Paid', 390, totalY + 47)
         .text(displayPrice, 480, totalY + 47);
 
-    // --- 6. TERMS & CONDITIONS ---
+   
     // --- 6. TERMS & CONDITIONS (Legal Section) ---
     const termsY = totalY + 90;
     doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10)
@@ -116,7 +116,7 @@ function buildProfessionalInvoice(doc, order) {
         .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 50, termsY + 60)
         .text('5. This is a computer-generated invoice and does not require a physical signature.', 50, termsY + 75);
     // ==========================================
-    // 🟢 NAYA ADD KIYA: Client Dashboard Tracker Note
+    //  Client Dashboard Tracker Note
     // ==========================================
     doc.rect(50, termsY + 100, 490, 25).fill('#f8fafc'); // Light gray SaaS box
     doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9)
@@ -190,14 +190,15 @@ const userSchema = new mongoose.Schema({
     googleId: String,
     resetOtp: String,
     resetOtpExpiry: Date,
-    otpRequestCount: { type: Number, default: 0 }, // 🟢 24 ghante ka counter
-    otpWindowStart: Date,                          // 🟢 24 ghante ka timer
+    otpRequestCount: { type: Number, default: 0 }, 
+    otpWindowStart: Date,   
+    isBanned: { type: Boolean, default: false }, // 🟢 NAYA LOCK: Default koi ban nahi hoga                       
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
 
 // 🚀 THE GOD MODE BREEVO API WRAPPER (BYPASSES RENDER BLOCKS)
-// Yeh Nodemailer ki jagah lega aur Port 443 use karega!
+
 
 const transporter = {
     verify: function (callback) {
@@ -228,7 +229,7 @@ const transporter = {
             textContent: mailOptions.text || "",
             htmlContent: mailOptions.html || "",
         };
-// 🟢 THE GOD MODE FIX: Brevo ko dono chahiye (HTML + Text), hum dono denge!
+// 🟢 THE GOD MODE FIX:
         
         // 1. Set HTML Content
         if (mailOptions.html) {
@@ -289,20 +290,101 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 // 2. Client Login
+// 2. Client Login (WITH DEVICE & LOCATION SECURITY ALERT)
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ email });
 
         if (user && await bcrypt.compare(password, user.password)) {
+            // Ban check
+            if (user.isBanned) {
+                return res.json({ success: false, message: "🚫 Your account has been restricted by Admin. Contact Support." });
+            }
+
+            // Client ko turant login karwa do (Taaki wo wait na kare)
             res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
+
+            // ==========================================
+            // 🟢 BACKGROUND SECURITY EMAIL PROCESS 
+            // ==========================================
+            try {
+                // 1. Time (IST)
+                const loginTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+
+                // 2. IP Address nikalna (Render/Live server ke liye)
+                let ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
+                if (ipAddress.includes(',')) ipAddress = ipAddress.split(',')[0]; // Agar multiple IP aayen
+
+                // 3. Device & Browser (User-Agent se)
+                const userAgent = req.headers['user-agent'] || 'Unknown Device';
+                let deviceSpecs = "Desktop/Laptop";
+                if (userAgent.includes('Windows')) deviceSpecs = "Windows PC";
+                else if (userAgent.includes('Mac OS')) deviceSpecs = "Apple Mac";
+                else if (userAgent.includes('Android')) deviceSpecs = "Android Mobile";
+                else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) deviceSpecs = "Apple iOS Device";
+
+                let browserSpecs = "Web Browser";
+                if (userAgent.includes('Chrome')) browserSpecs = "Google Chrome";
+                else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browserSpecs = "Apple Safari";
+                else if (userAgent.includes('Firefox')) browserSpecs = "Mozilla Firefox";
+
+                const deviceInfo = `${deviceSpecs} (${browserSpecs})`;
+
+                // 4. Location nikalna (Free IP API se)
+                let location = "Unknown Location";
+                if (ipAddress !== '::1' && ipAddress !== '127.0.0.1') {
+                    // Agar live server par hai toh location layega
+                    const geoRes = await fetch(`http://ip-api.com/json/${ipAddress}`);
+                    const geoData = await geoRes.json();
+                    if (geoData.status === 'success') {
+                        location = `${geoData.city}, ${geoData.country}`;
+                    }
+                } else {
+                    location = "Localhost (Testing)";
+                }
+
+                // 5. Email Design (Google Style)
+                let mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: user.email,
+                    subject: "🚨 Security Alert: New Login from " + deviceSpecs,
+                    html: `
+                        <div style="font-family: 'Poppins', sans-serif; background-color: #f8fafc; padding: 40px 20px;">
+                            <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-top: 5px solid #3b82f6;">
+                                <h2 style="color: #1e293b; margin-top: 0; font-size: 24px;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                                <h3 style="color: #475569; font-size: 16px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">New Login Detected</h3>
+                                
+                                <p style="color: #334155; font-size: 15px;">Hi <strong>${user.name}</strong>,</p>
+                                <p style="color: #475569; font-size: 15px; line-height: 1.6;">We noticed a new login to your VibeSphere Media account. Here are the details:</p>
+                                
+                                <div style="margin: 25px 0; padding: 20px; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 4px;">
+                                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #0369a1;"><strong>⌚ Time:</strong> ${loginTime} (IST)</p>
+                                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #0369a1;"><strong>📱 Device:</strong> ${deviceInfo}</p>
+                                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #0369a1;"><strong>📍 Location:</strong> ${location}</p>
+                                    <p style="margin: 0; font-size: 14px; color: #0369a1;"><strong>🌐 IP Address:</strong> ${ipAddress}</p>
+                                </div>
+                                
+                                <p style="color: #475569; font-size: 14px;">If this was you, no further action is required.</p>
+                                <p style="color: #ef4444; font-size: 13px; font-weight: 600; margin-top: 20px;">⚠️ If you don't recognize this activity, please reset your password immediately to secure your account.</p>
+                                
+                                <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+                                <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">&copy; ${new Date().getFullYear()} VibeSphere Media. Keeping your data safe.</p>
+                            </div>
+                        </div>
+                    `
+                };
+
+                transporter.sendMail(mailOptions);
+            } catch (bgError) {
+                console.error('Background Email Error:', bgError);
+            }
+
         } else {
             res.json({ success: false, message: "Invalid Email or Password" });
         }
     } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
 });
-
-// 2a. Client Forgot Password (Send OTP)
 // 2a. Client Forgot Password (Send OTP) - 24H ACCOUNT LIMIT SECURED
 app.post('/api/auth/forgot-password', otpLimiter, async (req, res) => {
     try {
@@ -1212,6 +1294,10 @@ app.delete('/api/admin/delete-task/:id', checkAuth, async (req, res) => {
         res.status(500).json({ success: false, error: "Failed to delete lead" }); 
     }
 });
+
+
+
+
 // ==========================================
 // 📜 MANAGE HANDOVERS / CERTIFICATES (ADMIN)
 // ==========================================
@@ -1690,7 +1776,129 @@ app.post('/api/contact', async (req, res) => {
         res.status(500).json({ success: false, message: "Oops! Something went wrong. Please try again." });
     }
 });
+// ==========================================
+// 🧑‍💻 ADMIN: CLIENT MANAGEMENT APIs
+// ==========================================
 
+// 1. Get all registered clients (Users)
+app.get('/api/admin/clients', checkAuth, async (req, res) => {
+    try {
+        console.log("Fetching clients from DB..."); // Terminal me check karne ke liye
+        
+        // Naya aur zyada safe database query
+        const clients = await User.find().sort({ date: -1 }).select({ password: 0, resetOtp: 0 });
+        
+        console.log(`✅ Found ${clients.length} clients!`);
+        res.json({ success: true, clients: clients });
+    } catch (e) {
+        console.error("❌ DB ERROR:", e);
+        // Ab error direct frontend par dikhega
+        res.json({ success: false, error: "Database Error: " + e.message });
+    }
+});
+// 2. Admin Manually Resets Client Password (WITH EMAIL)
+app.post('/api/admin/reset-client-password', checkAuth, async (req, res) => {
+    try {
+        const { userId, newPassword } = req.body;
+        
+        // Pehle user ko dhoondho taaki uska email aur naam mil sake
+        const user = await User.findById(userId);
+        if (!user) return res.json({ success: false, error: "User not found!" });
+
+        // Naya temporary password encrypt karo aur save karo
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+        
+        // 📧 Client ko Email Bhejo
+        let mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: "🔑 Your Account Password has been Reset - VibeSphere Media",
+            html: `
+                <div style="font-family: 'Poppins', sans-serif; background-color: #f8fafc; padding: 40px 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #f59e0b;">
+                        <h2 style="color: #1e293b; margin-top: 0; font-size: 24px;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                        <h3 style="color: #475569; font-size: 16px; margin-bottom: 20px;">Security Update</h3>
+                        <p style="color: #334155; font-size: 15px; text-align: left;">Hi <strong>${user.name}</strong>,</p>
+                        <p style="color: #475569; font-size: 15px; text-align: left;">Your account password has been successfully reset by the VibeSphere Admin team.</p>
+                        <div style="margin: 30px 0; padding: 20px; background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 8px;">
+                            <p style="margin: 0 0 5px 0; font-size: 13px; color: #d97706; text-transform: uppercase; font-weight: bold;">Your Temporary Password</p>
+                            <h2 style="margin: 0; color: #b45309; font-size: 26px; letter-spacing: 2px;">${newPassword}</h2>
+                        </div>
+                        <p style="color: #dc2626; font-size: 13px; font-weight: bold;">⚠️ Please login and change this password immediately from your dashboard settings.</p>
+                        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+                        <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} VibeSphere Media. Secure Alerts.</p>
+                    </div>
+                </div>
+            `
+        };
+        transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err));
+
+        res.json({ success: true, message: `Password updated & email sent to ${user.email}!` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Failed to reset password" });
+    }
+});
+
+// 3. Delete Client Permanently
+app.delete('/api/admin/delete-client/:id', checkAuth, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "User deleted permanently." });
+    } catch (e) { res.status(500).json({ success: false, error: "Delete failed" }); }
+});
+
+
+// 4. Ban or Unban Client (INBOX-FRIENDLY & SPAM SAFE)
+app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
+    try {
+        const { userId, isBanned } = req.body;
+        
+        // User ko dhoondho
+        const user = await User.findById(userId);
+        if (!user) return res.json({ success: false, error: "User not found!" });
+
+        // Status update karo
+        user.isBanned = isBanned;
+        await user.save();
+
+        // 🟢 NAYA FIX: Aggressive words ("Banned", "Suspended", "Violation") hata diye
+        // 🟢 Laal (Red) rang ko hata kar Soft Orange (Alert) aur Green kar diya
+        let subjectText = isBanned ? "Action Required: Account Status Update - VibeSphere" : "✅ Account Access Restored - VibeSphere";
+        let topBorderColor = isBanned ? "#f59e0b" : "#10b981"; // Yellow/Orange instead of aggressive Red
+        
+        let messageBody = isBanned 
+            ? `<p style="color: #475569; font-size: 15px; text-align: left;">This is an automated notification regarding your VibeSphere Media account.</p>
+               <div style="margin: 25px 0; padding: 15px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #b45309; font-weight: bold; text-align: center;">Account Status: Access Restricted</div>
+               <p style="color: #475569; font-size: 14px; text-align: left;">Your account access has been temporarily restricted following a system review. If you believe this is an error or need further assistance, please reply to this email to connect with our support team.</p>`
+            
+            : `<p style="color: #475569; font-size: 15px; text-align: left;">Good news! Your VibeSphere Media account access has been successfully <strong>Restored</strong>.</p>
+               <div style="margin: 25px 0; padding: 15px; background: #d1fae5; border-radius: 8px; color: #059669; font-weight: bold; text-align: center;">Account Status: Active</div>
+               <p style="color: #475569; font-size: 14px; text-align: left;">You can now log in to your dashboard and resume your activities. Welcome back!</p>`;
+
+        let mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: subjectText,
+            html: `
+                <div style="font-family: 'Poppins', sans-serif; background-color: #f8fafc; padding: 40px 20px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: left; border-top: 5px solid ${topBorderColor};">
+                        <h2 style="color: #1e293b; margin-top: 0; font-size: 24px;">VibeSphere<span style="color: #6c63ff;">.</span></h2>
+                        <h3 style="color: #475569; font-size: 16px; margin-bottom: 20px;">Security Notice</h3>
+                        <p style="color: #334155; font-size: 15px; text-align: left;">Hi <strong>${user.name}</strong>,</p>
+                        ${messageBody}
+                        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+                        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">&copy; ${new Date().getFullYear()} VibeSphere Media. Need help? Reply to this email.</p>
+                    </div>
+                </div>
+            `
+        };
+        transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err));
+
+        res.json({ success: true, message: isBanned ? "User Restricted & Notified 🚫" : "User Restored & Notified ✅" });
+    } catch (e) { res.status(500).json({ success: false, error: "Status update failed" }); }
+});
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao

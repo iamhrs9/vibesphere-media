@@ -356,6 +356,7 @@
             <div class="tab" onclick="switchTab('staff-section', this); closeSidebarOnMobile(); fetchStaffData();">Staff Mgmt 👥</div>
             <div class="tab" onclick="switchTab('jobs-section', this); closeSidebarOnMobile(); fetchAdminJobs();">Careers 💼</div>
             <div class="tab" onclick="switchTab('handover-doc', this); closeSidebarOnMobile(); fetchHandovers();">Deliver Project 📄</div>
+            <div class="tab" onclick="switchTab('clients-section', this); closeSidebarOnMobile(); fetchClients();">Clients 🧑‍💻</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -657,7 +658,25 @@
                 </div>
             </div>
         </div>
-
+<div id="clients-section" class="section">
+            <h2 style="color: #6c63ff;">🧑‍💻 Registered Clients / Users</h2>
+            <div class="staff-card" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 15px;">Total Users: <span id="totalUsersCount" style="color: #10b981; font-size: 1.5rem;">0</span></h3>
+                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date Joined</th>
+                                <th>Client Details</th>
+                                <th>Status</th>
+                                <th>Admin Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div> <div id="staffWorkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
         <div style="background: white; width: 90%; max-width: 800px; padding: 25px; border-radius: 12px; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
             <button onclick="closeStaffWork()" style="position: absolute; right: 20px; top: 20px; background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">Close ❌</button>
@@ -719,13 +738,7 @@
             branding: false
         });
 
-        // Check Login on Load
-        if (AUTH_TOKEN) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            loadData();
-        }
-
+        
         async function adminLogin() {
             const password = document.getElementById('adminPass').value;
             try {
@@ -779,6 +792,9 @@
             fetchBlogs();
             fetchStaffData();
             fetchNoticesAdmin();
+            fetchAdminJobs();  // Yeh bhi miss tha
+            fetchHandovers();  // Yeh bhi miss tha
+            fetchClients();
         }
 
         // ==========================================
@@ -1381,6 +1397,143 @@
                 else alert("❌ Error: " + result.message);
             } catch (e) { alert("Failed to connect to server"); }
         };
+// ==========================================
+        // 🧑‍💻 7. CLIENT MANAGEMENT
+        // ==========================================
+       // ==========================================
+        // 🧑‍💻 7. FULL CLIENT MANAGEMENT (ADVANCED)
+        // ==========================================
+        window.fetchClients = async function () {
+            const tbody = document.getElementById('clientsTableBody');
+            const countSpan = document.getElementById('totalUsersCount');
+
+            try {
+                // 1. Loading State Dikhaye
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">🔄 Fetching data from database...</td></tr>';
+
+                const res = await fetch('/api/admin/clients', { headers: { 'Authorization': AUTH_TOKEN } });
+                const data = await res.json();
+
+                // 2. Agar backend ne error bheja hai
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Server Error: ${data.error || 'Access Denied'}</td></tr>`;
+                    return;
+                }
+
+                // 3. User Count Update
+                countSpan.innerText = data.clients ? data.clients.length : 0;
+                tbody.innerHTML = ''; // Loading text hatao
+
+                // 4. Agar sach mein database khali hai
+                if (data.clients && data.clients.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b; font-weight:bold; padding: 30px;">📭 No clients found! (Tere database mein account nahi hain)</td></tr>';
+                    return;
+                }
+
+                // 5. Data Render (Safe Mode)
+                data.clients.forEach(c => {
+                    let statusBadge = c.isBanned 
+                        ? `<span style="background:#fee2e2; color:#dc2626; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🚫 Banned</span>` 
+                        : `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">✅ Active</span>`;
+                    
+                    let banBtnText = c.isBanned ? "🟢 Unban" : "🔴 Ban";
+                    let newBanStatus = c.isBanned ? false : true;
+                    
+                    // Agar kisi ke naam me single quote (') hai toh button crash nahi hoga
+                    let safeName = (c.name || 'Unknown User').replace(/'/g, "\\'");
+
+                    tbody.innerHTML += `
+                    <tr>
+                        <td>${new Date(c.date).toLocaleDateString()}</td>
+                        <td>
+                            <strong>${c.name || 'N/A'}</strong><br>
+                            <small style="color:#6c63ff;">✉️ ${c.email}</small><br>
+                            <small style="color:#64748b;">📱 ${c.phone || 'No Phone Number'}</small>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button onclick="adminResetPassword('${c._id}', '${safeName}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;" title="Create Temp Password">🔑 Pass</button>
+                                <button onclick="toggleBan('${c._id}', '${safeName}', ${newBanStatus})" style="background:#374151; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;">${banBtnText}</button>
+                                <button onclick="deleteClient('${c._id}', '${safeName}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;" title="Permanently Delete">🗑️ Del</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+
+            } catch (e) {
+                console.error("Crash Error:", e);
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Frontend Crash: API link disconnect ho gaya! Terminal check kar.</td></tr>`;
+            }
+        }
+            
+
+        window.toggleBan = async function(userId, userName, banStatus) {
+            let actionText = banStatus ? "BAN (Suspend)" : "UNBAN (Activate)";
+            if (!confirm(`Are you sure you want to ${actionText} ${userName}'s account?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/toggle-ban-client', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, isBanned: banStatus })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    fetchClients(); // Table refresh
+                } else { alert("Error: " + result.error); }
+            } catch(e) { alert("Server connection failed"); }
+        }
+
+        window.deleteClient = async function(userId, userName) {
+            if (!confirm(`🚨 EXTREME WARNING: Are you sure you want to PERMANENTLY DELETE ${userName}? This will wipe their account entirely!`)) return;
+
+            try {
+                const res = await fetch(`/api/admin/delete-client/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': AUTH_TOKEN }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    fetchClients(); // Table refresh
+                } else { alert("Error: " + result.error); }
+            } catch(e) { alert("Server connection failed"); }
+        }
+        window.adminResetPassword = async function(userId, userName) {
+            // Popup aayega admin se naya password maangne ke liye
+            const newPassword = prompt(`Enter new temporary password for ${userName}:`);
+            
+            if (!newPassword) return; // Agar cancel daba diya
+            if (newPassword.length < 6) return alert("⚠️ Password must be at least 6 characters long.");
+
+            // 🟢 NAYA LOCK: Confirm box mein hi bata diya ki email jayegi
+            if (!confirm(`Change ${userName}'s password to: "${newPassword}"?\n\nAn automated email will be sent to the client immediately with this new password.`)) return;
+
+            try {
+                const res = await fetch('/api/admin/reset-client-password', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, newPassword })
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    // 🟢 NAYA FIX: Ab "Manual" wali line hata di, sidha backend ka success message dikhayenge
+                    alert(`✅ ${result.message}`); 
+                } else {
+                    alert("❌ Error: " + result.error);
+                }
+            } catch (e) {
+                alert("Failed to connect to server");
+            }
+        }
+// Check Login on Load
+        if (AUTH_TOKEN) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadData();
+        }
+
     </script>
 
     
