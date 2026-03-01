@@ -180,13 +180,37 @@
 
     <button class="btn" onclick="login()">Login Securely</button>
 
-    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Forgot password or feeling lazy?</p>
-        <button type="button" onclick="requestMagicLink()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px;">
+    <div style="display: flex; align-items: center; justify-content: center; margin: 25px 0 20px 0;">
+        <hr style="flex: 1; border: none; border-top: 1px solid #e2e8f0;">
+        <span style="padding: 0 10px; color: #94a3b8; font-size: 13px; font-weight: 600;">OR CONTINUE WITH</span>
+        <hr style="flex: 1; border: none; border-top: 1px solid #e2e8f0;">
+    </div>
+
+    <div id="g_id_onload"
+         data-client_id="877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    
+    <div style="display: flex; justify-content: center; margin-bottom: 15px; width: 100%;">
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="outline"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="center"
+             data-width="320">
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 15px;">
+        <button type="button" onclick="requestMagicLink()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); transition: 0.3s;">
             ✨ Email me a Magic Link
         </button>
     </div>
-    <p style="text-align: center; color: #475569; font-size: 0.9rem; margin-top: 20px;">
+
+    <p style="text-align: center; color: #475569; font-size: 0.9rem; margin-top: 25px;">
         Don't have an account? 
         <a href="#" onclick="toggleForm('signupForm')" style="color: #6c63ff; font-weight: 600; text-decoration: none;">Create one</a>
     </p>

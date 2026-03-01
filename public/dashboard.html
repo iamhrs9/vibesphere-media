@@ -502,8 +502,16 @@
                 Password</button>
         </div>
     </div>
-
+<script>
+    // DASHBOARD BOUNCER: Agar token nahi hai, toh bhaga do!
+    const token = localStorage.getItem('clientToken');
+    if (!token) {
+        // Token nahi mila? Login page par vapas bhejo
+        window.location.href = '/login.html';
+    }
+</script>
     <script>
+        
         // Check Auth
         const user = JSON.parse(localStorage.getItem('clientUser'));
         if (!user) window.location.href = '/login.html';

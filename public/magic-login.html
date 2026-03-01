@@ -62,13 +62,14 @@
                     statusText.style.color = "#10b981";
                     
                     // 🟢 TERA LOGIN LOGIC: Token aur user data browser memory mein save kar lo
-                    // Dhyan de: Agar tera frontend sessionStorage use karta hai toh ye rakhna
-                    sessionStorage.setItem('clientToken', data.token);
-                    sessionStorage.setItem('clientEmail', data.user.email);
+                    localStorage.setItem('clientToken', data.token); // Token save karo
+                    
+                    // 🚨 YAHI HAI WOH MISSING LINE JO DASHBOARD KO CHAHIYE THI!
+                    localStorage.setItem('clientUser', JSON.stringify(data.user)); 
                     
                     // 1 second baad Client Dashboard par bhej do
                     setTimeout(() => {
-                        window.location.href = '/dashboard.html'; // 👈 YAHAN APNE CLIENT DASHBOARD KA NAAM DAAL DENA
+                        window.location.href = '/dashboard.html'; 
                     }, 1500);
 
                 } else {

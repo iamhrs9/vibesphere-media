@@ -13,6 +13,9 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
+//const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+//const pino = require('pino');
+//const qrcode = require('qrcode');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const rateLimit = require('express-rate-limit'); // 
@@ -2015,6 +2018,76 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
         res.json({ success: true, message: isBanned ? "User Restricted & Notified 🚫" : "User Restored & Notified ✅" });
     } catch (e) { res.status(500).json({ success: false, error: "Status update failed" }); }
 });
+
+// ==========================================
+// 🟢 THE WHATSAPP ENGINE (BAILEYS) - VERSION 405 FIX
+// ==========================================
+ let waSocket = null;
+
+async function connectToWhatsApp() {
+    // 🟢 1. NAYA FIX: WhatsApp ka ekdum latest version fetch karo
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(`📡 Fetching Latest WhatsApp Version: v${version.join('.')} (Latest: ${isLatest})`);
+
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+
+    const sock = makeWASocket({
+        version, // 🟢 2. NAYA FIX: Version attach kar diya
+        logger: pino({ level: 'silent' }), 
+        auth: state,
+        browser: ['VibeSphere Media', 'Chrome', '1.0.0'], 
+    });
+
+    waSocket = sock;
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+            qrcode.toString(qr, { type: 'terminal', small: true }, function (err, url) {
+                if (err) console.log("QR Error:", err);
+                console.log("\n📲 SCAN THIS QR CODE WITH YOUR WHATSAPP LINKED DEVICES:");
+                console.log(url); 
+            });
+        }
+
+        if (connection === 'close') {
+            const statusCode = lastDisconnect.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
+            console.log(`⚠️ WhatsApp Connection closed. Reason: ${statusCode}`);
+            
+            if (shouldReconnect) {
+                console.log("🔄 Reconnecting in 3 seconds...");
+                setTimeout(connectToWhatsApp, 3000); 
+            } else {
+                console.log('🚨 Logged out! Please delete "auth_info_baileys" folder and restart.');
+            }
+       } else if (connection === 'open') {
+            console.log('✅ BOOM! WHATSAPP CONNECTED SUCCESSFULLY!');
+            
+            // 🟢 NAYA FIX: WhatsApp ko sync karne ke liye 5 second ka time do
+            setTimeout(async () => {
+                try {
+                    console.log("📨 Sending Test Message...");
+                    const myNumber = "918302485826@s.whatsapp.net"; // Tera number
+                    
+                    await waSocket.sendMessage(myNumber, { 
+                        text: "🚀 VibeSphere WhatsApp API is LIVE!\n\nYeh message direct tere Node.js server se aaya hai. Tu sach mein ek Indie Hacker ban chuka hai! 😎" 
+                    });
+                    
+                    console.log("✅ Test Message Delivered!");
+                } catch (err) {
+                    console.log("❌ Failed to send test message:", err.message);
+                }
+            }, 5000); // 5 seconds delay
+        }
+        
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+}
+// connectToWhatsApp(); 
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao
