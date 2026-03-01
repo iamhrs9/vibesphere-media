@@ -668,6 +668,7 @@
                             <tr>
                                 <th>Date Joined</th>
                                 <th>Client Details</th>
+                                <th>Brand Profile</th>
                                 <th>Status</th>
                                 <th>Admin Actions</th>
                             </tr>
@@ -830,7 +831,7 @@
         // ==========================================
         // 🛒 2. ORDERS MANAGEMENT
         // ==========================================
-        async function fetchOrders() {
+       async function fetchOrders() {
             try {
                 const res = await fetch(`${API_URL}/admin/orders`, { headers: { 'Authorization': AUTH_TOKEN } });
                 const orders = await res.json();
@@ -840,7 +841,13 @@
 
                 orders.forEach(o => {
                     let instaLink = o.instaLink ? `<a href="${o.instaLink}" target="_blank" style="color:#6c63ff;">Link ↗️</a>` : 'N/A';
-                    let color = o.status === 'Done' ? '#d1fae5' : '#fee2e2';
+                    
+                    // 🟢 NAYA FIX: Har status ke liye ek alag premium background color!
+                    let color = '#fee2e2'; // Default: Light Red (Pending)
+                    if (o.status === 'Processing') color = '#e0e7ff'; // Light Blue (In Progress)
+                    else if (o.status === 'Review') color = '#fef3c7'; // Light Yellow (Client Review)
+                    else if (o.status === 'Done') color = '#d1fae5'; // Light Green (Delivered)
+
                     tbody.innerHTML += `
                     <tr>
                         <td>${o.orderId}</td>
@@ -850,16 +857,19 @@
                         <td>${o.package}</td>
                         <td>${o.price}</td>
                         <td style="display:flex; gap:10px; align-items:center;">
-                            <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border-radius:5px; padding:5px; outline:none;">
+                            <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border: 1px solid rgba(0,0,0,0.1); border-radius:6px; padding:6px; outline:none; font-weight: 500; color: #334155; cursor: pointer;">
                                 <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>In Progress</option>
+                                <option value="Review" ${o.status === 'Review' ? 'selected' : ''}>Client Review</option>
                                 <option value="Done" ${o.status === 'Done' ? 'selected' : ''}>Done</option>
                             </select>
-                            <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Download Invoice">📥 PDF</button>
-                            <button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer; font-size:16px;" title="Resend Invoice Email">📧</button>
+                            
+                            <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(139,92,246,0.2);" title="Download Invoice">📥 PDF</button>
+                            <button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:16px; box-shadow: 0 2px 4px rgba(59,130,246,0.2);" title="Resend Invoice Email">📧</button>
                         </td>
                     </tr>`;
                 });
-            } catch (e) { }
+            } catch (e) { console.error("Admin Fetch Error:", e); }
         }
 
         async function updateStatus(id, newStatus) {
@@ -1408,15 +1418,15 @@
             const countSpan = document.getElementById('totalUsersCount');
 
             try {
-                // 1. Loading State Dikhaye
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">🔄 Fetching data from database...</td></tr>';
+                // 1. Loading State Dikhaye (🟢 Naya: colspan 5 kar diya)
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">🔄 Fetching data from database...</td></tr>';
 
                 const res = await fetch('/api/admin/clients', { headers: { 'Authorization': AUTH_TOKEN } });
                 const data = await res.json();
 
                 // 2. Agar backend ne error bheja hai
                 if (!data.success) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Server Error: ${data.error || 'Access Denied'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Server Error: ${data.error || 'Access Denied'}</td></tr>`;
                     return;
                 }
 
@@ -1426,7 +1436,7 @@
 
                 // 4. Agar sach mein database khali hai
                 if (data.clients && data.clients.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b; font-weight:bold; padding: 30px;">📭 No clients found! (Tere database mein account nahi hain)</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b; font-weight:bold; padding: 30px;">📭 No clients found! (Tere database mein account nahi hain)</td></tr>';
                     return;
                 }
 
@@ -1439,8 +1449,19 @@
                     let banBtnText = c.isBanned ? "🟢 Unban" : "🔴 Ban";
                     let newBanStatus = c.isBanned ? false : true;
                     
-                    // Agar kisi ke naam me single quote (') hai toh button crash nahi hoga
                     let safeName = (c.name || 'Unknown User').replace(/'/g, "\\'");
+
+                    // 🟢 NAYA MAGIC: Brand Details UI Box
+                    let brandDetailsUI = `<span style="color: #94a3b8; font-size: 12px; font-style: italic;">Not Onboarded</span>`;
+                    if (c.isOnboarded) {
+                        brandDetailsUI = `
+                            <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1; font-size: 12px; min-width: 160px;">
+                                <strong style="color: #0f172a; font-size: 13px;">🏢 ${c.brandName || 'N/A'}</strong><br>
+                                <span style="color: #64748b; display: inline-block; margin-top: 3px;">🎨 ${c.brandColors || 'No colors'}</span><br>
+                                ${c.referenceLinks ? `<a href="${c.referenceLinks.startsWith('http') ? c.referenceLinks : 'https://' + c.referenceLinks}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 3px;">🔗 Ref Link</a>` : '<span style="color: #94a3b8; display: inline-block; margin-top: 3px;">🔗 No Ref</span>'}
+                            </div>
+                        `;
+                    }
 
                     tbody.innerHTML += `
                     <tr>
@@ -1450,7 +1471,11 @@
                             <small style="color:#6c63ff;">✉️ ${c.email}</small><br>
                             <small style="color:#64748b;">📱 ${c.phone || 'No Phone Number'}</small>
                         </td>
+                        
+                        <td>${brandDetailsUI}</td>
+                        
                         <td>${statusBadge}</td>
+                        
                         <td>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button onclick="adminResetPassword('${c._id}', '${safeName}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;" title="Create Temp Password">🔑 Pass</button>
@@ -1463,7 +1488,7 @@
 
             } catch (e) {
                 console.error("Crash Error:", e);
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Frontend Crash: API link disconnect ho gaya! Terminal check kar.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Frontend Crash: API link disconnect ho gaya! Terminal check kar.</td></tr>`;
             }
         }
             

@@ -1,10 +1,13 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const UAParser = require('ua-parser-js');
 const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -17,6 +20,19 @@ const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 //const pino = require('pino');
 //const qrcode = require('qrcode');
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
+
+// 🟢 THE SOCKET.IO ENGINE (Live Dashboard Bouncer)
+io.on('connection', (socket) => {
+    // Jab koi client dashboard kholega, wo apne 'email' ke naam ke room mein join ho jayega
+    socket.on('join_room', (email) => {
+        socket.join(email);
+        console.log(`🟢 Client Live: ${email}`);
+    });
+});
 const PORT = process.env.PORT || 3000;
 const rateLimit = require('express-rate-limit'); // 
 app.use(cors());
@@ -196,8 +212,24 @@ const userSchema = new mongoose.Schema({
     otpRequestCount: { type: Number, default: 0 }, 
     otpWindowStart: Date,   
     isBanned: { type: Boolean, default: false }, // 🟢 NAYA LOCK: Default koi ban nahi hoga                       
-   magicToken: String,
+    magicToken: String,
     magicTokenExpiry: Date,
+    
+    // 🛡️ SECURITY AUDIT (Device Tracking)
+    activeSessions: [{
+        token: String,
+        device: String,
+        browser: String,
+        ip: String,
+        lastActive: { type: Date, default: Date.now }
+    }],
+    
+    // 🤖 AUTO-ONBOARDING DATA
+    isOnboarded: { type: Boolean, default: false }, // Check karega ki form bhar diya ya nahi
+    brandName: { type: String, default: "" },
+    brandColors: { type: String, default: "" },
+    referenceLinks: { type: String, default: "" },
+    
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -342,7 +374,32 @@ app.post('/api/auth/login', async (req, res) => {
             if (user.isBanned) {
                 return res.json({ success: false, message: "🚫 Your account has been restricted by Admin. Contact Support." });
             }
+// ==========================================
+            // 🕵️‍♂️ SECURITY AUDIT: DEVICE & BROWSER TRACKING
+            // ==========================================
+            const parser = new UAParser(req.headers['user-agent']);
+            const agentData = parser.getResult();
+            
+            const deviceName = agentData.device.vendor 
+                ? `${agentData.device.vendor} ${agentData.device.model}` 
+                : agentData.os.name || 'Unknown Device';
+                
+            const browserName = agentData.browser.name || 'Unknown Browser';
+            const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
+            user.activeSessions.push({
+                token: "CLIENT_LOGGED_IN", // 🟢 Tera simple token!
+                device: deviceName,
+                browser: browserName,
+                ip: ipAddress,
+                lastActive: Date.now()
+            });
+
+            await user.save(); 
+            console.log(`🛡️ New Login Alert: ${user.email} logged in from ${deviceName} using ${browserName}`);
+            // ==========================================
+
+            
             // Client ko turant login karwa do (Taaki wo wait na kare)
             res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
 
@@ -496,7 +553,29 @@ app.post('/api/auth/verify-magic-link', async (req, res) => {
             user.magicToken = undefined;
             user.magicTokenExpiry = undefined;
             await user.save();
+// ==========================================
+            // 🕵️‍♂️ SECURITY AUDIT (MAGIC LINK LOGIN)
+            // ==========================================
+            const parser = new UAParser(req.headers['user-agent']);
+            const agentData = parser.getResult();
+            
+            const deviceName = agentData.device.vendor 
+                ? `${agentData.device.vendor} ${agentData.device.model}` 
+                : agentData.os.name || 'Unknown Device';
+                
+            const browserName = agentData.browser.name || 'Unknown Browser';
+            const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
 
+            user.activeSessions.push({
+                token: "CLIENT_LOGGED_IN",
+                device: deviceName,
+                browser: browserName,
+                ip: ipAddress,
+                lastActive: Date.now()
+            });
+            await user.save();
+            console.log(`🛡️ Magic Login Alert: ${user.email} logged in from ${deviceName} using ${browserName}`);
+            // ==========================================
             // Seedha login de do
             res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
         } else {
@@ -611,6 +690,83 @@ app.post('/api/client/my-orders', async (req, res) => {
         const myOrders = await Order.find({ email: email }).sort({ _id: -1 });
         res.json({ success: true, orders: myOrders });
     } catch (e) { res.status(500).json({ success: false, error: "Fetch Error" }); }
+});
+// ==========================================
+// 🛡️ CLIENT SECURITY & DEVICE MANAGEMENT APIs
+// ==========================================
+
+// 1. Get Login History
+app.post('/api/client/security-data', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        
+        if (user) {
+            // Latest login sabse upar dikhane ke liye reverse kar diya
+            res.json({ success: true, sessions: user.activeSessions.reverse() });
+        } else {
+            res.json({ success: false, message: "User not found" });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
+});
+
+// 2. Log Out of All Other Devices
+app.post('/api/client/logout-other-devices', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (user && user.activeSessions.length > 0) {
+            // Sirf current (sabse recent) login ko bacha lo, baaki sab uda do
+            const currentSession = user.activeSessions[0]; 
+            user.activeSessions = [currentSession];
+            await user.save();
+            
+            res.json({ success: true, message: "Successfully logged out of all other devices! 🛡️" });
+        } else {
+            res.json({ success: false });
+        }
+    } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
+});
+// ==========================================
+// 🤖 AUTO-ONBOARDING APIs
+// ==========================================
+
+// 1. Client Submit karega apna Onboarding Form
+app.post('/api/client/submit-onboarding', async (req, res) => {
+    try {
+        const { email, brandName, brandColors, referenceLinks } = req.body;
+        
+        await User.findOneAndUpdate(
+            { email: email },
+            { 
+                brandName: brandName, 
+                brandColors: brandColors, 
+                referenceLinks: referenceLinks, 
+                isOnboarded: true // 🟢 Mark as completed!
+            }
+        );
+        
+        res.json({ success: true, message: "Brand details saved successfully! 🚀" });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
+    }
+});
+
+// 2. Dashboard load hone par check karega ki client naya hai ya purana
+app.post('/api/client/check-onboarding', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        
+        if (user) {
+            res.json({ success: true, isOnboarded: user.isOnboarded });
+        } else {
+            res.json({ success: false });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
 });
 // --- Order Schema ---
 const orderSchema = new mongoose.Schema({
@@ -1191,7 +1347,21 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
     const { id, status } = req.body;
     try {
-        await Order.findOneAndUpdate({ orderId: id }, { status: status });
+        const updatedOrder = await Order.findOneAndUpdate(
+            { orderId: id }, 
+            { status: status }, 
+            { new: true } // Ye naya data return karega
+        );
+        
+        // 🟢 NAYA MAGIC: Client ke live dashboard par signal bhejo!
+        if (updatedOrder && updatedOrder.email) {
+            io.to(updatedOrder.email).emit('status_updated', {
+                orderId: updatedOrder.orderId,
+                status: updatedOrder.status,
+                package: updatedOrder.package
+            });
+        }
+
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false }); }
 });
@@ -2099,6 +2269,6 @@ app.use((req, res, next) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server Running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`🚀 Live Server Running on http://localhost:${PORT}`);
 });
