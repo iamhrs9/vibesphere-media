@@ -849,7 +849,7 @@
             </table>
         </div>
     </div>
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
         const API_URL = '/api';
         let AUTH_TOKEN = sessionStorage.getItem('adminToken'); // 🟢 Bank-Level Security (Session)
@@ -1795,7 +1795,15 @@ window.updateLeaveStatus = async function(leaveId, status) {
 // ==========================================
 // 💬 TEAM CHAT LOGIC (ADMIN - GOD MODE)
 // ==========================================
-const socket = io();
+
+// 🟢 FIX 2: Live server ko clear address aur WebSockets force karne ka command
+const socket = io(window.location.origin, {
+    transports: ['websocket', 'polling'], // Pehle direct connection try karega
+    secure: true, // HTTPS ke liye zaroori hai
+    reconnection: true,
+    reconnectionAttempts: 5
+});
+
 let chatBlocked = false;
 
 async function fetchAdminChat() {

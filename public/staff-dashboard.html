@@ -992,10 +992,18 @@
             });
         }
     };
-    // ==========================================
+  // ==========================================
 // 💬 TEAM CHAT LOGIC (STAFF)
 // ==========================================
-const socket = io(); 
+
+// 🟢 FIX 2: Bulletproof Socket Connection
+const socket = io(window.location.origin, {
+    transports: ['websocket', 'polling'],
+    secure: true,
+    reconnection: true,
+    reconnectionAttempts: 5
+});
+
 let isChatBlocked = false;
 
 // Page load par purani chat aur settings lao
