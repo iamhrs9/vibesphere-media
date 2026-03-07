@@ -325,6 +325,54 @@
 
             .login-box { width: 90%; padding: 25px; }
         }
+        /* ==========================================
+   👥 STAFF SECTION - SIDEBAR LAYOUT
+   ========================================== */
+.staff-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-top: 10px;
+}
+
+.staff-sidebar {
+    flex: 0 0 250px;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.staff-sidebar-item {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748b;
+    font-weight: 600;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.staff-sidebar-item:hover { background: #f8fafc; color: #3b82f6; }
+.staff-sidebar-item.active { background: #e0e7ff; color: #4f46e5; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1); }
+
+.staff-content {
+    flex: 1;
+    min-width: 0; /* Prevents table overflow */
+}
+
+.staff-panel { display: none; animation: fadeIn 0.4s; }
+.staff-panel.active { display: block; }
+
+/* Mobile view ke liye sidebar ko horizontal scrollable bana denge */
+@media (max-width: 768px) {
+    .staff-layout { flex-direction: column; }
+    .staff-sidebar { flex: none; width: 100%; display: flex; overflow-x: auto; padding: 10px; margin-bottom: 10px; }
+    .staff-sidebar-item { white-space: nowrap; margin-bottom: 0; margin-right: 10px; }
+}
     </style>
 </head>
 
@@ -353,10 +401,11 @@
             <div class="tab active" onclick="switchTab('reviews', this); closeSidebarOnMobile()">User Reviews</div>
             <div class="tab" onclick="switchTab('orders', this); closeSidebarOnMobile()">Orders (DB)</div>
             <div class="tab" onclick="switchTab('blogs', this); closeSidebarOnMobile()">Write Blog ✍️</div>
-            <div class="tab" onclick="switchTab('staff-section', this); closeSidebarOnMobile(); fetchStaffData();">Staff Mgmt 👥</div>
+            <div class="tab" onclick="switchTab('staff-section', this); closeSidebarOnMobile(); fetchStaffData(); fetchPayoutRequests();">Staff Mgmt 👥</div>
             <div class="tab" onclick="switchTab('jobs-section', this); closeSidebarOnMobile(); fetchAdminJobs();">Careers 💼</div>
             <div class="tab" onclick="switchTab('handover-doc', this); closeSidebarOnMobile(); fetchHandovers();">Deliver Project 📄</div>
             <div class="tab" onclick="switchTab('clients-section', this); closeSidebarOnMobile(); fetchClients();">Clients 🧑‍💻</div>
+            <div class="tab" onclick="switchTab('chat-section', this); closeSidebarOnMobile(); fetchAdminChat();">Team Chat 💬</div>
         </div>
 
         <div id="reviews" class="section active">
@@ -399,7 +448,6 @@
                     </div>
                 </form>
             </div>
-
             <div class="staff-card" style="margin-top: 40px; border-top: 4px solid #ff4757;">
                 <h3>🗑️ Manage Generated Certificates</h3>
                 <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">If you delete a certificate here, its QR Code will instantly become invalid.</p>
@@ -420,6 +468,21 @@
             </div>
         </div>
 
+        <div id="chat-section" class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>💬 Team Global Chat</h2>
+                <button id="btnToggleChat" onclick="toggleGlobalChat()" class="btn-publish" style="background: #ef4444;">🚨 Block All Chat</button>
+            </div>
+
+            <div class="staff-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 65vh; border: 2px solid #e2e8f0;">
+                <div id="adminChatMessages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #f8fafc;">
+                    </div>
+                <div style="background: #ffffff; padding: 15px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+                    <input type="text" id="adminChatInput" placeholder="Type as Admin..." style="flex: 1; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 25px; outline: none; background: #f1f5f9;" onkeypress="if(event.key === 'Enter') sendAdminMessage()">
+                    <button onclick="sendAdminMessage()" style="background: #1e293b; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer;"><i class="ri-send-plane-fill"></i></button>
+                </div>
+            </div>
+        </div>
         <div id="orders" class="section">
             <h3>Recent Orders</h3>
             <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
@@ -431,8 +494,9 @@
                             <th>Target Link</th>
                             <th>Customer</th>
                             <th>Package</th>
-                            <th>Price</th>
+                            <th>Price & Staff</th>
                             <th>Status</th>
+                            
                         </tr>
                     </thead>
                     <tbody id="ordersTable"></tbody>
@@ -444,33 +508,73 @@
             <h3 id="formTitle">Create New Blog Post</h3>
             <div class="staff-card" style="padding: 30px;">
                 <form id="blogForm">
-                    <input type="hidden" id="editBlogId">
+    <input type="hidden" id="editBlogId">
 
-                    <div class="form-group">
-                        <label>Blog Title</label>
-                        <input type="text" id="bTitle" placeholder="e.g. How to Grow" required onkeyup="generateSlug()">
-                    </div>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Blog Title</label>
+            <input type="text" id="bTitle" placeholder="e.g. How to Grow on Instagram" required onkeyup="generateSlug()">
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Slug (Auto Generated)</label>
+            <input type="text" id="bSlug" readonly style="background: #f9f9f9; color: #777;">
+        </div>
+    </div>
 
-                    <div class="form-group">
-                        <label>Slug (Auto Generated)</label>
-                        <input type="text" id="bSlug" readonly style="background: #f9f9f9; color: #777;">
-                    </div>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Category</label>
+            <select id="bCategory" required>
+                <option value="">-- Select Category --</option>
+                <option value="Digital Marketing">Digital Marketing</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Instagram Growth">Instagram Growth</option>
+                <option value="Business Tips">Business Tips</option>
+                <option value="Tech News">Tech News</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Publish Status</label>
+            <select id="bStatus" required>
+                <option value="Published">🟢 Published (Live)</option>
+                <option value="Draft">📝 Save as Draft</option>
+            </select>
+        </div>
+    </div>
 
-                    <div class="form-group">
-                        <label>Image URL</label>
-                        <input type="text" id="bImage" placeholder="Paste image link here..." required>
-                    </div>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Image URL</label>
+            <input type="text" id="bImage" placeholder="Paste image link here..." required>
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label>Tags (Comma separated)</label>
+            <input type="text" id="bTags" placeholder="e.g. SEO, tips, growth">
+        </div>
+    </div>
 
-                    <div class="form-group">
-                        <label>Content (Full Article)</label>
-                        <textarea id="bContent" rows="15" placeholder="Yahan apna pura blog likho..."></textarea>
-                    </div>
+    <div class="form-group">
+        <label>Content (Full Article)</label>
+        <textarea id="bContent" rows="15" placeholder="Yahan apna pura blog likho..."></textarea>
+    </div>
 
-                    <div style="display: flex;">
-                        <button type="submit" class="btn-publish" id="submitBtn">Publish Blog 🚀</button>
-                        <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel Edit</button>
-                    </div>
-                </form>
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 20px;">
+        <h4 style="margin-top: 0; color: #6c63ff; margin-bottom: 15px;">🔍 SEO Settings</h4>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label>Meta Title (Max 60 chars)</label>
+            <input type="text" id="bMetaTitle" placeholder="SEO optimized title for Google..." maxlength="60">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Meta Description (Max 160 chars)</label>
+            <textarea id="bMetaDesc" rows="2" placeholder="Write a short, catchy description for Google search results..." maxlength="160"></textarea>
+        </div>
+    </div>
+
+    <div style="display: flex;">
+        <button type="submit" class="btn-publish" id="submitBtn">Save Blog 🚀</button>
+        <button type="button" class="btn-cancel" id="cancelBtn" onclick="resetForm()">Cancel</button>
+    </div>
+</form>
             </div>
 
             <h3 style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">Existing Blogs</h3>
@@ -490,35 +594,29 @@
         </div>
 
         <div id="staff-section" class="section">
-            <h2>👥 Staff Management & Work Chart</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>👥 Staff Management</h2>
+        <button onclick="fetchStaffData(); fetchPayoutRequests();" class="btn-publish" style="padding: 8px 15px; font-size: 14px; background: #10b981;">🔄 Refresh Data</button>
+    </div>
 
-            <div class="staff-grid">
-                <div class="staff-card" style="max-width: 350px;">
-                    <h3>Add New Staff</h3>
-                    <form id="addStaffForm" style="display: flex; flex-direction: column; gap: 15px;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <input type="text" id="staffName" placeholder="Full Name" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <input type="email" id="staffEmail" placeholder="Login Email" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <input type="text" id="staffPassword" placeholder="Password" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <select id="staffRole">
-                                <option value="Sales Executive">Sales Executive</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Editor">Editor</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn-publish" style="width: 100%;">Create Staff ID</button>
-                    </form>
-                </div>
+    <div class="staff-layout">
+        <div class="staff-sidebar">
+            <div class="staff-sidebar-item active" onclick="switchStaffView('panel-performance', this)">📊 Work & Performance</div>
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-assign', this)">🎯 Assign Leads</div>
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-payouts', this)">💸 Payout Requests</div>
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-notices', this)">📢 Notice Board</div>
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-leaves', this); fetchAllLeaves();">🏖️ Leave Requests</div>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;">
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-add-staff', this)">➕ Add New Staff</div>
+            <div class="staff-sidebar-item" onclick="switchStaffView('panel-access', this)">🛡️ Access Control</div>
+        </div>
 
-                <div class="staff-card">
-                    <h3>📊 Staff Work Chart</h3>
-                    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <div class="staff-content">
+            
+            <div id="panel-performance" class="staff-panel active">
+                <div class="staff-card" style="margin-top: 0;">
+                    <h3 style="color: #4f46e5;">📊 Staff Work Chart</h3>
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
                         <table>
                             <thead>
                                 <tr>
@@ -535,42 +633,8 @@
                 </div>
             </div>
 
-            <div class="staff-card" style="margin-top: 20px;">
-                <h3>📋 Manage Sent Notices</h3>
-                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Title</th>
-                                <th>Message</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="noticesTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="staff-card" style="margin-top: 20px;">
-                <h3>🛡️ Manage Staff Access</h3>
-                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="staffTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="staff-grid" style="margin-top: 20px;">
-                <div class="staff-card" style="border-top: 4px solid #3b82f6;">
+            <div id="panel-assign" class="staff-panel">
+                <div class="staff-card" style="margin-top: 0; border-top: 4px solid #3b82f6;">
                     <h3>🎯 Assign New Lead</h3>
                     <form id="assignLeadForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitLead(event)">
                         <div class="form-group" style="margin-bottom: 0;">
@@ -595,102 +659,143 @@
                         <button type="submit" id="btnLead" class="btn-publish" style="width: 100%; background: #3b82f6;">Assign Lead 🚀</button>
                     </form>
                 </div>
+            </div>
 
-                <div class="staff-card" style="border-top: 4px solid #10b981;">
+            <div id="panel-payouts" class="staff-panel">
+                <div class="staff-card" style="margin-top: 0; border-top: 4px solid #f59e0b;">
+                    <h3>💸 Staff Payout Requests</h3>
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Staff Name</th>
+                                    <th>Requested Amount</th>
+                                    <th>Transfer Details</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payoutsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+<div id="panel-leaves" class="staff-panel">
+    <div class="staff-card" style="margin-top: 0; border-top: 4px solid #f43f5e;">
+        <h3>🏖️ Staff Leave Requests</h3>
+        <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Applied On</th>
+                        <th>Staff Name</th>
+                        <th>Dates</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="adminLeavesTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+            <div id="panel-notices" class="staff-panel">
+                <div class="staff-card" style="margin-top: 0; border-top: 4px solid #10b981; margin-bottom: 20px;">
                     <h3>📢 Post Notice (Board)</h3>
                     <form id="addNoticeForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitNotice(event)">
                         <div class="form-group" style="margin-bottom: 0;">
                             <input type="text" id="noticeTitle" placeholder="Notice Title (e.g., Target Update!)" required>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <textarea id="noticeMessage" rows="5" placeholder="Type your full message here..." required></textarea>
+                            <textarea id="noticeMessage" rows="4" placeholder="Type your full message here..." required></textarea>
                         </div>
                         <button type="submit" id="btnNotice" class="btn-publish" style="width: 100%; background: #10b981;">Send Notice 🔔</button>
                     </form>
                 </div>
-            </div>
-        </div>
-
-        <div id="jobs-section" class="section">
-            <h2>💼 Manage Job Postings</h2>
-            <div class="staff-grid" style="margin-top: 20px;">
-                <div class="staff-card" style="border-top: 4px solid #8b5cf6; max-width: 400px;">
-                    <h3>Post a New Job</h3>
-                    <form id="addJobForm" style="display: flex; flex-direction: column; gap: 15px;" onsubmit="submitJob(event)">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <input type="text" id="jobTitle" placeholder="Job Title (e.g. Video Editor)" required>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <select id="jobType" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline:none;">
-                                <option value="Full-time">Full-time</option>
-                                <option value="Part-time">Part-time</option>
-                                <option value="Internship">Internship</option>
-                                <option value="Freelance">Freelance</option>
-                            </select>
-                            <select id="jobLocation" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline:none;">
-                                <option value="Remote">Remote</option>
-                                <option value="On-site">On-site</option>
-                                <option value="Hybrid">Hybrid</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <textarea id="jobDesc" rows="4" placeholder="Short description of the role..." required></textarea>
-                        </div>
-                        <button type="submit" id="btnJob" class="btn-publish" style="background: #8b5cf6;">Post Job 🚀</button>
-                    </form>
-                </div>
-
-                <div class="staff-card" style="flex: 1;">
-                    <h3>Active Job Postings</h3>
-                    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+                
+                <div class="staff-card">
+                    <h3>📋 Manage Sent Notices</h3>
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Role</th>
-                                    <th>Type & Location</th>
-                                    <th>Posted On</th>
+                                    <th>Date</th>
+                                    <th>Title</th>
+                                    <th>Message</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="jobsTableBody"></tbody>
+                            <tbody id="noticesTableBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
-        </div>
-<div id="clients-section" class="section">
-            <h2 style="color: #6c63ff;">🧑‍💻 Registered Clients / Users</h2>
-            <div class="staff-card" style="margin-top: 20px;">
-                <h3 style="margin-bottom: 15px;">Total Users: <span id="totalUsersCount" style="color: #10b981; font-size: 1.5rem;">0</span></h3>
-                <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date Joined</th>
-                                <th>Client Details</th>
-                                <th>Brand Profile</th>
-                                <th>Status</th>
-                                <th>Admin Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientsTableBody"></tbody>
-                    </table>
+
+            <div id="panel-add-staff" class="staff-panel">
+                <div class="staff-card" style="margin-top: 0; max-width: 500px;">
+                    <h3>➕ Add New Staff</h3>
+                    <form id="addStaffForm" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="staffName" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="email" id="staffEmail" placeholder="Login Email" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="staffPassword" placeholder="Password" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <select id="staffRole">
+                                <option value="Sales Executive">Sales Executive</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Editor">Editor</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-publish" style="width: 100%;">Create Staff ID</button>
+                    </form>
                 </div>
             </div>
+
+            <div id="panel-access" class="staff-panel">
+                <div class="staff-card" style="margin-top: 0;">
+                    <h3>🛡️ Manage Staff Access</h3>
+                    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>🎯 Target</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </div> <div id="staffWorkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;">
-        <div style="background: white; width: 90%; max-width: 800px; padding: 25px; border-radius: 12px; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-            <button onclick="closeStaffWork()" style="position: absolute; right: 20px; top: 20px; background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">Close ❌</button>
-            <h2 id="workModalTitle" style="margin-bottom: 20px; color: #6c63ff;">Work Details</h2>
-            <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+    </div>
+</div>
+<div id="staffWorkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 800px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto;">
+            <span onclick="closeStaffWork()" style="position: absolute; right: 20px; top: 15px; cursor: pointer; font-size: 24px; color: #64748b;">&times;</span>
+            <h2 id="workModalTitle" style="margin-bottom: 20px; color: #1e293b;">Work Details</h2>
+            <div class="table-responsive" style="overflow-x: auto; width: 100%;">
                 <table>
                     <thead>
                         <tr>
-                            <th>Client / Contact</th>
+                            <th>Client & Contact</th>
                             <th>Service</th>
                             <th>Status</th>
-                            <th>Staff Review (Notes)</th>
-                            <th>Action</th> </tr>
+                            <th>Staff Notes</th>
+                            <th>Action</th>
+                        </tr>
                     </thead>
                     <tbody id="workModalBody"></tbody>
                 </table>
@@ -698,7 +803,54 @@
         </div>
     </div>
 
-   <script>
+    <div id="jobs-section" class="section">
+        <h3>💼 Manage Careers (Jobs)</h3>
+        <div class="staff-card" style="padding: 20px; margin-bottom: 20px;">
+            <form id="addJobForm" onsubmit="submitJob(event)" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <input type="text" id="jobTitle" placeholder="Job Title (e.g. Graphic Designer)" required style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                <select id="jobType" required style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                    <option value="Full-Time">Full-Time</option>
+                    <option value="Part-Time">Part-Time</option>
+                    <option value="Internship">Internship</option>
+                    <option value="Freelance">Freelance</option>
+                </select>
+                <input type="text" id="jobLocation" placeholder="Location (e.g. Remote / Jaipur)" required style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                <input type="text" id="jobDesc" placeholder="Short Description..." required style="flex:2; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                <button type="submit" id="btnJob" class="btn-publish">Post Job 🚀</button>
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Job Title</th><th>Type & Location</th><th>Posted On</th><th>Action</th></tr>
+                </thead>
+                <tbody id="jobsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="clients-section" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>🧑‍💻 Registered Clients (<span id="totalUsersCount" style="color:#6c63ff;">0</span>)</h3>
+            <button onclick="fetchClients()" class="btn-publish" style="padding: 8px 15px; font-size: 14px; background: #10b981;">🔄 Refresh</button>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Joined Date</th>
+                        <th>Client Details</th>
+                        <th>Brand Onboarding</th>
+                        <th>Account Status</th>
+                        <th>Security Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+<script src="/socket.io/socket.io.js"></script>
+  <script>
         const API_URL = '/api';
         let AUTH_TOKEN = sessionStorage.getItem('adminToken'); // 🟢 Bank-Level Security (Session)
         let allBlogs = [];
@@ -707,29 +859,30 @@
         // ==========================================
         // 🛠️ UI & SIDEBAR TOGGLE LOGIC
         // ==========================================
-        function toggleSidebar() {
-            document.querySelector('.tabs').classList.toggle('open');
-        }
-
-        function closeSidebarOnMobile() {
-            if (window.innerWidth <= 768) {
-                document.querySelector('.tabs').classList.remove('open');
-            }
-        }
+        function toggleSidebar() { document.querySelector('.tabs').classList.toggle('open'); }
+        function closeSidebarOnMobile() { if (window.innerWidth <= 768) document.querySelector('.tabs').classList.remove('open'); }
 
         function switchTab(tabName, element) {
             closeSidebarOnMobile();
             document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-
             document.getElementById(tabName).classList.add('active');
             if (element) element.classList.add('active');
         }
+        window.switchStaffView = function(panelId, element) {
+    // Sabhi panels ko chupao
+    document.querySelectorAll('.staff-panel').forEach(p => p.classList.remove('active'));
+    // Sabhi sidebar items se active class hatao
+    document.querySelectorAll('.staff-sidebar-item').forEach(i => i.classList.remove('active'));
+    
+    // Naya panel dikhao
+    document.getElementById(panelId).classList.add('active');
+    if(element) element.classList.add('active');
+}
 
         // ==========================================
         // 🔒 AUTHENTICATION & SECURITY
         // ==========================================
-        // 1. Initialize TinyMCE (For Blogs)
         tinymce.init({
             selector: '#bContent',
             height: 400,
@@ -738,7 +891,6 @@
             menubar: false,
             branding: false
         });
-
         
         async function adminLogin() {
             const password = document.getElementById('adminPass').value;
@@ -750,7 +902,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    sessionStorage.setItem('adminToken', data.token); // 🟢 Session Storage
+                    sessionStorage.setItem('adminToken', data.token);
                     AUTH_TOKEN = data.token;
                     location.reload();
                 } else {
@@ -760,12 +912,12 @@
         }
 
         function logout() {
-            sessionStorage.removeItem('adminToken'); // Naya wala token uda do
-            localStorage.removeItem('adminToken');   // Purana kachra bhi saaf kar do
+            sessionStorage.removeItem('adminToken');
+            localStorage.removeItem('adminToken');
             location.reload();
         }
 
-        // 🛡️ BANK-LEVEL AUTO LOGOUT (15 Minutes)
+        // Auto Logout on Inactivity (15 Mins)
         let inactivityTime = function () {
             let time;
             window.onload = resetTimer;
@@ -775,9 +927,7 @@
 
             function autoLogout() {
                 alert("🔒 Security Alert: Session Expired due to inactivity.");
-                sessionStorage.removeItem("adminToken"); 
-                localStorage.removeItem("adminToken"); 
-                window.location.reload(); 
+                logout();
             }
 
             function resetTimer() {
@@ -793,9 +943,10 @@
             fetchBlogs();
             fetchStaffData();
             fetchNoticesAdmin();
-            fetchAdminJobs();  // Yeh bhi miss tha
-            fetchHandovers();  // Yeh bhi miss tha
+            fetchAdminJobs();
+            fetchHandovers();
             fetchClients();
+            fetchPayoutRequests(); // 🟢 YEH LINE ADD KARNI HAI
         }
 
         // ==========================================
@@ -829,9 +980,9 @@
         }
 
         // ==========================================
-        // 🛒 2. ORDERS MANAGEMENT
+        // 🛒 2. ORDERS & COMMISSION MANAGEMENT
         // ==========================================
-       async function fetchOrders() {
+        async function fetchOrders() {
             try {
                 const res = await fetch(`${API_URL}/admin/orders`, { headers: { 'Authorization': AUTH_TOKEN } });
                 const orders = await res.json();
@@ -842,11 +993,15 @@
                 orders.forEach(o => {
                     let instaLink = o.instaLink ? `<a href="${o.instaLink}" target="_blank" style="color:#6c63ff;">Link ↗️</a>` : 'N/A';
                     
-                    // 🟢 NAYA FIX: Har status ke liye ek alag premium background color!
-                    let color = '#fee2e2'; // Default: Light Red (Pending)
-                    if (o.status === 'Processing') color = '#e0e7ff'; // Light Blue (In Progress)
-                    else if (o.status === 'Review') color = '#fef3c7'; // Light Yellow (Client Review)
-                    else if (o.status === 'Done') color = '#d1fae5'; // Light Green (Delivered)
+                    let color = '#fee2e2'; // Light Red
+                    if (o.status === 'Processing') color = '#e0e7ff'; // Light Blue
+                    else if (o.status === 'Review') color = '#fef3c7'; // Light Yellow
+                    else if (o.status === 'Done') color = '#d1fae5'; // Light Green
+
+                    // 🟢 NAYA: Manual Assign UI
+                    let staffInfo = o.assignedStaff ? 
+                        `<br><small style="color:#10b981; font-weight:bold;">🤵 ${o.assignedStaff}</small>` : 
+                        `<br><button onclick="assignStaffManual('${o.orderId}')" style="background:#f59e0b; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; margin-top:5px;">+ Assign Staff</button>`;
 
                     tbody.innerHTML += `
                     <tr>
@@ -855,17 +1010,16 @@
                         <td>${instaLink}</td>
                         <td><strong>${o.customerName}</strong><br><small>${o.email}</small></td>
                         <td>${o.package}</td>
-                        <td>${o.price}</td>
+                        <td>${o.price} ${staffInfo}</td>
                         <td style="display:flex; gap:10px; align-items:center;">
-                            <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border: 1px solid rgba(0,0,0,0.1); border-radius:6px; padding:6px; outline:none; font-weight: 500; color: #334155; cursor: pointer;">
+                            <select onchange="updateStatus('${o.orderId}', this.value)" style="background:${color}; border: 1px solid rgba(0,0,0,0.1); border-radius:6px; padding:6px; outline:none; font-weight: 500; cursor: pointer;">
                                 <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
                                 <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>In Progress</option>
                                 <option value="Review" ${o.status === 'Review' ? 'selected' : ''}>Client Review</option>
                                 <option value="Done" ${o.status === 'Done' ? 'selected' : ''}>Done</option>
                             </select>
-                            
-                            <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(139,92,246,0.2);" title="Download Invoice">📥 PDF</button>
-                            <button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:16px; box-shadow: 0 2px 4px rgba(59,130,246,0.2);" title="Resend Invoice Email">📧</button>
+                            <button onclick="window.open('/api/download-invoice/${encodeURIComponent(o.orderId)}')" style="background:#8b5cf6; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight: bold;" title="Download Invoice">📥 PDF</button>
+                            <button onclick="resendInvoice('${o.orderId}')" style="background:#3b82f6; color:white; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:16px;" title="Resend Invoice Email">📧</button>
                         </td>
                     </tr>`;
                 });
@@ -873,8 +1027,34 @@
         }
 
         async function updateStatus(id, newStatus) {
-            await fetch(`${API_URL}/admin/update-status`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': AUTH_TOKEN }, body: JSON.stringify({ id, status: newStatus }) });
+            // Ab seedha API call, koi annoying prompt nahi!
+            await fetch(`${API_URL}/admin/update-status`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'Authorization': AUTH_TOKEN }, 
+                body: JSON.stringify({ id, status: newStatus }) 
+            });
             fetchOrders();
+        }
+
+      window.assignStaffManual = async function(orderId) {
+            const staffEmail = prompt("✍️ Commission ke liye Staff ka exact Email type karo:");
+            if (!staffEmail) return;
+
+            try {
+                const res = await fetch('/api/admin/assign-order', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId, staffEmail })
+                });
+                const result = await res.json();
+                
+                if(result.success) {
+                    alert("✅ " + result.message); // Success confirmation
+                    fetchOrders();
+                } else { 
+                    alert("⚠️ Error: " + result.message); // Agar spelling galat hogi toh yahan bata dega
+                }
+            } catch(e) { alert("Server Error"); }
         }
 
         window.resendInvoice = async function (orderId) {
@@ -931,6 +1111,11 @@
             document.getElementById('bTitle').value = blog.title || blog.titleHinglish || blog.titleHindi;
             document.getElementById('bSlug').value = blog.slug;
             document.getElementById('bImage').value = blog.image;
+            document.getElementById('bCategory').value = blog.category || '';
+            document.getElementById('bStatus').value = blog.status || 'Published';
+            document.getElementById('bTags').value = blog.tags || '';
+            document.getElementById('bMetaTitle').value = blog.metaTitle || '';
+            document.getElementById('bMetaDesc').value = blog.metaDesc || '';
 
             const content = blog.content || blog.contentHinglish || blog.contentHindi;
             tinymce.get('bContent').setContent(content || "");
@@ -954,38 +1139,49 @@
             e.preventDefault();
             const id = document.getElementById('editBlogId').value;
             const isEdit = id ? true : false;
-            const richContent = tinymce.get('bContent').getContent();
-
+            
             const blogData = {
                 title: document.getElementById('bTitle').value,
                 slug: document.getElementById('bSlug').value,
+                category: document.getElementById('bCategory').value,
+                status: document.getElementById('bStatus').value,
                 image: document.getElementById('bImage').value,
-                content: richContent
+                tags: document.getElementById('bTags').value,
+                content: tinymce.get('bContent').getContent(),
+                metaTitle: document.getElementById('bMetaTitle').value,
+                metaDesc: document.getElementById('bMetaDesc').value
             };
 
             const url = isEdit ? `/api/edit-blog/${id}` : `/api/add-blog`;
             const method = isEdit ? 'PUT' : 'POST';
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "Saving...";
 
             try {
-                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(blogData) });
+                const res = await fetch(url, { 
+                    method, 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': AUTH_TOKEN },
+                    body: JSON.stringify(blogData) 
+                });
                 const result = await res.json();
                 if (result.success) {
-                    alert(isEdit ? '✅ Updated!' : '✅ Published!');
+                    alert(isEdit ? '✅ Blog Updated!' : '✅ Blog Saved!');
                     resetForm();
                     fetchBlogs();
                 } else { alert("Error: " + result.error); }
             } catch (e) { alert("Server Error"); }
+            btn.innerText = isEdit ? "Update Blog 🔄" : "Save Blog 🚀";
         });
 
         window.deleteBlog = async function (id) {
             if (confirm("Delete Permanently?")) {
-                await fetch(`/api/delete-blog/${id}`, { method: 'DELETE' });
+                await fetch(`/api/delete-blog/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                 fetchBlogs();
             }
         }
 
         // ==========================================
-        // 👥 4. STAFF MANAGEMENT
+        // 👥 4. STAFF & LEADS MANAGEMENT
         // ==========================================
         async function fetchStaffData() {
             try {
@@ -993,18 +1189,38 @@
                 const staffData = await staffRes.json();
                 const staffTbody = document.getElementById('staffTableBody');
                 staffTbody.innerHTML = '';
-
                 const assignDropdown = document.getElementById('leadAssignTo');
                 assignDropdown.innerHTML = '<option value="">-- Assign to Staff --</option>';
 
                 if (staffData.success && staffData.staff) {
                     staffData.staff.forEach(s => {
+                        // 🟢 NAYA: Online/Offline Badge Logic
+                        let statusBadge = s.isOnline 
+                            ? `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🟢 Online</span>` 
+                            : `<span style="background:#fee2e2; color:#ef4444; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🔴 Offline</span>`;
+
+                        // 🟢 NAYA FIX: Custom Target ka column
+                        let targetAmount = s.monthlyTarget || 50000;
+                        let muteBtnText = s.isMuted ? "🗣️ Unmute" : "🔇 Mute";
+                        let muteBtnColor = s.isMuted ? "#10b981" : "#f59e0b"; 
+                        let nextMuteState = s.isMuted ? false : true;
                         staffTbody.innerHTML += `
                         <tr>
                             <td><strong>${s.name}</strong></td>
                             <td>${s.email}</td>
                             <td><span style="background:#e0e7ff; color:#4f46e5; padding:3px 8px; border-radius:10px; font-size:12px;">${s.role}</span></td>
-                            <td><button onclick="deleteStaff('${s._id}')" class="delete-btn">Delete ID</button></td>
+                            
+                            <td>
+                                <strong style="color: #6c63ff; font-size: 14px;">₹${targetAmount.toLocaleString('en-IN')}</strong><br>
+                                <button onclick="updateStaffTarget('${s.email}', ${targetAmount})" style="background: none; border: none; color: #f59e0b; cursor: pointer; font-size: 11px; font-weight: bold; text-decoration: underline; padding: 0;">✏️ Edit</button>
+                            </td>
+
+                            <td>${statusBadge}</td> 
+                            
+                            <td style="display:flex; gap:5px;">
+                                <button onclick="muteStaffInChat('${s.email}', ${nextMuteState})" style="background:${muteBtnColor}; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;">${muteBtnText}</button>
+                                <button onclick="deleteStaff('${s._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">Delete ID</button>
+                            </td>
                         </tr>`;
                         assignDropdown.innerHTML += `<option value="${s.email}">${s.name} (${s.role})</option>`;
                     });
@@ -1017,7 +1233,6 @@
 
                 if (perfData.success && perfData.performance) {
                     globalPerformanceData = perfData.performance; 
-
                     for (let email in perfData.performance) {
                         let p = perfData.performance[email];
                         perfTbody.innerHTML += `
@@ -1026,27 +1241,23 @@
                             <td style="font-weight:bold;">${p.total}</td>
                             <td style="color:#16a34a;">${p.completed} ✓</td>
                             <td style="color:#dc2626;">${p.pending} ⏳</td>
-                            <td>
-                                <button onclick="viewStaffWork('${email}')" class="btn-publish" style="padding: 5px 10px; font-size: 12px;">View Details 👁️</button>
-                            </td>
+                            <td><button onclick="viewStaffWork('${email}')" class="btn-publish" style="padding: 5px 10px; font-size: 12px;">View Details 👁️</button></td>
                         </tr>`;
                     }
                 }
-            } catch (e) { console.error("Error fetching staff data:", e); }
+            } catch (e) { console.error("Error fetching staff data"); }
         }
 
         document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
             btn.innerText = "Creating...";
-
             const newStaff = {
                 name: document.getElementById('staffName').value,
                 email: document.getElementById('staffEmail').value,
                 password: document.getElementById('staffPassword').value,
                 role: document.getElementById('staffRole').value
             };
-
             try {
                 const res = await fetch('/api/admin/add-staff', {
                     method: 'POST',
@@ -1072,19 +1283,16 @@
             } catch (e) { alert("Failed to delete staff."); }
         }
 
-        // --- Assign Leads & Notices ---
         window.submitLead = async function (e) {
             e.preventDefault();
             const btn = document.getElementById('btnLead');
             btn.innerText = "Assigning...";
-
             const taskData = {
                 clientName: document.getElementById('leadClientName').value,
                 contactNumber: document.getElementById('leadContact').value,
                 servicePitch: document.getElementById('leadService').value,
                 assignedTo: document.getElementById('leadAssignTo').value
             };
-
             try {
                 const res = await fetch('/api/admin/add-task', {
                     method: 'POST',
@@ -1101,33 +1309,6 @@
             btn.innerText = "Assign Lead 🚀";
         };
 
-        window.submitNotice = async function (e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnNotice');
-            btn.innerText = "Posting...";
-
-            const noticeData = {
-                title: document.getElementById('noticeTitle').value,
-                message: document.getElementById('noticeMessage').value
-            };
-
-            try {
-                const res = await fetch('/api/admin/add-notice', {
-                    method: 'POST',
-                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(noticeData)
-                });
-                const result = await res.json();
-                if (result.success) {
-                    alert("✅ " + result.message);
-                    document.getElementById('addNoticeForm').reset();
-                    fetchNoticesAdmin(); 
-                } else { alert("❌ Error: " + result.error); }
-            } catch (err) { alert("Server connection failed"); }
-            btn.innerText = "Send Notice 🔔";
-        }
-
-        // --- 🟢 View & Delete Detailed Staff Work (MODAL) ---
         window.viewStaffWork = function (email) {
             const data = globalPerformanceData[email];
             if (!data || !data.details) return;
@@ -1151,21 +1332,17 @@
                         <td>${task.servicePitch}</td>
                         <td style="color:${statusColor}; font-weight:bold; text-transform:uppercase; font-size:12px;">${task.status}</td>
                         <td style="background: #f9f9f9; font-style: italic;">${task.notes || '<span style="color:#999;">No review yet</span>'}</td>
-                        <td>
-                            <button onclick="deleteLead('${task._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">🗑️ Delete</button>
-                        </td>
+                        <td><button onclick="deleteLead('${task._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">🗑️ Delete</button></td>
                     </tr>`;
                 });
             }
             document.getElementById('staffWorkModal').style.display = 'flex';
         }
 
-        window.closeStaffWork = function () {
-            document.getElementById('staffWorkModal').style.display = 'none';
-        };
+        window.closeStaffWork = function () { document.getElementById('staffWorkModal').style.display = 'none'; };
 
         window.deleteLead = async function (taskId) {
-            if (!confirm("Are you sure? Yeh lead staff ke dashboard se bhi hamesha ke liye delete ho jayegi!")) return;
+            if (!confirm("Are you sure? Yeh lead hamesha ke liye delete ho jayegi!")) return;
             try {
                 const res = await fetch(`/api/admin/delete-task/${taskId}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                 const result = await res.json();
@@ -1176,19 +1353,15 @@
             } catch (e) { alert("Failed to connect to server"); }
         };
 
-        // --- Fetch & Delete Notices ---
+        // --- NOTICES ---
         async function fetchNoticesAdmin() {
             try {
                 const res = await fetch('/api/admin/notices', { headers: { 'Authorization': AUTH_TOKEN } });
                 const data = await res.json();
                 const tbody = document.getElementById('noticesTableBody');
                 tbody.innerHTML = '';
-
                 if (data.success && data.notices) {
-                    if (data.notices.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No notices sent yet.</td></tr>';
-                        return;
-                    }
+                    if (data.notices.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No notices sent yet.</td></tr>'; return; }
                     data.notices.forEach(n => {
                         tbody.innerHTML += `
                         <tr>
@@ -1199,16 +1372,36 @@
                         </tr>`;
                     });
                 }
-            } catch (e) { console.error("Error fetching notices"); }
+            } catch (e) {}
+        }
+
+        window.submitNotice = async function (e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnNotice');
+            btn.innerText = "Posting...";
+            try {
+                const res = await fetch('/api/admin/add-notice', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: document.getElementById('noticeTitle').value, message: document.getElementById('noticeMessage').value })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("✅ " + result.message);
+                    document.getElementById('addNoticeForm').reset();
+                    fetchNoticesAdmin(); 
+                }
+            } catch (err) { alert("Server connection failed"); }
+            btn.innerText = "Send Notice 🔔";
         }
 
         window.deleteNotice = async function (id) {
-            if (confirm("Are you sure? Yeh notice sabke dashboard se hat jayega!")) {
+            if (confirm("Are you sure? Yeh notice delete ho jayega!")) {
                 try {
                     const res = await fetch(`/api/admin/delete-notice/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                     const result = await res.json();
                     if (result.success) fetchNoticesAdmin(); 
-                } catch (e) { alert("Failed to delete notice"); }
+                } catch (e) {}
             }
         };
 
@@ -1221,12 +1414,8 @@
                 const data = await res.json();
                 const tbody = document.getElementById('jobsTableBody');
                 tbody.innerHTML = '';
-
                 if (data.success && data.jobs) {
-                    if (data.jobs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No jobs posted right now.</td></tr>';
-                        return;
-                    }
+                    if (data.jobs.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No jobs posted.</td></tr>'; return; }
                     data.jobs.forEach(job => {
                         tbody.innerHTML += `
                         <tr>
@@ -1237,44 +1426,38 @@
                         </tr>`;
                     });
                 }
-            } catch (e) { console.error("Error fetching jobs"); }
+            } catch (e) {}
         }
 
         window.submitJob = async function (e) {
             e.preventDefault();
             const btn = document.getElementById('btnJob');
             btn.innerText = "Posting...";
-
-            const jobData = {
-                title: document.getElementById('jobTitle').value,
-                type: document.getElementById('jobType').value,
-                location: document.getElementById('jobLocation').value,
-                description: document.getElementById('jobDesc').value
-            };
-
             try {
                 const res = await fetch('/api/admin/add-job', {
                     method: 'POST',
                     headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(jobData)
+                    body: JSON.stringify({
+                        title: document.getElementById('jobTitle').value,
+                        type: document.getElementById('jobType').value,
+                        location: document.getElementById('jobLocation').value,
+                        description: document.getElementById('jobDesc').value
+                    })
                 });
                 const result = await res.json();
                 if (result.success) {
                     alert("✅ " + result.message);
                     document.getElementById('addJobForm').reset();
                     fetchAdminJobs(); 
-                } else { alert("❌ Error: " + result.error); }
+                }
             } catch (err) { alert("Server connection failed"); }
             btn.innerText = "Post Job 🚀";
         };
 
         window.deleteJob = async function (id) {
-            if (confirm("Are you sure? This job will be removed from the public website!")) {
-                try {
-                    const res = await fetch(`/api/admin/delete-job/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
-                    const result = await res.json();
-                    if (result.success) fetchAdminJobs();
-                } catch (e) { alert("Failed to delete job"); }
+            if (confirm("Are you sure? This job will be removed!")) {
+                await fetch(`/api/admin/delete-job/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
+                fetchAdminJobs();
             }
         };
 
@@ -1284,8 +1467,7 @@
         async function generateHandover(e) {
             e.preventDefault();
             const btn = document.getElementById('btnHandover');
-            btn.innerText = "Processing Document...";
-
+            btn.innerText = "Processing...";
             const payload = {
                 orderNumber: document.getElementById('hOrder').value,
                 clientName: document.getElementById('hClient').value,
@@ -1295,14 +1477,12 @@
                 liveLink: document.getElementById('hLink').value,
                 remarks: document.getElementById('hNotes').value
             };
-
             try {
                 const res = await fetch('/api/admin/generate-handover', {
                     method: 'POST',
                     headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
                 if (res.ok) {
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
@@ -1311,7 +1491,7 @@
                     a.download = `VibeSphere_Handover_${payload.orderNumber}.pdf`;
                     a.click();
                     document.getElementById('secureHandoverForm').reset();
-                    fetchHandovers(); // Table refresh
+                    fetchHandovers();
                 } else { alert("Failed to generate PDF. Check auth."); }
             } catch (err) { alert("Server error"); }
             btn.innerText = "📥 Download PDF";
@@ -1328,16 +1508,11 @@
                 liveLink: document.getElementById('hLink').value,
                 remarks: document.getElementById('hNotes').value
             };
-
-            if (!payload.orderNumber || !payload.clientName || !payload.projectName) {
-                return alert("⚠️ Please fill the Order No, Client Name, and Project Title first!");
-            }
-
-            if (!confirm(`Send official handover email to the client for ${payload.orderNumber}?`)) return;
+            if (!payload.orderNumber || !payload.clientName || !payload.projectName) return alert("⚠️ Please fill Order No, Client Name, and Project Title!");
+            if (!confirm(`Send official handover email to the client?`)) return;
 
             const btn = document.getElementById('btnEmailHandover');
             btn.innerText = "Sending... ⏳";
-
             try {
                 const res = await fetch('/api/admin/email-handover', {
                     method: 'POST',
@@ -1361,12 +1536,8 @@
                 const tbody = document.getElementById('certificatesTableBody');
                 if (!tbody) return;
                 tbody.innerHTML = '';
-
                 if (data.success && data.certs) {
-                    if (data.certs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No certificates generated yet.</td></tr>';
-                        return;
-                    }
+                    if (data.certs.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No certificates generated yet.</td></tr>'; return; }
                     data.certs.forEach(c => {
                         tbody.innerHTML += `
                         <tr>
@@ -1384,17 +1555,13 @@
                         </tr>`;
                     });
                 }
-            } catch (e) { console.error("Error fetching certificates"); }
+            } catch (e) {}
         };
 
         window.deleteHandover = async function (id) {
-            if (confirm("Are you sure? Agar aapne isko delete kiya toh client ka QR Code scan hone par FAKE batayega!")) {
-                try {
-                    const res = await fetch(`/api/admin/delete-handover/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
-                    const result = await res.json();
-                    if (result.success) fetchHandovers(); 
-                    else alert("Error: " + result.error);
-                } catch (e) { alert("Failed to delete certificate"); }
+            if (confirm("Are you sure? QR Code will become FAKE!")) {
+                await fetch(`/api/admin/delete-handover/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
+                fetchHandovers(); 
             }
         };
 
@@ -1405,53 +1572,33 @@
                 const result = await res.json();
                 if (result.success) alert("✅ " + result.message);
                 else alert("❌ Error: " + result.message);
-            } catch (e) { alert("Failed to connect to server"); }
+            } catch (e) { alert("Server connection failed"); }
         };
-// ==========================================
-        // 🧑‍💻 7. CLIENT MANAGEMENT
+
         // ==========================================
-       // ==========================================
-        // 🧑‍💻 7. FULL CLIENT MANAGEMENT (ADVANCED)
+        // 🧑‍💻 7. CLIENT MANAGEMENT
         // ==========================================
         window.fetchClients = async function () {
             const tbody = document.getElementById('clientsTableBody');
             const countSpan = document.getElementById('totalUsersCount');
-
             try {
-                // 1. Loading State Dikhaye (🟢 Naya: colspan 5 kar diya)
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">🔄 Fetching data from database...</td></tr>';
-
                 const res = await fetch('/api/admin/clients', { headers: { 'Authorization': AUTH_TOKEN } });
                 const data = await res.json();
 
-                // 2. Agar backend ne error bheja hai
-                if (!data.success) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Server Error: ${data.error || 'Access Denied'}</td></tr>`;
-                    return;
-                }
+                if (!data.success) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Server Error: ${data.error || 'Access Denied'}</td></tr>`; return; }
 
-                // 3. User Count Update
                 countSpan.innerText = data.clients ? data.clients.length : 0;
-                tbody.innerHTML = ''; // Loading text hatao
+                tbody.innerHTML = ''; 
 
-                // 4. Agar sach mein database khali hai
-                if (data.clients && data.clients.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b; font-weight:bold; padding: 30px;">📭 No clients found! (Tere database mein account nahi hain)</td></tr>';
-                    return;
-                }
+                if (data.clients && data.clients.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b; font-weight:bold; padding: 30px;">📭 No clients found!</td></tr>'; return; }
 
-                // 5. Data Render (Safe Mode)
                 data.clients.forEach(c => {
-                    let statusBadge = c.isBanned 
-                        ? `<span style="background:#fee2e2; color:#dc2626; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🚫 Banned</span>` 
-                        : `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">✅ Active</span>`;
-                    
+                    let statusBadge = c.isBanned ? `<span style="background:#fee2e2; color:#dc2626; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🚫 Banned</span>` : `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">✅ Active</span>`;
                     let banBtnText = c.isBanned ? "🟢 Unban" : "🔴 Ban";
                     let newBanStatus = c.isBanned ? false : true;
-                    
                     let safeName = (c.name || 'Unknown User').replace(/'/g, "\\'");
 
-                    // 🟢 NAYA MAGIC: Brand Details UI Box
                     let brandDetailsUI = `<span style="color: #94a3b8; font-size: 12px; font-style: italic;">Not Onboarded</span>`;
                     if (c.isOnboarded) {
                         brandDetailsUI = `
@@ -1459,23 +1606,15 @@
                                 <strong style="color: #0f172a; font-size: 13px;">🏢 ${c.brandName || 'N/A'}</strong><br>
                                 <span style="color: #64748b; display: inline-block; margin-top: 3px;">🎨 ${c.brandColors || 'No colors'}</span><br>
                                 ${c.referenceLinks ? `<a href="${c.referenceLinks.startsWith('http') ? c.referenceLinks : 'https://' + c.referenceLinks}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 3px;">🔗 Ref Link</a>` : '<span style="color: #94a3b8; display: inline-block; margin-top: 3px;">🔗 No Ref</span>'}
-                            </div>
-                        `;
+                            </div>`;
                     }
 
                     tbody.innerHTML += `
                     <tr>
                         <td>${new Date(c.date).toLocaleDateString()}</td>
-                        <td>
-                            <strong>${c.name || 'N/A'}</strong><br>
-                            <small style="color:#6c63ff;">✉️ ${c.email}</small><br>
-                            <small style="color:#64748b;">📱 ${c.phone || 'No Phone Number'}</small>
-                        </td>
-                        
+                        <td><strong>${c.name || 'N/A'}</strong><br><small style="color:#6c63ff;">✉️ ${c.email}</small><br><small style="color:#64748b;">📱 ${c.phone || 'No Phone Number'}</small></td>
                         <td>${brandDetailsUI}</td>
-                        
                         <td>${statusBadge}</td>
-                        
                         <td>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button onclick="adminResetPassword('${c._id}', '${safeName}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; font-weight:bold;" title="Create Temp Password">🔑 Pass</button>
@@ -1485,18 +1624,14 @@
                         </td>
                     </tr>`;
                 });
-
             } catch (e) {
-                console.error("Crash Error:", e);
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Frontend Crash: API link disconnect ho gaya! Terminal check kar.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red; font-weight:bold; padding: 20px;">🚨 Frontend Crash: API link disconnect ho gaya!</td></tr>`;
             }
         }
-            
 
         window.toggleBan = async function(userId, userName, banStatus) {
             let actionText = banStatus ? "BAN (Suspend)" : "UNBAN (Activate)";
             if (!confirm(`Are you sure you want to ${actionText} ${userName}'s account?`)) return;
-
             try {
                 const res = await fetch('/api/admin/toggle-ban-client', {
                     method: 'POST',
@@ -1504,35 +1639,26 @@
                     body: JSON.stringify({ userId, isBanned: banStatus })
                 });
                 const result = await res.json();
-                if (result.success) {
-                    fetchClients(); // Table refresh
-                } else { alert("Error: " + result.error); }
+                if (result.success) fetchClients(); 
+                else alert("Error: " + result.error); 
             } catch(e) { alert("Server connection failed"); }
         }
 
         window.deleteClient = async function(userId, userName) {
-            if (!confirm(`🚨 EXTREME WARNING: Are you sure you want to PERMANENTLY DELETE ${userName}? This will wipe their account entirely!`)) return;
-
+            if (!confirm(`🚨 EXTREME WARNING: Are you sure you want to PERMANENTLY DELETE ${userName}?`)) return;
             try {
-                const res = await fetch(`/api/admin/delete-client/${userId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': AUTH_TOKEN }
-                });
+                const res = await fetch(`/api/admin/delete-client/${userId}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } });
                 const result = await res.json();
-                if (result.success) {
-                    fetchClients(); // Table refresh
-                } else { alert("Error: " + result.error); }
+                if (result.success) fetchClients(); 
+                else alert("Error: " + result.error); 
             } catch(e) { alert("Server connection failed"); }
         }
-        window.adminResetPassword = async function(userId, userName) {
-            // Popup aayega admin se naya password maangne ke liye
-            const newPassword = prompt(`Enter new temporary password for ${userName}:`);
-            
-            if (!newPassword) return; // Agar cancel daba diya
-            if (newPassword.length < 6) return alert("⚠️ Password must be at least 6 characters long.");
 
-            // 🟢 NAYA LOCK: Confirm box mein hi bata diya ki email jayegi
-            if (!confirm(`Change ${userName}'s password to: "${newPassword}"?\n\nAn automated email will be sent to the client immediately with this new password.`)) return;
+        window.adminResetPassword = async function(userId, userName) {
+            const newPassword = prompt(`Enter new temporary password for ${userName}:`);
+            if (!newPassword) return; 
+            if (newPassword.length < 6) return alert("⚠️ Password must be at least 6 characters long.");
+            if (!confirm(`Change ${userName}'s password to: "${newPassword}"?\n\nAn automated email will be sent to the client.`)) return;
 
             try {
                 const res = await fetch('/api/admin/reset-client-password', {
@@ -1541,26 +1667,351 @@
                     body: JSON.stringify({ userId, newPassword })
                 });
                 const result = await res.json();
-                
-                if (result.success) {
-                    // 🟢 NAYA FIX: Ab "Manual" wali line hata di, sidha backend ka success message dikhayenge
-                    alert(`✅ ${result.message}`); 
-                } else {
-                    alert("❌ Error: " + result.error);
-                }
-            } catch (e) {
-                alert("Failed to connect to server");
-            }
+                if (result.success) alert(`✅ ${result.message}`); 
+                else alert("❌ Error: " + result.error);
+            } catch (e) { alert("Failed to connect to server"); }
         }
+
+        
+        window.fetchPayoutRequests = async function() {
+            try {
+                const res = await fetch('/api/admin/payout-requests', { headers: { 'Authorization': AUTH_TOKEN } });
+                const data = await res.json();
+                const tbody = document.getElementById('payoutsTableBody');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+
+                // Table ka header bhi badal dena HTML mein: <th>Transfer Details</th> add kar dena Amount ke baad.
+
+                if (data.success && data.requests) {
+                    if (data.requests.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #64748b;">No payout requests pending.</td></tr>';
+                        return;
+                    }
+
+                    data.requests.forEach(p => {
+                        let statusBadge = p.status === 'Paid' 
+                            ? `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Paid ✅</span>` 
+                            : `<span style="background:#fef3c7; color:#d97706; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending ⏳</span>`;
+                        
+                        let actionBtn = p.status === 'Pending' 
+                            ? `<button onclick="approvePayout('${p._id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">Approve & Pay</button>` 
+                            : `<span style="color:#94a3b8; font-size:12px; font-weight: bold;">Settled</span>`;
+
+                        // 🟢 NAYA: Payment Details Box (Copy to Clipboard Feature)
+                        let transferDetails = 'N/A';
+                        if (p.paymentMethod === 'UPI' && p.paymentDetails) {
+                            transferDetails = `
+                                <div style="background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px dashed #cbd5e1; font-size:12px;">
+                                    <strong style="color: #475569;">📱 UPI:</strong> <br>
+                                    <span style="color:#2563eb; cursor:pointer; font-weight: 600;" onclick="navigator.clipboard.writeText('${p.paymentDetails.upiId}'); alert('UPI ID Copied!')">${p.paymentDetails.upiId} 📋</span>
+                                </div>`;
+                        } else if (p.paymentMethod === 'Bank' && p.paymentDetails) {
+                            transferDetails = `
+                                <div style="background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px dashed #cbd5e1; font-size:12px; line-height: 1.5;">
+                                    <strong style="color: #475569;">🏦 Bank Transfer</strong><br>
+                                    <span style="color:#64748b;">Name:</span> <strong>${p.paymentDetails.accName}</strong><br>
+                                    <span style="color:#64748b;">A/c:</span> <span style="color:#2563eb; cursor:pointer; font-weight: 600;" onclick="navigator.clipboard.writeText('${p.paymentDetails.accNo}'); alert('Account No Copied!')">${p.paymentDetails.accNo} 📋</span><br>
+                                    <span style="color:#64748b;">IFSC:</span> <strong>${p.paymentDetails.ifsc}</strong>
+                                </div>`;
+                        }
+
+                        tbody.innerHTML += `
+                        <tr>
+                            <td>${new Date(p.date).toLocaleDateString()}</td>
+                            <td><strong>${p.staffName}</strong><br><small style="color:#64748b;">${p.staffEmail}</small></td>
+                            <td><strong style="color: #10b981; font-size: 16px;">₹${p.amount.toLocaleString('en-IN')}</strong></td>
+                            <td>${transferDetails}</td>
+                            <td>${statusBadge}</td>
+                            <td>${actionBtn}</td>
+                        </tr>`;
+                    });
+                }
+            } catch (e) { console.error("Error fetching payouts"); }
+        };
+        window.approvePayout = async function(payoutId) {
+    if (!confirm("Did you transfer the money? Mark this payout as Paid?")) return;
+    
+    try {
+        const res = await fetch('/api/admin/approve-payout', {
+            method: 'POST',
+            headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+            // 👇 YAHAN FIX KIYA HAI (payoutId ko 'id' variable mein bhejna hai)
+            body: JSON.stringify({ id: payoutId }) 
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert("✅ Payout Approved successfully!");
+            fetchPayoutRequests(); // Table refresh karne ke liye
+        } else {
+            alert("❌ Error: " + result.message);
+        }
+    } catch (e) {
+        alert("Server connection failed");
+    }
+};
+window.fetchAllLeaves = async function() {
+    const tbody = document.getElementById('adminLeavesTableBody');
+    try {
+        const res = await fetch('/api/admin/leaves', { headers: { 'Authorization': AUTH_TOKEN } });
+        const data = await res.json();
+        if(data.success && data.leaves) {
+            tbody.innerHTML = data.leaves.map(l => {
+                let statusBadge = l.status === 'Approved' ? '<span style="color:green;font-weight:bold;">Approved</span>' 
+                                : (l.status === 'Rejected' ? '<span style="color:red;font-weight:bold;">Rejected</span>' 
+                                : '<span style="color:orange;font-weight:bold;">Pending</span>');
+                
+                let actionBtns = l.status === 'Pending' ? `
+                    <button onclick="updateLeaveStatus('${l._id}', 'Approved')" style="background:#10b981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Approve</button>
+                    <button onclick="updateLeaveStatus('${l._id}', 'Rejected')" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Reject</button>
+                ` : '-';
+
+                return `<tr>
+                    <td>${new Date(l.appliedOn).toLocaleDateString()}</td>
+                    <td><strong>${l.staffName}</strong><br><small>${l.staffEmail}</small></td>
+                    <td>${l.dateFrom} <br>to<br> ${l.dateTo}</td>
+                    <td>${l.reason}</td>
+                    <td>${statusBadge}</td>
+                    <td style="display:flex; gap:5px;">${actionBtns}</td>
+                </tr>`;
+            }).join('');
+        }
+    } catch(e) {}
+}
+
+window.updateLeaveStatus = async function(leaveId, status) {
+    if(!confirm(`Are you sure you want to mark this leave as ${status}?`)) return;
+    try {
+        const res = await fetch('/api/admin/update-leave', {
+            method: 'POST',
+            headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leaveId, status })
+        });
+        const result = await res.json();
+        if(result.success) { fetchAllLeaves(); }
+    } catch(e) { alert("Server Error"); }
+}
+// ==========================================
+// 💬 TEAM CHAT LOGIC (ADMIN - GOD MODE)
+// ==========================================
+const socket = io();
+let chatBlocked = false;
+
+async function fetchAdminChat() {
+    try {
+        const setRes = await fetch('/api/chat/settings');
+        const setJson = await setRes.json();
+        chatBlocked = setJson.isChatBlocked;
+        updateAdminChatBtn();
+
+        const hisRes = await fetch('/api/chat/history');
+        const hisJson = await hisRes.json();
+        if(hisJson.success) {
+            document.getElementById('adminChatMessages').innerHTML = '';
+            hisJson.messages.forEach(msg => appendAdminMessageUI(msg));
+            setTimeout(() => { const b = document.getElementById('adminChatMessages'); b.scrollTop = b.scrollHeight; }, 100);
+        }
+    } catch(e) {}
+}
+
+function updateAdminChatBtn() {
+    const btn = document.getElementById('btnToggleChat');
+    if(chatBlocked) {
+        btn.style.background = '#10b981'; btn.innerHTML = '✅ Unblock Chat';
+    } else {
+        btn.style.background = '#ef4444'; btn.innerHTML = '🚨 Block All Chat';
+    }
+}
+
+async function toggleGlobalChat() {
+    if(!confirm("Are you sure you want to change global chat status?")) return;
+    try {
+        const res = await fetch('/api/admin/toggle-chat', { method: 'POST', headers: { 'Authorization': AUTH_TOKEN } });
+        const data = await res.json();
+        if(data.success) { chatBlocked = data.isChatBlocked; updateAdminChatBtn(); }
+    } catch(e) {}
+}
+
+function appendAdminMessageUI(msg) {
+    if (document.getElementById(`msg-${msg._id}`)) return;
+
+    const box = document.getElementById('adminChatMessages');
+    const isAdmin = msg.role === 'Admin';
+    const time = new Date(msg.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+    let html = `
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;" id="msg-${msg._id}">
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong style="color: ${isAdmin ? '#ef4444' : '#3b82f6'}; font-size: 13px;">${isAdmin ? '👑 YOU (Admin)' : msg.senderName} <span style="color:#94a3b8; font-weight:normal;">(${msg.senderEmail})</span></strong>
+                    <span style="font-size: 11px; color: #94a3b8;">${time}</span>
+                </div>
+                <div style="font-size: 14px; color: #1e293b;">${msg.message}</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                ${!isAdmin ? `
+                <button onclick="muteStaffInChat('${msg.senderEmail}', true)" title="Mute User" style="background:#f59e0b; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; width: 100%;">🔇 Mute</button>
+                <button onclick="muteStaffInChat('${msg.senderEmail}', false)" title="Unmute User" style="background:#10b981; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; width: 100%;">🗣️ Unmute</button>
+                ` : ''}
+                <button onclick="deleteChatMessage('${msg._id}')" title="Delete Message" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; width: 100%;">🗑️ Del</button>
+            </div>
+        </div>
+    `;
+    box.innerHTML += html;
+}
+// ==========================================
+        // 🔇 MUTE / UNMUTE STAFF IN CHAT LOGIC
+        // ==========================================
+        window.muteStaffInChat = async function(email, isMuted) {
+            // Pehle Admin se confirm karwao
+            if(!confirm(`Kya aap sach mein is staff ko chat mein ${isMuted ? 'MUTE 🔇' : 'UNMUTE 🗣️'} karna chahte hain?`)) return;
+            
+            try {
+                // Backend ko request bhejo
+                const res = await fetch('/api/admin/mute-staff', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, isMuted: isMuted })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    // Success ka alert dikhao
+                    alert("✅ " + data.message); 
+                    
+                    // Agar Staff Management wali table load ho toh usko bhi background me refresh kar do
+                    if (typeof fetchStaffData === 'function') {
+                        fetchStaffData(); 
+                    }
+                } else {
+                    alert("❌ Error: Action failed.");
+                }
+            } catch(e) {
+                alert("⚠️ Server error! Apna connection check karein.");
+            }
+        };
+        window.deleteChatMessage = async function(id) {
+    if(!confirm("Kya aap sach mein is message ko delete karna chahte hain?")) return;
+    try { 
+        await fetch(`/api/admin/delete-message/${id}`, { method: 'DELETE', headers: { 'Authorization': AUTH_TOKEN } }); 
+    } catch(e) {
+        alert("Delete fail ho gaya, internet check karo!");
+    }
+}
+// ==========================================
+        // 💬 THREE-DOT MENU LOGIC
+        // ==========================================
+        window.toggleChatMenu = function(id) {
+            // Pehle baaki saare khule hue menu band karo
+            document.querySelectorAll('[id^="chat-menu-"]').forEach(menu => {
+                if(menu.id !== `chat-menu-${id}`) menu.style.display = 'none';
+            });
+            // Ab jispe click kiya hai usko Toggle (Open/Close) karo
+            const menu = document.getElementById(`chat-menu-${id}`);
+            if(menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        };
+
+        // Agar user screen par kahin aur click kare, toh menu automatically band ho jaye
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.chat-menu-container')) {
+                document.querySelectorAll('[id^="chat-menu-"]').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+            }
+        });
+
+        // ==========================================
+        // 💬 MESSAGE UI BANAO (With Clean 3-Dots)
+        // ==========================================
+        function appendAdminMessageUI(msg) {
+            if (document.getElementById(`msg-${msg._id}`)) return;
+
+            const box = document.getElementById('adminChatMessages');
+            const isAdmin = msg.role === 'Admin';
+            const time = new Date(msg.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            let html = `
+                <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e2e8f0; position: relative;" id="msg-${msg._id}">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong style="color: ${isAdmin ? '#ef4444' : '#3b82f6'}; font-size: 13px;">${isAdmin ? '👑 YOU (Admin)' : msg.senderName} <span style="color:#94a3b8; font-weight:normal;">(${msg.senderEmail})</span></strong>
+                            <span style="font-size: 11px; color: #94a3b8;">${time}</span>
+                        </div>
+                        <div style="font-size: 14px; color: #1e293b;">${msg.message}</div>
+                    </div>
+                    
+                    <div class="chat-menu-container" style="position: relative;">
+                        <button onclick="toggleChatMenu('${msg._id}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; padding: 0 5px; font-weight: bold;">⋮</button>
+                        
+                        <div id="chat-menu-${msg._id}" style="display: none; position: absolute; right: 0; top: 25px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 130px; overflow: hidden;">
+                            ${!isAdmin ? `
+                            <div onclick="muteStaffInChat('${msg.senderEmail}', true); toggleChatMenu('${msg._id}')" style="padding: 10px 15px; font-size: 12px; cursor: pointer; color: #d97706; border-bottom: 1px solid #f1f5f9; transition: 0.2s;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='white'">🔇 Mute User</div>
+                            <div onclick="muteStaffInChat('${msg.senderEmail}', false); toggleChatMenu('${msg._id}')" style="padding: 10px 15px; font-size: 12px; cursor: pointer; color: #10b981; border-bottom: 1px solid #f1f5f9; transition: 0.2s;" onmouseover="this.style.background='#d1fae5'" onmouseout="this.style.background='white'">🗣️ Unmute User</div>
+                            ` : ''}
+                            <div onclick="deleteChatMessage('${msg._id}'); toggleChatMenu('${msg._id}')" style="padding: 10px 15px; font-size: 12px; cursor: pointer; color: #ef4444; transition: 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='white'">🗑️ Delete Msg</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            box.innerHTML += html;
+        }
+
+function sendAdminMessage() {
+    const input = document.getElementById('adminChatInput');
+    const text = input.value.trim();
+    if(!text) return;
+
+    socket.emit('send_message', { senderName: 'Admin', senderEmail: 'admin@vibespheremedia.in', role: 'Admin', message: text });
+    input.value = '';
+}
+
+socket.on('receive_message', (msg) => { 
+    if(document.getElementById('adminChatMessages')) { 
+        appendAdminMessageUI(msg); 
+        const b = document.getElementById('adminChatMessages'); b.scrollTop = b.scrollHeight; 
+    } 
+});
+socket.on('message_deleted', (id) => { const m = document.getElementById(`msg-${id}`); if(m) m.remove(); });
+// ==========================================
+        // 🎯 EDIT CUSTOM TARGET
+        // ==========================================
+        window.updateStaffTarget = async function(email, currentTarget) {
+            let newTarget = prompt(`Naya monthly target enter karein ${email} ke liye:`, currentTarget);
+            
+            // Agar cancel dabaya ya khali chhoda
+            if (newTarget === null || newTarget.trim() === "") return; 
+            
+            newTarget = parseInt(newTarget);
+            if (isNaN(newTarget) || newTarget <= 0) {
+                return alert("⚠️ Please valid amount enter karein!");
+            }
+
+            try {
+                const res = await fetch('/api/admin/update-target', {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, newTarget: newTarget })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert("✅ " + data.message);
+                    fetchStaffData(); // Table refresh karega
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            } catch(e) {
+                alert("⚠️ Server error! Apna internet check karein.");
+            }
+        };
 // Check Login on Load
         if (AUTH_TOKEN) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             loadData();
         }
-
     </script>
-
     
 </body>
 

@@ -66,7 +66,41 @@
         }
         .hero-title { font-size: 3.5rem; font-weight: 700; margin: 0; color: #1e293b; letter-spacing: -1px; line-height: 1.1; }
         .hero-subtitle { color: #64748b; font-size: 1.2rem; margin-top: 15px; max-width: 600px; margin-left: auto; margin-right: auto; }
+/* --- SEARCH & FILTERS --- */
+        .filter-section {
+            max-width: 1200px; margin: 40px auto 0; padding: 0 20px;
+            display: flex; flex-direction: column; gap: 20px; align-items: center;
+        }
+        
+        .search-box {
+            width: 100%; max-width: 500px; position: relative;
+        }
+        
+        .search-box input {
+            width: 100%; padding: 15px 20px 15px 45px; border-radius: 50px;
+            border: 1px solid #e2e8f0; font-size: 1rem; outline: none;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: 0.3s;
+        }
+        
+        .search-box input:focus { border-color: #8b5cf6; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2); }
+        
+        .search-box i {
+            position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; font-size: 1.2rem;
+        }
 
+        .category-filters {
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+        }
+
+        .cat-btn {
+            background: #f1f5f9; color: #475569; border: none; padding: 8px 18px;
+            border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .cat-btn:hover { background: #e2e8f0; }
+        .cat-btn.active { background: #8b5cf6; color: white; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); }
         /* --- BLOG GRID --- */
         .blog-container {
             max-width: 1200px; margin: 0 auto 100px; padding: 40px 20px;
@@ -160,7 +194,19 @@
             <p class="hero-subtitle">Discover strategies to scale your brand, master tech, and dominate social media in 2026.</p>
         </div>
     </div>
-    
+    <div class="filter-section">
+        <div class="search-box">
+            <i class="ri-search-line"></i>
+            <input type="text" id="searchInput" placeholder="Search for articles, tips, or guides..." onkeyup="filterBlogs()">
+        </div>
+        <div class="category-filters" id="categoryBox">
+            <button class="cat-btn active" onclick="setCategory('All', this)">All Insights</button>
+            <button class="cat-btn" onclick="setCategory('Digital Marketing', this)">Digital Marketing</button>
+            <button class="cat-btn" onclick="setCategory('Web Development', this)">Web Development</button>
+            <button class="cat-btn" onclick="setCategory('Instagram Growth', this)">Instagram Growth</button>
+            <button class="cat-btn" onclick="setCategory('Business Tips', this)">Business</button>
+        </div>
+    </div>
     <div class="blog-container" id="blogList">
         <div class="empty-state">
             <i class="ri-loader-4-line empty-icon ri-spin"></i>
@@ -172,58 +218,101 @@
         <p style="opacity: 0.7; font-size: 0.9rem;">&copy; 2026 VibeSphere Media. Built for You.</p>
     </footer>
 
-    <script>
-        // Fetch Blogs Logic
+   <script>let allPublishedBlogs = []; // Global array taaki baar-baar API call na karni pade
+        let currentCategory = 'All';
+
+        // Fetch Blogs API
         fetch('/api/blogs')
             .then(res => res.json())
             .then(data => {
-                const container = document.getElementById('blogList');
-                container.innerHTML = ''; 
-                
-                if(data.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="ri-article-line empty-icon"></i>
-                            <h3>No articles yet!</h3>
-                            <p>We are writing something amazing. Check back soon.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                data.forEach(blog => {
-                    // Date Parsing (Safe Mode)
-                    let dateStr = "Recent";
-                    try {
-                        dateStr = new Date(blog.date).toLocaleDateString('en-US', {
-                            year: 'numeric', month: 'short', day: 'numeric'
-                        });
-                    } catch(e) {}
-
-                    // TITLE LOGIC: Jo bhi title available ho use karo (Simplified)
-                    const displayTitle = blog.title || blog.titleHinglish || blog.titleHindi || "Untitled Post";
-
-                    const html = `
-                        <article class="blog-card">
-                            <div class="img-wrapper">
-                                <img src="${blog.image}" class="blog-img" alt="Blog Thumb" onerror="this.src='https://via.placeholder.com/400x200?text=No+Image'">
-                            </div>
-                            <div class="card-content">
-                                <span class="card-meta">${dateStr}</span>
-                                <h3 class="card-title">${displayTitle}</h3>
-                                <a href="/blog/${blog.slug}" class="read-btn">
-                                    Read Article <i class="ri-arrow-right-line"></i>
-                                </a>
-                            </div>
-                        </article>
-                    `;
-                    container.innerHTML += html;
-                });
+                // Sirf 'Published' blogs ko filter karke array mein save karenge (Drafts hata denge)
+                allPublishedBlogs = data.filter(blog => blog.status !== 'Draft');
+                renderBlogs(allPublishedBlogs); // Pehli baar saare blogs dikhao
             })
             .catch(err => {
                 console.error(err);
-                document.getElementById('blogList').innerHTML = `<p class="empty-state">Failed to load blogs.</p>`;
+                document.getElementById('blogList').innerHTML = `<p class="empty-state" style="grid-column: 1/-1;">Failed to load blogs. Please try again later.</p>`;
             });
-    </script>
+
+        // Blogs Render Karne ka Function
+        function renderBlogs(blogsToShow) {
+            const container = document.getElementById('blogList');
+            container.innerHTML = ''; 
+            
+            if(blogsToShow.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ri-article-line empty-icon"></i>
+                        <h3>No articles found!</h3>
+                        <p>Try searching for a different keyword or category.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            blogsToShow.forEach(blog => {
+                let dateStr = "Recent";
+                try {
+                    dateStr = new Date(blog.date).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'short', day: 'numeric'
+                    });
+                } catch(e) {}
+
+                const displayTitle = blog.title || blog.titleHinglish || blog.titleHindi || "Untitled Post";
+                // Category badge dikhane ke liye
+                const catBadge = blog.category ? `<span style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-left: 10px; text-transform: uppercase;">${blog.category}</span>` : '';
+
+                const html = `
+                    <article class="blog-card">
+                        <div class="img-wrapper">
+                            <img src="${blog.image}" class="blog-img" alt="Blog Thumb" onerror="this.src='https://via.placeholder.com/400x200?text=No+Image'">
+                        </div>
+                        <div class="card-content">
+                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                <span class="card-meta" style="margin-bottom: 0;">${dateStr}</span>
+                                ${catBadge}
+                            </div>
+                            <h3 class="card-title">${displayTitle}</h3>
+                            <a href="/blog/${blog.slug}" class="read-btn">
+                                Read Article <i class="ri-arrow-right-line"></i>
+                            </a>
+                        </div>
+                    </article>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        // Category Select Handle Karne ka logic
+        window.setCategory = function(catName, btnElement) {
+            currentCategory = catName;
+            
+            // UI Update: Active class lagana aur hatana
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            
+            // Search field clear kar do category change hone par (optional, par achha UX hai)
+            document.getElementById('searchInput').value = '';
+            
+            filterBlogs();
+        }
+
+        // Live Search + Category Filter Combine Logic
+        window.filterBlogs = function() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            const filteredData = allPublishedBlogs.filter(blog => {
+                // Title, Tags, ya Content me search match kare
+                const titleMatch = (blog.title || '').toLowerCase().includes(searchTerm);
+                const tagsMatch = (blog.tags || '').toLowerCase().includes(searchTerm);
+                
+                // Category match kare
+                const categoryMatch = currentCategory === 'All' || blog.category === currentCategory;
+                
+                return (titleMatch || tagsMatch) && categoryMatch;
+            });
+
+            renderBlogs(filteredData);
+        }</script>
 </body>
 </html>

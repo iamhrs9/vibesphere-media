@@ -27,10 +27,40 @@ const io = new Server(server, {
 
 // 🟢 THE SOCKET.IO ENGINE (Live Dashboard Bouncer)
 io.on('connection', (socket) => {
-    // Jab koi client dashboard kholega, wo apne 'email' ke naam ke room mein join ho jayega
+    // Jab koi client dashboard kholega
     socket.on('join_room', (email) => {
         socket.join(email);
         console.log(`🟢 Client Live: ${email}`);
+    });
+
+    // 🟢 NAYA: CHAT MESSAGE ENGINE
+    socket.on('send_message', async (data) => {
+        try {
+            const settings = await AppSettings.findOne();
+            if (settings && settings.isChatBlocked && data.role !== 'Admin') {
+                return socket.emit('chat_error', "Admin has blocked the team chat.");
+            }
+
+            if (data.role !== 'Admin') {
+                const staff = await Staff.findOne({ email: data.senderEmail });
+                if (staff && staff.isMuted) {
+                    return socket.emit('chat_error', "You have been muted by Admin.");
+                }
+            }
+
+            const newMessage = new Chat({
+                senderName: data.senderName,
+                senderEmail: data.senderEmail,
+                role: data.role,
+                message: data.message,
+                profilePhoto: data.profilePhoto || ''
+            });
+            await newMessage.save();
+
+            io.emit('receive_message', newMessage); // Sabko live message bhej do
+        } catch (e) {
+            console.error("Chat Socket Error:", e);
+        }
     });
 });
 const PORT = process.env.PORT || 3000;
@@ -233,6 +263,71 @@ const userSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
+// ==========================================
+// 💸 PAYOUT REQUEST SCHEMA (UPDATED)
+// ==========================================
+const payoutSchema = new mongoose.Schema({
+    staffEmail: String,
+    staffName: String,
+    amount: Number,
+    paymentMethod: String, // 'UPI' ya 'Bank'
+    paymentDetails: Object, // Isme UPI ID ya Bank Details save hongi
+    status: { type: String, default: 'Pending' },
+    date: { type: Date, default: Date.now }
+});
+const Payout = mongoose.model('Payout', payoutSchema);
+
+// ==========================================
+// 💸 PAYOUT SYSTEM APIs
+// ==========================================
+
+// 1. Staff Request Karega (Advanced)
+app.post('/api/staff/request-payout', async (req, res) => {
+    try {
+        const { email, amount, paymentMethod, paymentDetails } = req.body;
+        const staff = await Staff.findOne({ email });
+        
+        if (!staff || staff.pendingPayout <= 0) {
+            return res.json({ success: false, message: "Aapke paas koi pending balance nahi hai." });
+        }
+
+        // 🟢 NAYA LOCK: Check karo ki balance se zyada toh nahi maang raha
+        if (amount <= 0 || amount > staff.pendingPayout) {
+            return res.json({ success: false, message: "Invalid amount! Check your pending balance." });
+        }
+        
+        // Anti-Spam Check
+        const existingReq = await Payout.findOne({ staffEmail: email, status: 'Pending' });
+        if (existingReq) {
+            return res.json({ success: false, message: "Aapki ek request pehle se pending hai!" });
+        }
+
+        const newPayout = new Payout({
+            staffEmail: staff.email,
+            staffName: staff.name,
+            amount: amount,
+            paymentMethod: paymentMethod,
+            paymentDetails: paymentDetails
+        });
+        await newPayout.save();
+        
+        res.json({ success: true, message: "Payout Request Sent to Admin Successfully! 🚀" });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Server Error" }); 
+    }
+});
+// 4. Staff Apni Payout History Dekhega (Dashboard ke liye)
+app.post('/api/staff/my-payouts', async (req, res) => {
+    try {
+        const { email } = req.body;
+        // Staff ke email se saari requests uthao, naye wale pehle dikhao
+        const payouts = await Payout.find({ staffEmail: email }).sort({ date: -1 });
+        res.json({ success: true, payouts });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Server Error" }); 
+    }
+});
+// (Baaki /api/admin/payout-requests aur /api/admin/approve-payout wahi rahenge jo tune pehle daale the)
 
 // 🚀 THE GOD MODE BREEVO API WRAPPER (BYPASSES RENDER BLOCKS)
 
@@ -779,16 +874,26 @@ const orderSchema = new mongoose.Schema({
     price: String,
     instaLink: String,
     date: String,
-    status: { type: String, default: 'Pending' }
+    status: { type: String, default: 'Pending' },
+    
+    // 🟢 NAYA: Commission Engine Fields
+    assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
+    commissionValue: { type: Number, default: 0 }, // 20% cut kitna bana
+    payoutStatus: { type: String, default: 'Unpaid' } // Unpaid ya Paid
 });
 const Order = mongoose.model('Order', orderSchema);
-// --- Blog Schema ---
-// --- Blog Schema (UPDATED) ---
-// --- Blog Schema (UPDATED FOR MULTI-TITLE) ---
+// --- Blog Schema (UPDATED WITH SEO) ---
 const blogSchema = new mongoose.Schema({
     slug: String,
     image: String,
     date: { type: Date, default: Date.now },
+
+    // 🟢 Naye SEO & Filter Fields
+    category: { type: String, default: 'General' },
+    status: { type: String, default: 'Published' },
+    tags: String,
+    metaTitle: String,   // <-- SEO Title
+    metaDesc: String,    // <-- SEO Description
 
     // 🇬🇧 English Data
     title: String,
@@ -816,9 +921,80 @@ const handoverSchema = new mongoose.Schema({
     dateGenerated: { type: Date, default: Date.now }
 });
 const Handover = mongoose.model('Handover', handoverSchema);
+
+// ==========================================
+// 🏖️ LEAVE SCHEMA (Add near other schemas)
+// ==========================================
+const leaveSchema = new mongoose.Schema({
+    staffEmail: String,
+    staffName: String,
+    dateFrom: String,
+    dateTo: String,
+    reason: String,
+    status: { type: String, default: 'Pending' }, // Pending, Approved, Rejected
+    appliedOn: { type: Date, default: Date.now }
+});
+const Leave = mongoose.model('Leave', leaveSchema);
+
+// ==========================================
+// 🚀 NEW APIs FOR SELF-LEAD & LEAVES
+// ==========================================
+
+// 1. Staff khud ki Lead add karega
+app.post('/api/staff/add-lead', async (req, res) => {
+    try {
+        const { clientName, contactNumber, servicePitch, email } = req.body;
+        const newTask = new Task({
+            clientName,
+            contactNumber,
+            servicePitch,
+            assignedTo: email, // Staff ne khud ko assign kiya
+            status: 'pending',
+            notes: 'Self-Generated Lead' // 👈 Admin ko pata chal jayega ki ye khud laya hai
+        });
+        await newTask.save();
+        res.json({ success: true, message: "Lead added successfully! 🚀" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to add lead" }); }
+});
+
+// 2. Staff Leave Apply karega
+app.post('/api/staff/apply-leave', async (req, res) => {
+    try {
+        const { email, name, dateFrom, dateTo, reason } = req.body;
+        const newLeave = new Leave({ staffEmail: email, staffName: name, dateFrom, dateTo, reason });
+        await newLeave.save();
+        res.json({ success: true, message: "Leave application submitted! 🏖️" });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 3. Staff apni Leaves dekhega
+app.post('/api/staff/my-leaves', async (req, res) => {
+    try {
+        const leaves = await Leave.find({ staffEmail: req.body.email }).sort({ appliedOn: -1 });
+        res.json({ success: true, leaves });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 4. Admin saari Leaves dekhega
+app.get('/api/admin/leaves', checkAuth, async (req, res) => {
+    try {
+        const leaves = await Leave.find().sort({ appliedOn: -1 });
+        res.json({ success: true, leaves });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 5. Admin Leave Approve/Reject karega
+app.post('/api/admin/update-leave', checkAuth, async (req, res) => {
+    try {
+        const { leaveId, status } = req.body;
+        await Leave.findByIdAndUpdate(leaveId, { status });
+        res.json({ success: true, message: `Leave ${status}! ✅` });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
 // ==========================================
 // 🏢 STAFF CRM & TASK MANAGEMENT SCHEMAS
 // ==========================================
+
 
 // 1. Staff Schema (Staff Login Ke Liye)
 const staffSchema = new mongoose.Schema({
@@ -828,14 +1004,22 @@ const staffSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'Sales Executive' },
     profilePhoto: { type: String, default: '' },
-    resetOtp: String,         // 🟢 YAHAN ADD KIYA OTP KE LIYE
-    resetOtpExpiry: Date,     // 🟢 YAHAN ADD KIYA EXPIRY KE LIYE
-    otpRequestCount: { type: Number, default: 0 }, // 🟢 24 ghante ka counter
-    otpWindowStart: Date,                          // 🟢 24 ghante ka timer
+    resetOtp: String,         
+    resetOtpExpiry: Date,     
+    otpRequestCount: { type: Number, default: 0 }, 
+    otpWindowStart: Date,
+    
+    totalEarnings: { type: Number, default: 0 },
+    pendingPayout: { type: Number, default: 0 },
+monthlyTarget: { type: Number, default: 50000 }, // 🟢 NAYA: Default 50k target set kiya hai
+    // 🟢 NAYA: Duty Status Tracker
+    isOnline: { type: Boolean, default: false },
+    isMuted: { type: Boolean, default: false },
+    lastActive: { type: Date, default: Date.now },
+    
     date: { type: Date, default: Date.now }
 });
 const Staff = mongoose.model('Staff', staffSchema);
-
 // 2. Task/Lead Schema (Calling Data Ke Liye)
 const taskSchema = new mongoose.Schema({
     clientName: String,
@@ -849,6 +1033,24 @@ const taskSchema = new mongoose.Schema({
 });
 const Task = mongoose.model('Task', taskSchema);
 
+// ==========================================
+// 💬 TEAM CHAT SCHEMAS
+// ==========================================
+const chatSchema = new mongoose.Schema({
+    senderName: String,
+    senderEmail: String,
+    role: String, // 'Admin' ya 'Staff'
+    message: String,
+    profilePhoto: String,
+    date: { type: Date, default: Date.now }
+});
+const Chat = mongoose.model('Chat', chatSchema);
+
+// Global Settings (Chat on/off karne ke liye)
+const settingsSchema = new mongoose.Schema({
+    isChatBlocked: { type: Boolean, default: false } 
+});
+const AppSettings = mongoose.model('AppSettings', settingsSchema);
 // 3. Notice Board Schema
 const noticeSchema = new mongoose.Schema({
     title: String,
@@ -878,11 +1080,32 @@ app.post('/api/staff/login', async (req, res) => {
         const staff = await Staff.findOne({ email });
         if (staff && await bcrypt.compare(password, staff.password)) {
             // 🟢 Naya code: empId bhi frontend ko bhejo
-            res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto } });
+            res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto, isOnline: staff.isOnline } });
         } else {
             res.json({ success: false, message: "Invalid Staff ID or Password" });
         }
     } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
+});
+// 🟢 STAFF DUTY STATUS API (Online/Offline)
+app.post('/api/staff/toggle-status', async (req, res) => {
+    try {
+        const { email, isOnline } = req.body;
+        
+        // Staff ka status update karo aur time note kar lo
+        const staff = await Staff.findOneAndUpdate(
+            { email: email },
+            { isOnline: isOnline, lastActive: Date.now() },
+            { new: true } // Return updated document
+        );
+        
+        if(staff) {
+            res.json({ success: true, isOnline: staff.isOnline });
+        } else {
+            res.json({ success: false, message: "Staff not found" });
+        }
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Server Error" }); 
+    }
 });
 // API 2: Get Staff Tasks (Dashbaord Load Hote Hi Chalegi)
 app.post('/api/staff/tasks', async (req, res) => {
@@ -892,7 +1115,110 @@ app.post('/api/staff/tasks', async (req, res) => {
         res.json({ success: true, tasks: tasks });
     } catch (e) { res.status(500).json({ success: false, error: "Fetch Error" }); }
 });
+// API 2B: Get Staff Live Earnings (Commission Engine Tracker)
+// API 2B: Get Staff Live Earnings (Commission Engine Tracker)
+app.post('/api/staff/stats', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const staff = await Staff.findOne({ email });
+        
+        if (!staff) return res.json({ success: false, message: "Staff not found" });
 
+        res.json({
+            success: true,
+            totalEarnings: staff.totalEarnings || 0,
+            pendingPayout: staff.pendingPayout || 0,
+            monthlyTarget: staff.monthlyTarget || 50000 // 🟢 Target yahan se frontend jayega
+        });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Fetch Error" }); 
+    }
+});
+// ==========================================
+// 💸 PAYOUT SYSTEM APIs
+// ==========================================
+
+// 1. Staff Request Karega (Staff Dashboard se)
+app.post('/api/staff/request-payout', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const staff = await Staff.findOne({ email });
+        
+        if (!staff || staff.pendingPayout <= 0) {
+            return res.json({ success: false, message: "You have no pending balance to request." });
+        }
+        
+        // Check karo ki pehle se koi request pending toh nahi hai (Spam rokne ke liye)
+        const existingReq = await Payout.findOne({ staffEmail: email, status: 'Pending' });
+        if (existingReq) {
+            return res.json({ success: false, message: "Aapki ek payout request pehle se pending hai Admin ke paas!" });
+        }
+
+        const newPayout = new Payout({
+            staffEmail: staff.email,
+            staffName: staff.name,
+            amount: staff.pendingPayout // Jitna pending hai sabka request laga diya
+        });
+        await newPayout.save();
+        
+        res.json({ success: true, message: "Payout Request Sent to Admin! 💸" });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Server Error" }); 
+    }
+});
+
+// 2. Admin Saari Requests Dekhega (Admin Panel se)
+app.get('/api/admin/payout-requests', checkAuth, async (req, res) => {
+    try {
+        const requests = await Payout.find().sort({ date: -1 });
+        res.json({ success: true, requests });
+    } catch (e) { 
+        res.status(500).json({ success: false, error: "Fetch Error" }); 
+    }
+});
+
+// 3. Admin Approve Karega (Admin Panel se)
+app.post('/api/admin/approve-payout', checkAuth, async (req, res) => {
+    try {
+        const { id } = req.body;
+        const payout = await Payout.findById(id);
+        
+        if (!payout || payout.status !== 'Pending') {
+            return res.json({ success: false, message: "Invalid Request or Already Paid" });
+        }
+
+        // 🟢 MAGIC: Staff ke pending payout se amount kaat lo (Total Earnings wahi rahegi)
+        await Staff.findOneAndUpdate(
+            { email: payout.staffEmail },
+            { $inc: { pendingPayout: -payout.amount } }
+        );
+
+        // Request ko Paid mark kar do
+        payout.status = 'Paid';
+        await payout.save();
+        
+        res.json({ success: true, message: "Payout Approved & Balance Updated! ✅" });
+    } catch (e) { 
+        console.error("Payout Error:", e);
+        res.status(500).json({ success: false, error: "Server Error" }); 
+    }
+});
+// ==========================================
+// 🏆 STAFF LEADERBOARD API
+// ==========================================
+app.get('/api/staff/leaderboard', async (req, res) => {
+    try {
+        // Sirf top 5 staff members ko lao jinki totalEarnings sabse zyada hai
+        const leaderboard = await Staff.find({}, 'name profilePhoto totalEarnings')
+            .sort({ totalEarnings: -1 })
+            .limit(5); 
+
+        res.json({ success: true, leaderboard });
+    } catch (err) {
+        console.error("Leaderboard Error:", err);
+        res.status(500).json({ success: false, error: "Failed to fetch leaderboard" });
+    }
+});
 // API 3: Update Task (Jab Staff 'Save' button dabayega)
 app.post('/api/staff/update-task', async (req, res) => {
     try {
@@ -909,6 +1235,79 @@ app.get('/api/staff/notices', async (req, res) => {
         res.json({ success: true, notices: notices });
     } catch (e) { res.status(500).json({ success: false }); }
 });
+// ==========================================
+// 💬 TEAM CHAT APIs & SOCKET LOGIC
+// ==========================================
+
+// 1. Get Global Settings (Chat chalu hai ya band?)
+app.get('/api/chat/settings', async (req, res) => {
+    try {
+        let settings = await AppSettings.findOne();
+        if (!settings) {
+            settings = new AppSettings({ isChatBlocked: false });
+            await settings.save();
+        }
+        res.json({ success: true, isChatBlocked: settings.isChatBlocked });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 2. Fetch Chat History (Pichle 100 messages)
+app.get('/api/chat/history', async (req, res) => {
+    try {
+        const messages = await Chat.find().sort({ date: 1 }).limit(100);
+        res.json({ success: true, messages });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 3. Admin: Toggle Global Chat Block
+app.post('/api/admin/toggle-chat', checkAuth, async (req, res) => {
+    try {
+        let settings = await AppSettings.findOne();
+        settings.isChatBlocked = !settings.isChatBlocked;
+        await settings.save();
+        
+        // Sabko live batao ki chat band/chalu ho gayi
+        io.emit('chat_status_changed', { isChatBlocked: settings.isChatBlocked });
+        res.json({ success: true, isChatBlocked: settings.isChatBlocked, message: settings.isChatBlocked ? "Chat Blocked! 🚫" : "Chat Unblocked! ✅" });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 4. Admin: Mute/Unmute Staff
+app.post('/api/admin/mute-staff', checkAuth, async (req, res) => {
+    try {
+        const { email, isMuted } = req.body;
+        await Staff.findOneAndUpdate({ email }, { isMuted });
+        res.json({ success: true, message: isMuted ? "Staff Muted! 🤐" : "Staff Unmuted! 🗣️" });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 5. Admin: Delete Message
+app.delete('/api/admin/delete-message/:id', checkAuth, async (req, res) => {
+    try {
+        await Chat.findByIdAndDelete(req.params.id);
+        io.emit('message_deleted', req.params.id); // Live sabke screen se message hatao
+        res.json({ success: true, message: "Message Deleted 🗑️" });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+// 🟢 NAYA: Update Custom Staff Target API
+app.post('/api/admin/update-target', checkAuth, async (req, res) => {
+    try {
+        const { email, newTarget } = req.body;
+        if (!newTarget || newTarget <= 0) return res.json({ success: false, message: "Invalid target amount!" });
+
+        const staff = await Staff.findOne({ email });
+        if (!staff) return res.json({ success: false, message: "Staff nahi mila!" });
+
+        staff.monthlyTarget = newTarget;
+        await staff.save();
+
+        res.json({ success: true, message: "🎯 Target Updated Successfully!" });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
+    }
+});
+
+
 // API 5: Change Password
 app.post('/api/staff/update-password', async (req, res) => {
     try {
@@ -1307,12 +1706,11 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-const checkAuth = (req, res, next) => {
+function checkAuth(req, res, next) {
     const token = req.headers['authorization'];
     if (token === ADMIN_TOKEN || token === "SECRET_VIBESPHERE_KEY_123") next();
     else res.status(403).json({ error: "Access Denied" });
-};
-
+}
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         let orders = await Order.find().sort({ _id: -1 });
@@ -1344,16 +1742,34 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
         res.status(500).send("Error generating invoice");
     }
 });
+// 🟢 1. UPDATE STATUS API (SMART COMMISSION ENGINE)
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
-    const { id, status } = req.body;
+    const { id, status } = req.body; 
+    
     try {
-        const updatedOrder = await Order.findOneAndUpdate(
-            { orderId: id }, 
-            { status: status }, 
-            { new: true } // Ye naya data return karega
-        );
+        const order = await Order.findOne({ orderId: id });
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+        // 🟢 COMMISSION ENGINE LOGIC
+        if (status === 'Done' && order.status !== 'Done' && order.assignedStaff) {
+            // Price ko safely clean karo (Agar blank ho toh 0 maan lo)
+            let rawPrice = order.price ? order.price.toString() : "0";
+            let cleanPrice = parseFloat(rawPrice.replace(/[^\d.]/g, '')) || 0;
+            let commission = cleanPrice * 0.20; // 20% cut
+
+            if (commission > 0) {
+                await Staff.findOneAndUpdate(
+                    { email: order.assignedStaff },
+                    { $inc: { totalEarnings: commission, pendingPayout: commission } }
+                );
+                order.commissionValue = commission;
+            }
+        }
+
+        order.status = status;
+        const updatedOrder = await order.save();
         
-        // 🟢 NAYA MAGIC: Client ke live dashboard par signal bhejo!
+        // Client dashboard live signal
         if (updatedOrder && updatedOrder.email) {
             io.to(updatedOrder.email).emit('status_updated', {
                 orderId: updatedOrder.orderId,
@@ -1362,45 +1778,136 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
             });
         }
 
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
+        res.json({ success: true, message: "Status Updated!" });
+    } catch (error) { 
+        console.error("Update Status Error:", error);
+        res.status(500).json({ success: false }); 
+    }
 });
 
+// 🟢 2. ASSIGN ORDER API (WITH TYPO CHECK & RETROACTIVE COMMISSION)
+app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
+    try {
+        const { orderId, staffEmail } = req.body;
+        const order = await Order.findOne({ orderId });
+        if(!order) return res.json({ success: false, message: "Order not found" });
+
+        const cleanEmail = staffEmail.toLowerCase().trim();
+        
+        // 🛡️ NAYA FIX: Pehle check karo ki ye email exist bhi karta hai ya nahi?
+        const staffExists = await Staff.findOne({ email: cleanEmail });
+        if (!staffExists) {
+            return res.json({ success: false, message: "Staff account not found! Email ki spelling check karo." });
+        }
+
+        order.assignedStaff = cleanEmail;
+        
+        // 🚀 SUPER FIX: Agar order pehle se 'Done' hai, toh assignment ke waqt hi commission de do!
+        if (order.status === 'Done' && (!order.commissionValue || order.commissionValue === 0)) {
+            let rawPrice = order.price ? order.price.toString() : "0";
+            let cleanPrice = parseFloat(rawPrice.replace(/[^\d.]/g, '')) || 0;
+            let commission = cleanPrice * 0.20; 
+
+            if (commission > 0) {
+                await Staff.findOneAndUpdate(
+                    { email: cleanEmail },
+                    { $inc: { totalEarnings: commission, pendingPayout: commission } }
+                );
+                order.commissionValue = commission;
+            }
+        }
+
+        await order.save();
+        res.json({ success: true, message: "Staff Assigned & Commission Logic Applied!" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: "Error assigning staff" });
+    }
+});
 // --- BLOG API ROUTES ---
 
+// ==========================================
+// ✍️ BLOG MANAGEMENT APIs
+// ==========================================
+
 // 1. Save New Blog (Admin Only)
-app.post('/api/add-blog', async (req, res) => {
+app.post('/api/add-blog', checkAuth, async (req, res) => {
     try {
-        const { title, image, content, slug } = req.body;
-        const newBlog = new Blog({ title, image, content, slug });
+        // Frontend se aane wale naye SEO fields ko bhi receive karo
+        const { 
+            title, image, content, slug, 
+            category, status, tags, metaTitle, metaDesc 
+        } = req.body;
+        
+        const newBlog = new Blog({ 
+            title, image, content, slug,
+            category, status, tags, metaTitle, metaDesc 
+        });
+        
         await newBlog.save();
         res.json({ success: true, message: "Blog Posted Successfully!" });
     } catch (error) {
+        console.error("Error saving blog:", error);
         res.status(500).json({ success: false, error: "Error saving blog" });
     }
 });
 
-// 2. Get All Blogs (For Blog Page)
-app.get('/api/blogs', async (req, res) => {
-    const blogs = await Blog.find().sort({ date: -1 }); // Newest first
-    res.json(blogs);
+// 2. Edit (Update) Blog (Admin Only)
+app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
+    try {
+        // req.body mein ab metaTitle aur metaDesc bhi aayenge jo direct update ho jayenge
+        await Blog.findByIdAndUpdate(req.params.id, req.body);
+        res.json({ success: true, message: "Blog Updated Successfully!" });
+    } catch (error) {
+        console.error("Error updating blog:", error);
+        res.status(500).json({ success: false, error: "Update failed" });
+    }
 });
-
-// 3. Get Single Blog (For Reading)
-app.get('/api/blog/:slug', async (req, res) => {
-    const blog = await Blog.findOne({ slug: req.params.slug });
-    if (blog) {
-        res.json(blog);
-    } else {
-        res.status(404).json({ error: "Blog not found" });
+// 3. Delete Blog (Admin Only 🔒)
+app.delete('/api/delete-blog/:id', checkAuth, async (req, res) => {
+    try {
+        await Blog.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Blog Deleted!" });
+    } catch (error) {
+        console.error("Error deleting blog:", error);
+        res.status(500).json({ success: false, error: "Delete failed" });
     }
 });
 
-// 4. Serve Single Blog Page (Frontend)
+// 4. Get All Blogs (Public 🌍 - For Blog Page)
+app.get('/api/blogs', async (req, res) => {
+    try {
+        const blogs = await Blog.find().sort({ date: -1 }); // Newest first
+        res.json(blogs);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch blogs" });
+    }
+});
+
+// 5. Get Single Blog (Public 🌍 - For Reading)
+app.get('/api/blog/:slug', async (req, res) => {
+    try {
+        const blog = await Blog.findOne({ slug: req.params.slug });
+        if (blog) {
+            res.json(blog);
+        } else {
+            res.status(404).json({ error: "Blog not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch blog" });
+    }
+});
+
+// 6. Serve Single Blog Page (Frontend Route)
 app.get('/blog/:slug', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'read-blog.html'));
 });
-// Delete Review API
+
+// ==========================================
+// ⭐ REVIEW & AUTH APIs
+// ==========================================
+
+// Delete Review API (Admin Only 🔒)
 app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
     try {
         await Review.findByIdAndDelete(req.params.id);
@@ -1409,29 +1916,8 @@ app.delete('/api/admin/delete-review/:id', checkAuth, async (req, res) => {
         res.status(500).json({ success: false, error: "Failed to delete review" });
     }
 });
-// --- BLOG MANAGEMENT APIS (NEW) ---
 
-// 1. Delete Blog
-app.delete('/api/delete-blog/:id', async (req, res) => {
-    try {
-        await Blog.findByIdAndDelete(req.params.id);
-        res.json({ success: true, message: "Blog Deleted!" });
-    } catch (error) {
-        res.status(500).json({ success: false, error: "Delete failed" });
-    }
-});
-
-// 2. Edit (Update) Blog
-app.put('/api/edit-blog/:id', async (req, res) => {
-    try {
-        // req.body mein naya data aayega (title, content etc.)
-        await Blog.findByIdAndUpdate(req.params.id, req.body);
-        res.json({ success: true, message: "Blog Updated Successfully!" });
-    } catch (error) {
-        res.status(500).json({ success: false, error: "Update failed" });
-    }
-});
-// 4. Google Login API (NEW)
+// Google Login API (Public 🌍)
 app.post('/api/auth/google', async (req, res) => {
     try {
         const { token } = req.body;
@@ -1456,10 +1942,11 @@ app.post('/api/auth/google', async (req, res) => {
         res.json({ success: true, user: { name: user.name, email: user.email, picture: user.picture } });
 
     } catch (e) {
-        console.error(e);
+        console.error("Google Auth Error:", e);
         res.status(500).json({ success: false, error: "Google Auth Failed" });
     }
-});// ==========================================
+});
+// ==========================================
 // 👮‍♂️ ADMIN: STAFF MANAGEMENT APIs
 // ==========================================
 
@@ -1545,19 +2032,23 @@ app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Failed to fetch performance" }); }
 });
 // 5. Assign New Lead (Task)
+// 5. Assign New Lead (Task)
 app.post('/api/admin/add-task', checkAuth, async (req, res) => {
     try {
         const { clientName, contactNumber, servicePitch, assignedTo } = req.body;
 
-        // Naya task banakar database mein save karo
         const newTask = new Task({
             clientName,
             contactNumber,
             servicePitch,
             assignedTo,
-            status: 'pending' // Naya kaam hamesha pending rahega
+            status: 'pending' 
         });
         await newTask.save();
+        
+        // 🟢 NAYA: Staff ko live notification socket bhej do!
+        io.to(assignedTo).emit('new_lead_assigned', { clientName: clientName, servicePitch: servicePitch });
+        
         res.json({ success: true, message: "Lead Assigned Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to assign lead" }); }
 });

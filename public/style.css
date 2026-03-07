@@ -1617,3 +1617,61 @@ footer {
     #printableIDCard { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100%; display: flex; justify-content: center; }
     .id-card { box-shadow: none !important; border: 2px solid #000; }
 }
+/* ==========================================
+   ✨ MODERN FORM STYLING (LEADS & LEAVES)
+   ========================================== */
+.modern-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.modern-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: all 0.3s ease;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.modern-input:focus {
+    border-color: #6c63ff;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+}
+
+.modern-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #475569;
+}
+
+.btn-modern {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-purple { background: #6c63ff; color: white; }
+.btn-purple:hover { background: #5a52d5; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(108, 99, 255, 0.25); }
+
+.btn-amber { background: #f59e0b; color: white; }
+.btn-amber:hover { background: #d97706; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.25); }

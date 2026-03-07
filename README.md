@@ -49,39 +49,30 @@
 
 To run this project locally, create a `.env` file in the root directory:
 
-```env
-PORT=3000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_super_secret_jwt_key
-ADMIN_PASSWORD=your_admin_panel_password
-ADMIN_TOKEN=your_admin_api_token
-BREVO_API_KEY=your_brevo_smtp_api_key
-EMAIL_USER=support@vibespheremedia.in
-FOUNDER_EMAIL=founder@vibespheremedia.in
-RAZORPAY_KEY_ID=your_razorpay_id
-RAZORPAY_KEY_SECRET=your_razorpay_secret
-GEMINI_API_KEY=your_google_gemini_api_key
+
 
 ## 🚀 Installation & Setup
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/iamhrs9/vibesphere-media.git](https://github.com/iamhrs9/vibesphere-media.git)
+   git clone https://github.com/iamhrs9/vibesphere-media.git
    cd vibesphere-media
+   ```
 
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-Install dependencies:
+3. **Run the server:**
+   ```bash
+   npm start
+   # or for development:
+   node server.js
+   ```
 
-Bash
-npm install
-Run the server:
-
-Bash
-npm start
-# or for development:
-node server.js
-Access the app:
-Open http://localhost:3000 in your browser.
+4. **Access the app:**
+   Open the app in your browser at `http://localhost:3000`
 
 
 
