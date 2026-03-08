@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
@@ -9,13 +11,63 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const UAParser = require('ua-parser-js');
 const { OAuth2Client } = require('google-auth-library');
-const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com"; 
+const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+// ==========================================
+// ☁️ CLOUD UPLOAD CONFIG (ImgBB + Cloudinary)
+// ==========================================
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
+
+// Cloudinary Config (For PDFs)
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// ImgBB Upload Helper (For Images)
+async function uploadToImgBB(base64Image) {
+    const apiKey = process.env.IMGBB_API_KEY;
+    if (!apiKey) throw new Error('IMGBB_API_KEY missing in .env');
+
+    // Remove data:image/xxx;base64, prefix if present
+    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
+
+    const formData = new URLSearchParams();
+    formData.append('key', apiKey);
+    formData.append('image', cleanBase64);
+
+    const response = await fetch('https://api.imgbb.com/1/upload', {
+        method: 'POST',
+        body: formData
+    });
+    const data = await response.json();
+
+    if (data.success) return data.data.display_url;
+    throw new Error('ImgBB upload failed: ' + JSON.stringify(data));
+}
+
+// Cloudinary Upload Helper (For PDFs)
+async function uploadToCloudinary(fileBuffer, originalName) {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { resource_type: 'raw', folder: 'vibesphere-chat', public_id: `${Date.now()}_${originalName}` },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+            }
+        );
+        stream.end(fileBuffer);
+    });
+}
 //const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 //const pino = require('pino');
 //const qrcode = require('qrcode');
@@ -27,7 +79,9 @@ const io = require('socket.io')(server, {
         origin: "*", // Yeh live server pe block hone se rokega
         methods: ["GET", "POST"],
         credentials: true
-    }
+    },
+    maxHttpBufferSize: 1e8 // 🟢 NAYA FIX: 100 MB tak ki photo allow karega!
+
 });
 
 // 🟢 THE SOCKET.IO ENGINE (Live Dashboard Bouncer)
@@ -58,6 +112,9 @@ io.on('connection', (socket) => {
                 senderEmail: data.senderEmail,
                 role: data.role,
                 message: data.message,
+                fileUrl: data.fileUrl || '',
+                fileType: data.fileType || '',
+                fileName: data.fileName || '',
                 profilePhoto: data.profilePhoto || ''
             });
             await newMessage.save();
@@ -70,7 +127,11 @@ io.on('connection', (socket) => {
 });
 const PORT = process.env.PORT || 3000;
 const rateLimit = require('express-rate-limit'); // 
-app.use(cors());
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
+app.use(cookieParser());
 
 
 // ==========================================
@@ -157,7 +218,7 @@ function buildProfessionalInvoice(doc, order) {
         .text('Total Paid', 390, totalY + 47)
         .text(displayPrice, 480, totalY + 47);
 
-   
+
     // --- 6. TERMS & CONDITIONS (Legal Section) ---
     const termsY = totalY + 90;
     doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10)
@@ -218,8 +279,8 @@ const otpLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 3, // Maximum 3 requests allowed per IP
     message: { success: false, message: "🚨 Too many OTP requests from this IP! Please wait 15 minutes to prevent spam." },
-    standardHeaders: true, 
-    legacyHeaders: false, 
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 // Frontend files serve
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
@@ -244,12 +305,12 @@ const userSchema = new mongoose.Schema({
     googleId: String,
     resetOtp: String,
     resetOtpExpiry: Date,
-    otpRequestCount: { type: Number, default: 0 }, 
-    otpWindowStart: Date,   
+    otpRequestCount: { type: Number, default: 0 },
+    otpWindowStart: Date,
     isBanned: { type: Boolean, default: false }, // 🟢 NAYA LOCK: Default koi ban nahi hoga                       
     magicToken: String,
     magicTokenExpiry: Date,
-    
+
     // 🛡️ SECURITY AUDIT (Device Tracking)
     activeSessions: [{
         token: String,
@@ -258,13 +319,13 @@ const userSchema = new mongoose.Schema({
         ip: String,
         lastActive: { type: Date, default: Date.now }
     }],
-    
+
     // 🤖 AUTO-ONBOARDING DATA
     isOnboarded: { type: Boolean, default: false }, // Check karega ki form bhar diya ya nahi
     brandName: { type: String, default: "" },
     brandColors: { type: String, default: "" },
     referenceLinks: { type: String, default: "" },
-    
+
     date: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -291,7 +352,7 @@ app.post('/api/staff/request-payout', async (req, res) => {
     try {
         const { email, amount, paymentMethod, paymentDetails } = req.body;
         const staff = await Staff.findOne({ email });
-        
+
         if (!staff || staff.pendingPayout <= 0) {
             return res.json({ success: false, message: "Aapke paas koi pending balance nahi hai." });
         }
@@ -300,7 +361,7 @@ app.post('/api/staff/request-payout', async (req, res) => {
         if (amount <= 0 || amount > staff.pendingPayout) {
             return res.json({ success: false, message: "Invalid amount! Check your pending balance." });
         }
-        
+
         // Anti-Spam Check
         const existingReq = await Payout.findOne({ staffEmail: email, status: 'Pending' });
         if (existingReq) {
@@ -315,10 +376,13 @@ app.post('/api/staff/request-payout', async (req, res) => {
             paymentDetails: paymentDetails
         });
         await newPayout.save();
-        
+
+        // 🟢 REAL-TIME: Notify Admin
+        io.to('Admin').emit('new_payout_request');
+
         res.json({ success: true, message: "Payout Request Sent to Admin Successfully! 🚀" });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Server Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 // 4. Staff Apni Payout History Dekhega (Dashboard ke liye)
@@ -328,8 +392,8 @@ app.post('/api/staff/my-payouts', async (req, res) => {
         // Staff ke email se saari requests uthao, naye wale pehle dikhao
         const payouts = await Payout.find({ staffEmail: email }).sort({ date: -1 });
         res.json({ success: true, payouts });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Server Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 // (Baaki /api/admin/payout-requests aur /api/admin/approve-payout wahi rahenge jo tune pehle daale the)
@@ -348,7 +412,7 @@ const transporter = {
     },
     sendMail: async function (mailOptions) {
         const apiKey = process.env.BREVO_API_KEY;
-        
+
         // 1. PDF Attachments ko Base64 mein convert karna (Brevo API ke liye)
         let formattedAttachments = [];
         if (mailOptions.attachments && mailOptions.attachments.length > 0) {
@@ -362,22 +426,22 @@ const transporter = {
         // 2. Data pack karna
         const payload = {
             // 🟢 NAYA FIX: Ab ye mailOptions se 'founder@' aur tera naam uthayega!
-            sender: { 
-                email: mailOptions.from || process.env.EMAIL_USER, 
-                name: mailOptions.fromName || "VibeSphere Media" 
+            sender: {
+                email: mailOptions.from || process.env.EMAIL_USER,
+                name: mailOptions.fromName || "VibeSphere Media"
             },
             to: [{ email: mailOptions.to }],
             subject: mailOptions.subject,
             textContent: mailOptions.text || "",
             htmlContent: mailOptions.html || "",
         };
-// 🟢 THE GOD MODE FIX:
-        
+        // 🟢 THE GOD MODE FIX:
+
         // 1. Set HTML Content
         if (mailOptions.html) {
             payload.htmlContent = mailOptions.html;
         } else if (mailOptions.text) {
-            payload.htmlContent = `<p style="font-family: sans-serif; color: #333;">${mailOptions.text.replace(/\n/g, '<br>')}</p>`; 
+            payload.htmlContent = `<p style="font-family: sans-serif; color: #333;">${mailOptions.text.replace(/\n/g, '<br>')}</p>`;
         } else {
             payload.htmlContent = "<p>Message from VibeSphere Media</p>";
         }
@@ -401,12 +465,12 @@ const transporter = {
             },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
-        .then(data => {
-            if(data.messageId) console.log('✅ Email Fired Successfully via API:', data.messageId);
-            else console.log('⚠️ API Response:', data);
-        })
-        .catch(err => console.error('❌ Brevo API Error:', err));
+            .then(res => res.json())
+            .then(data => {
+                if (data.messageId) console.log('✅ Email Fired Successfully via API:', data.messageId);
+                else console.log('⚠️ API Response:', data);
+            })
+            .catch(err => console.error('❌ Brevo API Error:', err));
     }
 };
 
@@ -474,34 +538,48 @@ app.post('/api/auth/login', async (req, res) => {
             if (user.isBanned) {
                 return res.json({ success: false, message: "🚫 Your account has been restricted by Admin. Contact Support." });
             }
-// ==========================================
+            // ==========================================
             // 🕵️‍♂️ SECURITY AUDIT: DEVICE & BROWSER TRACKING
             // ==========================================
             const parser = new UAParser(req.headers['user-agent']);
             const agentData = parser.getResult();
-            
-            const deviceName = agentData.device.vendor 
-                ? `${agentData.device.vendor} ${agentData.device.model}` 
+
+            const deviceName = agentData.device.vendor
+                ? `${agentData.device.vendor} ${agentData.device.model}`
                 : agentData.os.name || 'Unknown Device';
-                
+
             const browserName = agentData.browser.name || 'Unknown Browser';
             const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
+            // Create JWT Token for Client
+            const token = jwt.sign({
+                email: user.email,
+                role: 'Client',
+                name: user.name
+            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+
             user.activeSessions.push({
-                token: "CLIENT_LOGGED_IN", // 🟢 Tera simple token!
+                token: token, // Store cookie signature for invalidation
                 device: deviceName,
                 browser: browserName,
                 ip: ipAddress,
                 lastActive: Date.now()
             });
 
-            await user.save(); 
+            await user.save();
             console.log(`🛡️ New Login Alert: ${user.email} logged in from ${deviceName} using ${browserName}`);
             // ==========================================
 
-            
+
             // Client ko turant login karwa do (Taaki wo wait na kare)
-            res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
+            res.json({ success: true, user: { name: user.name, email: user.email } });
 
             // ==========================================
             // 🟢 BACKGROUND SECURITY EMAIL PROCESS 
@@ -599,7 +677,7 @@ app.post('/api/auth/send-magic-link', async (req, res) => {
 
         // 1. Ek dum secure random token banao
         const rawToken = crypto.randomBytes(32).toString('hex');
-        
+
         // 2. Database mein encrypt karke save karo (Bank-Level Security)
         user.magicToken = await bcrypt.hash(rawToken, 10);
         user.magicTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minute ke liye valid
@@ -653,16 +731,16 @@ app.post('/api/auth/verify-magic-link', async (req, res) => {
             user.magicToken = undefined;
             user.magicTokenExpiry = undefined;
             await user.save();
-// ==========================================
+            // ==========================================
             // 🕵️‍♂️ SECURITY AUDIT (MAGIC LINK LOGIN)
             // ==========================================
             const parser = new UAParser(req.headers['user-agent']);
             const agentData = parser.getResult();
-            
-            const deviceName = agentData.device.vendor 
-                ? `${agentData.device.vendor} ${agentData.device.model}` 
+
+            const deviceName = agentData.device.vendor
+                ? `${agentData.device.vendor} ${agentData.device.model}`
                 : agentData.os.name || 'Unknown Device';
-                
+
             const browserName = agentData.browser.name || 'Unknown Browser';
             const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
 
@@ -800,7 +878,7 @@ app.post('/api/client/security-data', async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
-        
+
         if (user) {
             // Latest login sabse upar dikhane ke liye reverse kar diya
             res.json({ success: true, sessions: user.activeSessions.reverse() });
@@ -818,10 +896,10 @@ app.post('/api/client/logout-other-devices', async (req, res) => {
 
         if (user && user.activeSessions.length > 0) {
             // Sirf current (sabse recent) login ko bacha lo, baaki sab uda do
-            const currentSession = user.activeSessions[0]; 
+            const currentSession = user.activeSessions[0];
             user.activeSessions = [currentSession];
             await user.save();
-            
+
             res.json({ success: true, message: "Successfully logged out of all other devices! 🛡️" });
         } else {
             res.json({ success: false });
@@ -836,17 +914,17 @@ app.post('/api/client/logout-other-devices', async (req, res) => {
 app.post('/api/client/submit-onboarding', async (req, res) => {
     try {
         const { email, brandName, brandColors, referenceLinks } = req.body;
-        
+
         await User.findOneAndUpdate(
             { email: email },
-            { 
-                brandName: brandName, 
-                brandColors: brandColors, 
-                referenceLinks: referenceLinks, 
+            {
+                brandName: brandName,
+                brandColors: brandColors,
+                referenceLinks: referenceLinks,
                 isOnboarded: true // 🟢 Mark as completed!
             }
         );
-        
+
         res.json({ success: true, message: "Brand details saved successfully! 🚀" });
     } catch (e) {
         res.status(500).json({ success: false, error: "Server Error" });
@@ -858,7 +936,7 @@ app.post('/api/client/check-onboarding', async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
-        
+
         if (user) {
             res.json({ success: true, isOnboarded: user.isOnboarded });
         } else {
@@ -880,7 +958,7 @@ const orderSchema = new mongoose.Schema({
     instaLink: String,
     date: String,
     status: { type: String, default: 'Pending' },
-    
+
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
     commissionValue: { type: Number, default: 0 }, // 20% cut kitna bana
@@ -942,8 +1020,109 @@ const leaveSchema = new mongoose.Schema({
 const Leave = mongoose.model('Leave', leaveSchema);
 
 // ==========================================
+// 🎧 HELPDESK TICKETING SCHEMA
+// ==========================================
+const ticketSchema = new mongoose.Schema({
+    clientEmail: String,
+    clientName: String,
+    subject: String,
+    issue: String,
+    status: { type: String, default: 'Open' }, // Open, In Progress, Resolved
+    replies: [{
+        sender: String,
+        message: String,
+        date: { type: Date, default: Date.now }
+    }],
+    date: { type: Date, default: Date.now }
+});
+const Ticket = mongoose.model('Ticket', ticketSchema);
+
+// ==========================================
+// 💰 EXPENSE TRACKER SCHEMA (Admin Only)
+// ==========================================
+const expenseSchema = new mongoose.Schema({
+    title: String,
+    amount: Number,
+    category: { type: String, default: 'General' }, // Ads, Server, Salaries, Tools, General
+    date: { type: Date, default: Date.now }
+});
+const Expense = mongoose.model('Expense', expenseSchema);
+
+// ==========================================
+// 📚 RESOURCE HUB SCHEMA (Knowledge Base)
+// ==========================================
+const resourceSchema = new mongoose.Schema({
+    title: String,
+    type: { type: String, default: 'link' }, // link, text, pdf
+    content: String, // URL for link/pdf, text content for text
+    date: { type: Date, default: Date.now }
+});
+const Resource = mongoose.model('Resource', resourceSchema);
+
+// ==========================================
+// ==========================================
+// 🎬 VIDEO MEETING SCHEMA (JaaS by 8x8)
+// ==========================================
+const meetingSchema = new mongoose.Schema({
+    topic: String,
+    roomName: String,      // JaaS format: vpaas-magic-cookie-APP_ID/RoomName
+    scheduledTime: Date,
+    status: { type: String, default: 'Scheduled' }, // Scheduled, Live, Ended
+    createdBy: { type: String, default: 'Admin' },
+    password: { type: String, default: '' }, // 🔒 NAYA: Optional Password
+    date: { type: Date, default: Date.now }
+});
+const Meeting = mongoose.model('Meeting', meetingSchema);
+
+// ==========================================
 // 🚀 NEW APIs FOR SELF-LEAD & LEAVES
 // ==========================================
+
+// 🧠 AI LEAD SCORING FUNCTION (Gemini 1.5 Flash)
+async function scoreLeadWithAI(taskId, taskData) {
+    try {
+        const API_KEY = process.env.GEMINI_API_KEY;
+        if (!API_KEY) return;
+
+        const prompt = `You are a lead scoring AI for a digital marketing agency. Analyze this lead and respond with ONLY one of these exact tags: 🔥 Hot, 🟡 Warm, ❄️ Cold
+
+Lead Details:
+- Client Name: ${taskData.clientName || 'Unknown'}
+- Service Pitched: ${taskData.servicePitch || 'Not specified'}
+- Client Type: ${taskData.clientType || 'Not specified'}
+- Notes: ${taskData.notes || 'None'}
+- Contact Number: ${taskData.contactNumber ? 'Provided' : 'Not provided'}
+
+Rules:
+- 🔥 Hot = Client shows strong intent, has budget, needs service urgently
+- 🟡 Warm = Some interest, might convert with follow-up
+- ❄️ Cold = Low interest, vague requirement, unlikely to convert soon
+
+Respond with ONLY the tag (e.g. "🔥 Hot"). Nothing else.`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        let score = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+        // Sanitize: only keep valid scores
+        if (score.includes('Hot')) score = '🔥 Hot';
+        else if (score.includes('Warm')) score = '🟡 Warm';
+        else if (score.includes('Cold')) score = '❄️ Cold';
+        else score = '🟡 Warm'; // Default to Warm if AI response is unclear
+
+        await Task.findByIdAndUpdate(taskId, { aiScore: score });
+        console.log(`🧠 AI scored lead "${taskData.clientName}" as: ${score}`);
+    } catch (err) {
+        console.log('⚠️ AI scoring failed (non-critical):', err.message);
+    }
+}
 
 // 1. Staff khud ki Lead add karega
 app.post('/api/staff/add-lead', async (req, res) => {
@@ -958,6 +1137,10 @@ app.post('/api/staff/add-lead', async (req, res) => {
             notes: 'Self-Generated Lead' // 👈 Admin ko pata chal jayega ki ye khud laya hai
         });
         await newTask.save();
+
+        // 🧠 AI Lead Scoring (Background - Non-blocking)
+        scoreLeadWithAI(newTask._id, newTask);
+
         res.json({ success: true, message: "Lead added successfully! 🚀" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to add lead" }); }
 });
@@ -968,6 +1151,10 @@ app.post('/api/staff/apply-leave', async (req, res) => {
         const { email, name, dateFrom, dateTo, reason } = req.body;
         const newLeave = new Leave({ staffEmail: email, staffName: name, dateFrom, dateTo, reason });
         await newLeave.save();
+
+        // 🟢 REAL-TIME: Notify Admin
+        io.to('Admin').emit('new_leave_request');
+
         res.json({ success: true, message: "Leave application submitted! 🏖️" });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -992,7 +1179,11 @@ app.get('/api/admin/leaves', checkAuth, async (req, res) => {
 app.post('/api/admin/update-leave', checkAuth, async (req, res) => {
     try {
         const { leaveId, status } = req.body;
-        await Leave.findByIdAndUpdate(leaveId, { status });
+        const leave = await Leave.findByIdAndUpdate(leaveId, { status }, { new: true });
+
+        // 🟢 REAL-TIME: Notify Staff
+        io.to(leave.staffEmail).emit('leave_status_updated', { status });
+
         res.json({ success: true, message: `Leave ${status}! ✅` });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -1009,19 +1200,19 @@ const staffSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'Sales Executive' },
     profilePhoto: { type: String, default: '' },
-    resetOtp: String,         
-    resetOtpExpiry: Date,     
-    otpRequestCount: { type: Number, default: 0 }, 
+    resetOtp: String,
+    resetOtpExpiry: Date,
+    otpRequestCount: { type: Number, default: 0 },
     otpWindowStart: Date,
-    
+
     totalEarnings: { type: Number, default: 0 },
     pendingPayout: { type: Number, default: 0 },
-monthlyTarget: { type: Number, default: 50000 }, // 🟢 NAYA: Default 50k target set kiya hai
+    monthlyTarget: { type: Number, default: 50000 }, // 🟢 NAYA: Default 50k target set kiya hai
     // 🟢 NAYA: Duty Status Tracker
     isOnline: { type: Boolean, default: false },
     isMuted: { type: Boolean, default: false },
     lastActive: { type: Date, default: Date.now },
-    
+
     date: { type: Date, default: Date.now }
 });
 const Staff = mongoose.model('Staff', staffSchema);
@@ -1034,7 +1225,8 @@ const taskSchema = new mongoose.Schema({
     status: { type: String, default: 'pending' }, // pending, interested, not-answering, call-back, rejected
     notes: { type: String, default: '' },         // Staff ka feedback
     assignedTo: String,      // Kis staff ko diya (Staff ka Email)
-    dateAssigned: { type: Date, default: Date.now }
+    dateAssigned: { type: Date, default: Date.now },
+    aiScore: { type: String, default: '' } // 🧠 AI Lead Score: 🔥 Hot, 🟡 Warm, ❄️ Cold
 });
 const Task = mongoose.model('Task', taskSchema);
 
@@ -1047,13 +1239,16 @@ const chatSchema = new mongoose.Schema({
     role: String, // 'Admin' ya 'Staff'
     message: String,
     profilePhoto: String,
+    fileUrl: String,      // ☁️ Cloud URL (ImgBB for images, Cloudinary for PDFs)
+    fileType: String,     // 'image' or 'pdf'
+    fileName: String,     // Original filename (for PDF downloads)
     date: { type: Date, default: Date.now }
 });
 const Chat = mongoose.model('Chat', chatSchema);
 
 // Global Settings (Chat on/off karne ke liye)
 const settingsSchema = new mongoose.Schema({
-    isChatBlocked: { type: Boolean, default: false } 
+    isChatBlocked: { type: Boolean, default: false }
 });
 const AppSettings = mongoose.model('AppSettings', settingsSchema);
 // 3. Notice Board Schema
@@ -1084,6 +1279,21 @@ app.post('/api/staff/login', async (req, res) => {
         const { email, password } = req.body;
         const staff = await Staff.findOne({ email });
         if (staff && await bcrypt.compare(password, staff.password)) {
+            // Create JWT Token
+            const token = jwt.sign({
+                email: staff.email,
+                role: 'Staff',
+                empId: staff.empId,
+                name: staff.name
+            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '12h' });
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 12 * 60 * 60 * 1000 // 12 hours
+            });
+
             // 🟢 Naya code: empId bhi frontend ko bhejo
             res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto, isOnline: staff.isOnline } });
         } else {
@@ -1091,25 +1301,46 @@ app.post('/api/staff/login', async (req, res) => {
         }
     } catch (e) { res.status(500).json({ success: false, error: "Login Error" }); }
 });
+
+// GET Current Staff Context via Cookie
+app.get('/api/staff/me', (req, res) => {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ success: false, message: "No active session." });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        if (decoded.role === 'Staff') {
+            // Re-fetch robust UI context from DB if needed, or simply return decoded values
+            Staff.findOne({ email: decoded.email }).then(staff => {
+                if (!staff) return res.status(401).json({ success: false });
+                res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto, isOnline: staff.isOnline } });
+            });
+        } else {
+            res.status(401).json({ success: false, message: "Role mismatch." });
+        }
+    } catch (err) {
+        res.status(401).json({ success: false, message: "Token invalid or expired." });
+    }
+});
 // 🟢 STAFF DUTY STATUS API (Online/Offline)
 app.post('/api/staff/toggle-status', async (req, res) => {
     try {
         const { email, isOnline } = req.body;
-        
+
         // Staff ka status update karo aur time note kar lo
         const staff = await Staff.findOneAndUpdate(
             { email: email },
             { isOnline: isOnline, lastActive: Date.now() },
             { new: true } // Return updated document
         );
-        
-        if(staff) {
+
+        if (staff) {
             res.json({ success: true, isOnline: staff.isOnline });
         } else {
             res.json({ success: false, message: "Staff not found" });
         }
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Server Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 // API 2: Get Staff Tasks (Dashbaord Load Hote Hi Chalegi)
@@ -1126,7 +1357,7 @@ app.post('/api/staff/stats', async (req, res) => {
     try {
         const { email } = req.body;
         const staff = await Staff.findOne({ email });
-        
+
         if (!staff) return res.json({ success: false, message: "Staff not found" });
 
         res.json({
@@ -1135,8 +1366,8 @@ app.post('/api/staff/stats', async (req, res) => {
             pendingPayout: staff.pendingPayout || 0,
             monthlyTarget: staff.monthlyTarget || 50000 // 🟢 Target yahan se frontend jayega
         });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Fetch Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Fetch Error" });
     }
 });
 // ==========================================
@@ -1148,11 +1379,11 @@ app.post('/api/staff/request-payout', async (req, res) => {
     try {
         const { email } = req.body;
         const staff = await Staff.findOne({ email });
-        
+
         if (!staff || staff.pendingPayout <= 0) {
             return res.json({ success: false, message: "You have no pending balance to request." });
         }
-        
+
         // Check karo ki pehle se koi request pending toh nahi hai (Spam rokne ke liye)
         const existingReq = await Payout.findOne({ staffEmail: email, status: 'Pending' });
         if (existingReq) {
@@ -1165,10 +1396,10 @@ app.post('/api/staff/request-payout', async (req, res) => {
             amount: staff.pendingPayout // Jitna pending hai sabka request laga diya
         });
         await newPayout.save();
-        
+
         res.json({ success: true, message: "Payout Request Sent to Admin! 💸" });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Server Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 
@@ -1177,8 +1408,8 @@ app.get('/api/admin/payout-requests', checkAuth, async (req, res) => {
     try {
         const requests = await Payout.find().sort({ date: -1 });
         res.json({ success: true, requests });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Fetch Error" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Fetch Error" });
     }
 });
 
@@ -1187,7 +1418,7 @@ app.post('/api/admin/approve-payout', checkAuth, async (req, res) => {
     try {
         const { id } = req.body;
         const payout = await Payout.findById(id);
-        
+
         if (!payout || payout.status !== 'Pending') {
             return res.json({ success: false, message: "Invalid Request or Already Paid" });
         }
@@ -1201,11 +1432,14 @@ app.post('/api/admin/approve-payout', checkAuth, async (req, res) => {
         // Request ko Paid mark kar do
         payout.status = 'Paid';
         await payout.save();
-        
+
+        // 🟢 REAL-TIME: Notify Staff
+        io.to(payout.staffEmail).emit('payout_approved');
+
         res.json({ success: true, message: "Payout Approved & Balance Updated! ✅" });
-    } catch (e) { 
+    } catch (e) {
         console.error("Payout Error:", e);
-        res.status(500).json({ success: false, error: "Server Error" }); 
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 // ==========================================
@@ -1216,7 +1450,7 @@ app.get('/api/staff/leaderboard', async (req, res) => {
         // Sirf top 5 staff members ko lao jinki totalEarnings sabse zyada hai
         const leaderboard = await Staff.find({}, 'name profilePhoto totalEarnings')
             .sort({ totalEarnings: -1 })
-            .limit(5); 
+            .limit(5);
 
         res.json({ success: true, leaderboard });
     } catch (err) {
@@ -1228,7 +1462,11 @@ app.get('/api/staff/leaderboard', async (req, res) => {
 app.post('/api/staff/update-task', async (req, res) => {
     try {
         const { taskId, status, notes } = req.body;
-        await Task.findByIdAndUpdate(taskId, { status: status, notes: notes });
+        const updatedTask = await Task.findByIdAndUpdate(taskId, { status: status, notes: notes }, { new: true });
+
+        // 🟢 REAL-TIME: Notify Admin for live performance updates
+        io.emit('lead_status_updated', updatedTask);
+
         res.json({ success: true, message: "Lead Updated Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Update Error" }); }
 });
@@ -1264,13 +1502,53 @@ app.get('/api/chat/history', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+// ==========================================
+// ☁️ CHAT FILE UPLOAD API (ImgBB + Cloudinary)
+// ==========================================
+app.post('/api/chat/upload', upload.single('file'), async (req, res) => {
+    try {
+        const file = req.file;
+        if (!file) return res.status(400).json({ success: false, message: 'No file uploaded!' });
+
+        const mimeType = file.mimetype;
+        let fileUrl = '';
+        let fileType = '';
+        let fileName = file.originalname;
+
+        if (mimeType.startsWith('image/')) {
+            // 📸 Image → ImgBB
+            fileType = 'image';
+            const base64Image = file.buffer.toString('base64');
+            fileUrl = await uploadToImgBB(base64Image);
+            console.log('✅ Image uploaded to ImgBB:', fileUrl);
+        } else if (mimeType === 'application/pdf') {
+            // 📄 PDF → Cloudinary
+            fileType = 'pdf';
+            fileUrl = await uploadToCloudinary(file.buffer, fileName);
+            console.log('✅ PDF uploaded to Cloudinary:', fileUrl);
+        } else if (mimeType.startsWith('audio/')) {
+            // 🎤 Audio (Voice Notes) → Cloudinary
+            fileType = 'audio';
+            fileUrl = await uploadToCloudinary(file.buffer, fileName);
+            console.log('✅ Audio uploaded to Cloudinary:', fileUrl);
+        } else {
+            return res.status(400).json({ success: false, message: 'Only images, PDFs and audio files are allowed!' });
+        }
+
+        res.json({ success: true, fileUrl, fileType, fileName });
+    } catch (e) {
+        console.error('☁️ Upload Error:', e.message);
+        res.status(500).json({ success: false, message: 'File upload failed: ' + e.message });
+    }
+});
+
 // 3. Admin: Toggle Global Chat Block
 app.post('/api/admin/toggle-chat', checkAuth, async (req, res) => {
     try {
         let settings = await AppSettings.findOne();
         settings.isChatBlocked = !settings.isChatBlocked;
         await settings.save();
-        
+
         // Sabko live batao ki chat band/chalu ho gayi
         io.emit('chat_status_changed', { isChatBlocked: settings.isChatBlocked });
         res.json({ success: true, isChatBlocked: settings.isChatBlocked, message: settings.isChatBlocked ? "Chat Blocked! 🚫" : "Chat Unblocked! ✅" });
@@ -1305,6 +1583,9 @@ app.post('/api/admin/update-target', checkAuth, async (req, res) => {
 
         staff.monthlyTarget = newTarget;
         await staff.save();
+
+        // 🟢 REAL-TIME: Notify Admin/Global
+        io.emit('staff_performance_updated');
 
         res.json({ success: true, message: "🎯 Target Updated Successfully!" });
     } catch (e) {
@@ -1363,7 +1644,7 @@ app.post('/api/staff/forgot-password', otpLimiter, async (req, res) => {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         staff.resetOtp = await bcrypt.hash(otp, 10);
-        staff.resetOtpExpiry = new Date(now + 15 * 60 * 1000); 
+        staff.resetOtpExpiry = new Date(now + 15 * 60 * 1000);
         await staff.save();
 
         let mailOptions = {
@@ -1399,7 +1680,7 @@ app.post('/api/staff/reset-password', async (req, res) => {
         const { email, otp, newPassword } = req.body;
         const staff = await Staff.findOne({ email });
 
-        if (!staff || !staff.resetOtp || staff.resetOtpExpiry < Date.now()) 
+        if (!staff || !staff.resetOtp || staff.resetOtpExpiry < Date.now())
             return res.json({ success: false, message: "Invalid or Expired OTP." });
 
         if (await bcrypt.compare(otp, staff.resetOtp)) {
@@ -1705,17 +1986,90 @@ app.post('/api/verify-payment', async (req, res) => {
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (password === CURRENT_ADMIN_PASSWORD) {
-        res.json({ success: true, token: ADMIN_TOKEN });
+        const token = jwt.sign({ role: 'Admin' }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '2h' });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 2 * 60 * 60 * 1000 // 2 hours
+        });
+
+        res.json({ success: true });
     } else {
         res.json({ success: false });
     }
 });
 
 function checkAuth(req, res, next) {
-    const token = req.headers['authorization'];
-    if (token === ADMIN_TOKEN || token === "SECRET_VIBESPHERE_KEY_123") next();
-    else res.status(403).json({ error: "Access Denied" });
+    const token = req.cookies.token || req.headers['authorization'];
+    if (!token) return res.status(401).json({ error: "Access Denied" });
+
+    // Legacy Support mapping for standalone bypasses
+    if (token === ADMIN_TOKEN || token === "SECRET_VIBESPHERE_KEY_123") return next();
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        // We can attach the user to req objects (e.g. req.user = decoded) if needed later
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Invalid or expired session" });
+    }
 }
+
+// Global Cookie Logout
+app.post('/api/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ success: true, message: "Logged out completely." });
+});
+
+// GET Current Admin Context via Cookie
+app.get('/api/admin/me', (req, res) => {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ success: false, message: "No active session." });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        if (decoded.role === 'Admin') {
+            res.json({ success: true, user: { role: 'Admin' } });
+        } else {
+            res.status(401).json({ success: false, message: "Role mismatch." });
+        }
+    } catch (err) {
+        res.status(401).json({ success: false, message: "Token invalid or expired." });
+    }
+});
+
+// GET Current Client Context via Cookie
+app.get('/api/client/me', async (req, res) => {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ success: false, message: "No active session." });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        if (decoded.role === 'Client') {
+            const user = await User.findOne({ email: decoded.email });
+            if (!user) {
+                console.log(`❌ Client not found: ${decoded.email}`);
+                return res.status(401).json({ success: false });
+            }
+            res.json({ success: true, user: { name: user.name, email: user.email } });
+        } else {
+            console.log(`⚠️ Role mismatch for ${decoded.email}: Expected Client, got ${decoded.role}`);
+            res.status(401).json({ success: false, message: "Role mismatch." });
+        }
+    } catch (err) {
+        console.error("🕵️ Auth Error:", err.message);
+        res.status(401).json({ success: false, message: "Token invalid or expired." });
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ success: true, message: "Logged out completely." });
+});
+
+
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         let orders = await Order.find().sort({ _id: -1 });
@@ -1749,8 +2103,8 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
 });
 // 🟢 1. UPDATE STATUS API (SMART COMMISSION ENGINE)
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
-    const { id, status } = req.body; 
-    
+    const { id, status } = req.body;
+
     try {
         const order = await Order.findOne({ orderId: id });
         if (!order) return res.status(404).json({ success: false, message: "Order not found" });
@@ -1773,7 +2127,7 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
 
         order.status = status;
         const updatedOrder = await order.save();
-        
+
         // Client dashboard live signal
         if (updatedOrder && updatedOrder.email) {
             io.to(updatedOrder.email).emit('status_updated', {
@@ -1783,10 +2137,13 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
             });
         }
 
+        // 🟢 REAL-TIME SYNC
+        io.emit('order_updated', updatedOrder);
+
         res.json({ success: true, message: "Status Updated!" });
-    } catch (error) { 
+    } catch (error) {
         console.error("Update Status Error:", error);
-        res.status(500).json({ success: false }); 
+        res.status(500).json({ success: false });
     }
 });
 
@@ -1795,10 +2152,10 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
     try {
         const { orderId, staffEmail } = req.body;
         const order = await Order.findOne({ orderId });
-        if(!order) return res.json({ success: false, message: "Order not found" });
+        if (!order) return res.json({ success: false, message: "Order not found" });
 
         const cleanEmail = staffEmail.toLowerCase().trim();
-        
+
         // 🛡️ NAYA FIX: Pehle check karo ki ye email exist bhi karta hai ya nahi?
         const staffExists = await Staff.findOne({ email: cleanEmail });
         if (!staffExists) {
@@ -1806,12 +2163,12 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
         }
 
         order.assignedStaff = cleanEmail;
-        
+
         // 🚀 SUPER FIX: Agar order pehle se 'Done' hai, toh assignment ke waqt hi commission de do!
         if (order.status === 'Done' && (!order.commissionValue || order.commissionValue === 0)) {
             let rawPrice = order.price ? order.price.toString() : "0";
             let cleanPrice = parseFloat(rawPrice.replace(/[^\d.]/g, '')) || 0;
-            let commission = cleanPrice * 0.20; 
+            let commission = cleanPrice * 0.20;
 
             if (commission > 0) {
                 await Staff.findOneAndUpdate(
@@ -1822,7 +2179,11 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
             }
         }
 
-        await order.save();
+        const updatedOrder = await order.save();
+
+        // 🟢 REAL-TIME SYNC
+        io.emit('order_assigned', updatedOrder);
+
         res.json({ success: true, message: "Staff Assigned & Commission Logic Applied!" });
     } catch (error) {
         console.error(error);
@@ -1839,16 +2200,16 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
 app.post('/api/add-blog', checkAuth, async (req, res) => {
     try {
         // Frontend se aane wale naye SEO fields ko bhi receive karo
-        const { 
-            title, image, content, slug, 
-            category, status, tags, metaTitle, metaDesc 
-        } = req.body;
-        
-        const newBlog = new Blog({ 
+        const {
             title, image, content, slug,
-            category, status, tags, metaTitle, metaDesc 
+            category, status, tags, metaTitle, metaDesc
+        } = req.body;
+
+        const newBlog = new Blog({
+            title, image, content, slug,
+            category, status, tags, metaTitle, metaDesc
         });
-        
+
         await newBlog.save();
         res.json({ success: true, message: "Blog Posted Successfully!" });
     } catch (error) {
@@ -1943,6 +2304,20 @@ app.post('/api/auth/google', async (req, res) => {
             await user.save();
         }
 
+        // Create JWT Token
+        const jwtToken = jwt.sign({
+            email: user.email,
+            role: 'Client',
+            name: user.name
+        }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
+
+        res.cookie('token', jwtToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
         // Login Success
         res.json({ success: true, user: { name: user.name, email: user.email, picture: user.picture } });
 
@@ -2010,7 +2385,7 @@ app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
 
         tasks.forEach(task => {
             const email = task.assignedTo;
-            
+
             // Agar email assigned hai, tabhi aage badho
             if (email) {
                 // Agar ye staff abhi bhi system me hai
@@ -2047,13 +2422,17 @@ app.post('/api/admin/add-task', checkAuth, async (req, res) => {
             contactNumber,
             servicePitch,
             assignedTo,
-            status: 'pending' 
+            status: 'pending'
         });
         await newTask.save();
-        
-        // 🟢 NAYA: Staff ko live notification socket bhej do!
-        io.to(assignedTo).emit('new_lead_assigned', { clientName: clientName, servicePitch: servicePitch });
-        
+
+        // 🟢 REAL-TIME: Notify assigned staff and Admin
+        io.to(assignedTo).emit('lead_assigned', { clientName, servicePitch });
+        io.emit('staff_list_updated'); // Refresh Admin's staffView if needed
+
+        // 🧠 AI Lead Scoring (Background - Non-blocking)
+        scoreLeadWithAI(newTask._id, newTask);
+
         res.json({ success: true, message: "Lead Assigned Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to assign lead" }); }
 });
@@ -2065,6 +2444,10 @@ app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
 
         const newNotice = new Notice({ title, message, author: "Admin" });
         await newNotice.save();
+
+        // 🟢 REAL-TIME: Notify all online staff
+        io.emit('notice_posted');
+
         res.json({ success: true, message: "Notice Posted on Staff Board!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to post notice" }); }
 });
@@ -2074,15 +2457,255 @@ app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
 app.delete('/api/admin/delete-task/:id', checkAuth, async (req, res) => {
     try {
         await Task.findByIdAndDelete(req.params.id);
+
+        // 🟢 REAL-TIME: Notify Admin and Staff
+        io.emit('lead_deleted', req.params.id);
+
         res.json({ success: true, message: "Lead Deleted Successfully!" });
-    } catch (e) { 
-        res.status(500).json({ success: false, error: "Failed to delete lead" }); 
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Failed to delete lead" });
     }
 });
 
+// ==========================================
+// 🎧 HELPDESK TICKETING APIs
+// ==========================================
 
+// Client creates a ticket
+app.post('/api/client/create-ticket', async (req, res) => {
+    try {
+        const { email, name, subject, issue } = req.body;
+        if (!subject || !issue) return res.status(400).json({ success: false, message: 'Subject and issue are required' });
+        const ticket = new Ticket({ clientEmail: email, clientName: name, subject, issue });
+        await ticket.save();
+        res.json({ success: true, message: 'Ticket created successfully! 🎫' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to create ticket' }); }
+});
 
+// Client views own tickets
+app.post('/api/client/my-tickets', async (req, res) => {
+    try {
+        const tickets = await Ticket.find({ clientEmail: req.body.email }).sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
 
+// Admin/Staff views all tickets
+app.get('/api/admin/tickets', checkAuth, async (req, res) => {
+    try {
+        const tickets = await Ticket.find().sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// Admin/Staff updates ticket status + adds reply
+app.post('/api/admin/update-ticket', checkAuth, async (req, res) => {
+    try {
+        const { ticketId, status, reply, sender } = req.body;
+        const update = {};
+        if (status) update.status = status;
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+        if (status) ticket.status = status;
+        if (reply) ticket.replies.push({ sender: sender || 'Admin', message: reply });
+        await ticket.save();
+        res.json({ success: true, message: 'Ticket updated! ✅' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to update ticket' }); }
+});
+
+// ==========================================
+// 💰 EXPENSE TRACKER APIs (Admin Only)
+// ==========================================
+
+app.post('/api/admin/add-expense', checkAuth, async (req, res) => {
+    try {
+        const { title, amount, category } = req.body;
+        if (!title || !amount) return res.status(400).json({ success: false, message: 'Title and amount required' });
+        const expense = new Expense({ title, amount: Number(amount), category: category || 'General' });
+        await expense.save();
+        res.json({ success: true, message: 'Expense added! 💰' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to add expense' }); }
+});
+
+app.get('/api/admin/expenses', checkAuth, async (req, res) => {
+    try {
+        const expenses = await Expense.find().sort({ date: -1 });
+        res.json({ success: true, expenses });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.delete('/api/admin/delete-expense/:id', checkAuth, async (req, res) => {
+    try {
+        await Expense.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Expense deleted! 🗑️' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to delete expense' }); }
+});
+
+app.get('/api/admin/finance-summary', checkAuth, async (req, res) => {
+    try {
+        // Total Revenue from Orders
+        const orders = await Order.find();
+        let totalRevenue = 0;
+        orders.forEach(o => {
+            const price = parseFloat(String(o.price).replace(/[^0-9.]/g, ''));
+            if (!isNaN(price)) totalRevenue += price;
+        });
+
+        // Total Expenses
+        const expenses = await Expense.find();
+        let totalExpenses = 0;
+        expenses.forEach(e => { totalExpenses += (e.amount || 0); });
+
+        const netProfit = totalRevenue - totalExpenses;
+
+        res.json({ success: true, totalRevenue, totalExpenses, netProfit });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// ==========================================
+// 📚 RESOURCE HUB APIs (Knowledge Base)
+// ==========================================
+
+app.post('/api/admin/add-resource', checkAuth, upload.single('file'), async (req, res) => {
+    try {
+        const { title, type, content } = req.body;
+        if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
+
+        let resourceContent = content || '';
+
+        // If PDF uploaded, upload to Cloudinary
+        if (req.file && type === 'pdf') {
+            resourceContent = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+        }
+
+        const resource = new Resource({ title, type: type || 'link', content: resourceContent });
+        await resource.save();
+        res.json({ success: true, message: 'Resource added! 📚' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to add resource' }); }
+});
+
+app.get('/api/resources', async (req, res) => {
+    try {
+        const resources = await Resource.find().sort({ date: -1 });
+        res.json({ success: true, resources });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.delete('/api/admin/delete-resource/:id', checkAuth, async (req, res) => {
+    try {
+        await Resource.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Resource deleted! 🗑️' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to delete resource' }); }
+});
+
+// ==========================================
+// ==========================================
+// 🎬 VIDEO MEETING APIs (Jitsi)
+// ==========================================
+
+app.post('/api/admin/create-meeting', checkAuth, async (req, res) => {
+    try {
+        const { topic, scheduledTime, password } = req.body;
+        if (!topic || !scheduledTime) return res.status(400).json({ success: false, message: 'Topic and time required' });
+
+        const JAAS_APP_ID = process.env.JAAS_APP_ID;
+        if (!JAAS_APP_ID || JAAS_APP_ID === 'YOUR_JAAS_APP_ID_HERE') return res.status(500).json({ success: false, message: 'JaaS App ID not configured in .env' });
+
+        // Generate JaaS-formatted room name
+        const roomName = `vpaas-magic-cookie-${JAAS_APP_ID}/VibeSphere-Meeting-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+        const meeting = new Meeting({
+            topic,
+            roomName: roomName,
+            scheduledTime: new Date(scheduledTime),
+            createdBy: 'Admin',
+            password: password || ''
+        });
+        await meeting.save();
+
+        // 🟢 REAL-TIME: Notify all online staff and Admin
+        io.emit('meeting_scheduled', { topic, scheduledTime, roomName: roomName });
+
+        res.json({ success: true, message: 'Meeting scheduled! 🎬', meeting });
+    } catch (e) {
+        console.error('Meeting create error:', e.message);
+        res.status(500).json({ success: false, error: 'Failed to create meeting' });
+    }
+});
+
+// 🟢 NAYA: Meeting Info API (Public)
+app.get('/api/meeting-info/:room', async (req, res) => {
+    try {
+        const roomName = req.params.room;
+        // Search by roomName part since DB has full prefix
+        const meeting = await Meeting.findOne({ roomName: { $regex: roomName, $options: 'i' } });
+        if (!meeting) return res.status(404).json({ success: false, message: "Meeting not found" });
+
+        res.json({
+            success: true,
+            topic: meeting.topic,
+            scheduledTime: meeting.scheduledTime,
+            status: meeting.status,
+            hasPassword: !!(meeting.password && meeting.password.trim() !== '')
+        });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 🟢 NAYA: Verify Meeting Password
+app.post('/api/meeting/verify-password', async (req, res) => {
+    try {
+        const { room, password } = req.body;
+        const meeting = await Meeting.findOne({ roomName: { $regex: room, $options: 'i' } });
+        if (!meeting) return res.status(404).json({ success: false, message: "Meeting not found" });
+
+        if (meeting.password === password) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: "Incorrect Password! ❌" });
+        }
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 🟢 NAYA: Update Meeting Time API
+app.put('/api/admin/update-meeting-time', checkAuth, async (req, res) => {
+    try {
+        const { meetingId, newTime } = req.body;
+        const meeting = await Meeting.findByIdAndUpdate(meetingId, { scheduledTime: new Date(newTime) }, { new: true });
+        if (!meeting) return res.json({ success: false, message: "Meeting not found" });
+
+        // 🟢 SOCKET: Notify Everyone
+        io.emit('meeting_updated', { topic: meeting.topic, scheduledTime: meeting.scheduledTime });
+
+        res.json({ success: true, message: "Meeting rescheduled successfully! ✏️" });
+    } catch (e) { res.status(500).json({ success: false, error: "Failed to update time" }); }
+});
+
+app.get('/api/meetings', async (req, res) => {
+    try {
+        const meetings = await Meeting.find().sort({ scheduledTime: -1 });
+        res.json({ success: true, meetings });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.delete('/api/admin/delete-meeting/:id', checkAuth, async (req, res) => {
+    try {
+        await Meeting.findByIdAndDelete(req.params.id);
+
+        // 🟢 REAL-TIME: Notify everyone
+        io.emit('meeting_cancelled');
+
+        res.json({ success: true, message: 'Meeting deleted! 🗑️' });
+    } catch (e) { res.status(500).json({ success: false, error: 'Failed to delete meeting' }); }
+});
+
+app.post('/api/admin/update-meeting-status', checkAuth, async (req, res) => {
+    try {
+        const { meetingId, status } = req.body;
+        await Meeting.findByIdAndUpdate(meetingId, { status });
+        if (status === 'Live') io.emit('meeting_going_live', { meetingId });
+        res.json({ success: true, message: 'Meeting status updated!' });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
 // ==========================================
 // 📜 MANAGE HANDOVERS / CERTIFICATES (ADMIN)
 // ==========================================
@@ -2157,6 +2780,10 @@ app.get('/api/admin/notices', checkAuth, async (req, res) => {
 app.delete('/api/admin/delete-notice/:id', checkAuth, async (req, res) => {
     try {
         await Notice.findByIdAndDelete(req.params.id);
+
+        // 🟢 REAL-TIME: Sync across portals
+        io.emit('notice_deleted');
+
         res.json({ success: true, message: "Notice Deleted Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to delete notice" }); }
 });
@@ -2569,10 +3196,10 @@ app.post('/api/contact', async (req, res) => {
 app.get('/api/admin/clients', checkAuth, async (req, res) => {
     try {
         console.log("Fetching clients from DB..."); // Terminal me check karne ke liye
-        
+
         // Naya aur zyada safe database query
         const clients = await User.find().sort({ date: -1 }).select({ password: 0, resetOtp: 0 });
-        
+
         console.log(`✅ Found ${clients.length} clients!`);
         res.json({ success: true, clients: clients });
     } catch (e) {
@@ -2585,7 +3212,7 @@ app.get('/api/admin/clients', checkAuth, async (req, res) => {
 app.post('/api/admin/reset-client-password', checkAuth, async (req, res) => {
     try {
         const { userId, newPassword } = req.body;
-        
+
         // Pehle user ko dhoondho taaki uska email aur naam mil sake
         const user = await User.findById(userId);
         if (!user) return res.json({ success: false, error: "User not found!" });
@@ -2594,7 +3221,7 @@ app.post('/api/admin/reset-client-password', checkAuth, async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         await user.save();
-        
+
         // 📧 Client ko Email Bhejo
         let mailOptions = {
             from: process.env.EMAIL_USER,
@@ -2639,7 +3266,7 @@ app.delete('/api/admin/delete-client/:id', checkAuth, async (req, res) => {
 app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
     try {
         const { userId, isBanned } = req.body;
-        
+
         // User ko dhoondho
         const user = await User.findById(userId);
         if (!user) return res.json({ success: false, error: "User not found!" });
@@ -2652,12 +3279,12 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
         // 🟢 Laal (Red) rang ko hata kar Soft Orange (Alert) aur Green kar diya
         let subjectText = isBanned ? "Action Required: Account Status Update - VibeSphere" : "✅ Account Access Restored - VibeSphere";
         let topBorderColor = isBanned ? "#f59e0b" : "#10b981"; // Yellow/Orange instead of aggressive Red
-        
-        let messageBody = isBanned 
+
+        let messageBody = isBanned
             ? `<p style="color: #475569; font-size: 15px; text-align: left;">This is an automated notification regarding your VibeSphere Media account.</p>
                <div style="margin: 25px 0; padding: 15px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #b45309; font-weight: bold; text-align: center;">Account Status: Access Restricted</div>
                <p style="color: #475569; font-size: 14px; text-align: left;">Your account access has been temporarily restricted following a system review. If you believe this is an error or need further assistance, please reply to this email to connect with our support team.</p>`
-            
+
             : `<p style="color: #475569; font-size: 15px; text-align: left;">Good news! Your VibeSphere Media account access has been successfully <strong>Restored</strong>.</p>
                <div style="margin: 25px 0; padding: 15px; background: #d1fae5; border-radius: 8px; color: #059669; font-weight: bold; text-align: center;">Account Status: Active</div>
                <p style="color: #475569; font-size: 14px; text-align: left;">You can now log in to your dashboard and resume your activities. Welcome back!</p>`;
@@ -2688,7 +3315,7 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
 // ==========================================
 // 🟢 THE WHATSAPP ENGINE (BAILEYS) - VERSION 405 FIX
 // ==========================================
- let waSocket = null;
+let waSocket = null;
 
 async function connectToWhatsApp() {
     // 🟢 1. NAYA FIX: WhatsApp ka ekdum latest version fetch karo
@@ -2699,9 +3326,9 @@ async function connectToWhatsApp() {
 
     const sock = makeWASocket({
         version, // 🟢 2. NAYA FIX: Version attach kar diya
-        logger: pino({ level: 'silent' }), 
+        logger: pino({ level: 'silent' }),
         auth: state,
-        browser: ['VibeSphere Media', 'Chrome', '1.0.0'], 
+        browser: ['VibeSphere Media', 'Chrome', '1.0.0'],
     });
 
     waSocket = sock;
@@ -2713,42 +3340,42 @@ async function connectToWhatsApp() {
             qrcode.toString(qr, { type: 'terminal', small: true }, function (err, url) {
                 if (err) console.log("QR Error:", err);
                 console.log("\n📲 SCAN THIS QR CODE WITH YOUR WHATSAPP LINKED DEVICES:");
-                console.log(url); 
+                console.log(url);
             });
         }
 
         if (connection === 'close') {
             const statusCode = lastDisconnect.error?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-            
+
             console.log(`⚠️ WhatsApp Connection closed. Reason: ${statusCode}`);
-            
+
             if (shouldReconnect) {
                 console.log("🔄 Reconnecting in 3 seconds...");
-                setTimeout(connectToWhatsApp, 3000); 
+                setTimeout(connectToWhatsApp, 3000);
             } else {
                 console.log('🚨 Logged out! Please delete "auth_info_baileys" folder and restart.');
             }
-       } else if (connection === 'open') {
+        } else if (connection === 'open') {
             console.log('✅ BOOM! WHATSAPP CONNECTED SUCCESSFULLY!');
-            
+
             // 🟢 NAYA FIX: WhatsApp ko sync karne ke liye 5 second ka time do
             setTimeout(async () => {
                 try {
                     console.log("📨 Sending Test Message...");
                     const myNumber = "918302485826@s.whatsapp.net"; // Tera number
-                    
-                    await waSocket.sendMessage(myNumber, { 
-                        text: "🚀 VibeSphere WhatsApp API is LIVE!\n\nYeh message direct tere Node.js server se aaya hai. Tu sach mein ek Indie Hacker ban chuka hai! 😎" 
+
+                    await waSocket.sendMessage(myNumber, {
+                        text: "🚀 VibeSphere WhatsApp API is LIVE!\n\nYeh message direct tere Node.js server se aaya hai. Tu sach mein ek Indie Hacker ban chuka hai! 😎"
                     });
-                    
+
                     console.log("✅ Test Message Delivered!");
                 } catch (err) {
                     console.log("❌ Failed to send test message:", err.message);
                 }
             }, 5000); // 5 seconds delay
         }
-        
+
     });
 
     sock.ev.on('creds.update', saveCreds);

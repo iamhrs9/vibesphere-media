@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,28 +61,55 @@
             gap: 8px;
         }
 
-        .btn-purple { background: #6c63ff; color: white; }
-        .btn-purple:hover { background: #5a52d5; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(108, 99, 255, 0.25); }
+        .btn-purple {
+            background: #6c63ff;
+            color: white;
+        }
 
-        .btn-amber { background: #f59e0b; color: white; }
-        .btn-amber:hover { background: #d97706; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.25); }
+        .btn-purple:hover {
+            background: #5a52d5;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 99, 255, 0.25);
+        }
+
+        .btn-amber {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-amber:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.25);
+        }
     </style>
 </head>
+
 <body class="staff-dashboard-bg">
 
-    <div class="dashboard-container">
+    <div class="dashboard-container" style="display: none;">
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <h2>VibeSphere<span>.</span></h2>
                 <p>Staff Portal</p>
             </div>
-           <ul class="sidebar-menu">
-                <li id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="ri-dashboard-line"></i> Dashboard</li>
+            <ul class="sidebar-menu">
+                <li id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="ri-dashboard-line"></i>
+                    Dashboard</li>
                 <li id="nav-tasks" onclick="switchTab('tasks')"><i class="ri-list-check"></i> My Tasks</li>
                 <li id="nav-payouts" onclick="switchTab('payouts')"><i class="ri-history-line"></i> Payout History</li>
-                <li id="nav-notices" onclick="switchTab('notices')"><i class="ri-notification-3-line"></i> Notice Board</li>
-                <li id="nav-chat" onclick="switchTab('chat'); scrollToBottom();"><i class="ri-chat-voice-line"></i> Team Chat</li>
-                <li id="nav-leaves" onclick="switchTab('leaves')"><i class="ri-calendar-event-line"></i> Leave Application</li>
+                <li id="nav-notices" onclick="switchTab('notices')"><i class="ri-notification-3-line"></i> Notice Board
+                </li>
+                <li id="nav-chat" onclick="switchTab('chat'); scrollToBottom();"><i class="ri-chat-voice-line"></i> Team
+                    Chat</li>
+                <li id="nav-leaves" onclick="switchTab('leaves')"><i class="ri-calendar-event-line"></i> Leave
+                    Application</li>
+                <li id="nav-helpdesk" onclick="switchTab('helpdesk'); fetchStaffTickets();"><i
+                        class="ri-customer-service-2-line"></i> Helpdesk 🎧</li>
+                <li id="nav-kb" onclick="switchTab('kb'); fetchStaffResources();"><i class="ri-book-read-line"></i>
+                    Knowledge Base 📚</li>
+                <li id="nav-meetings" onclick="switchTab('meetings'); fetchStaffMeetings();"><i
+                        class="ri-vidicon-line"></i> Meetings 🎬</li>
                 <li onclick="openIDCard()"><i class="ri-profile-line"></i> My ID Card</li>
             </ul>
         </aside>
@@ -92,22 +120,27 @@
                     <h1>Welcome back, Staff! 👋</h1>
                     <p>Here is your summary for today.</p>
                 </div>
-                
+
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <button id="dutyBtn" onclick="toggleDutyStatus()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <span class="status-dot" style="width: 10px; height: 10px; background: white; border-radius: 50%; display: inline-block;"></span>
+                    <button id="dutyBtn" onclick="toggleDutyStatus()"
+                        style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <span class="status-dot"
+                            style="width: 10px; height: 10px; background: white; border-radius: 50%; display: inline-block;"></span>
                         <span id="dutyText">Offline</span>
                     </button>
 
                     <div class="header-profile" style="position: relative;">
-                        <img id="headerProfileImg" class="profile-circle" onclick="toggleProfileMenu()" style="cursor: pointer; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #7d5fff; padding: 0;" src="">
+                        <img id="headerProfileImg" class="profile-circle" onclick="toggleProfileMenu()"
+                            style="cursor: pointer; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #7d5fff; padding: 0;"
+                            src="">
                         <div id="profile-menu" class="profile-dropdown" style="display: none;">
                             <div class="dropdown-header">
                                 <strong>Staff Name</strong>
                                 <span>staff@vibespheremedia.com</span>
                             </div>
                             <ul>
-                                <li onclick="switchTab('settings'); toggleProfileMenu();"><i class="ri-user-settings-line"></i> Account Settings</li>
+                                <li onclick="switchTab('settings'); toggleProfileMenu();"><i
+                                        class="ri-user-settings-line"></i> Account Settings</li>
                                 <li style="color: #dc2626;" onclick="staffLogout()">
                                     <i class="ri-logout-box-r-line"></i> Logout
                                 </li>
@@ -120,21 +153,24 @@
             <div id="view-dashboard" class="tab-content" style="display: block;">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: #e0e7ff; color: #4f46e5;"><i class="ri-briefcase-4-line"></i></div>
+                        <div class="stat-icon" style="background: #e0e7ff; color: #4f46e5;"><i
+                                class="ri-briefcase-4-line"></i></div>
                         <div class="stat-info">
                             <h3>0</h3>
                             <p>Total Assigned</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: #dcfce7; color: #16a34a;"><i class="ri-checkbox-circle-line"></i></div>
+                        <div class="stat-icon" style="background: #dcfce7; color: #16a34a;"><i
+                                class="ri-checkbox-circle-line"></i></div>
                         <div class="stat-info">
                             <h3>0</h3>
                             <p>Completed</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: #fee2e2; color: #dc2626;"><i class="ri-time-line"></i></div>
+                        <div class="stat-icon" style="background: #fee2e2; color: #dc2626;"><i class="ri-time-line"></i>
+                        </div>
                         <div class="stat-info">
                             <h3>0</h3>
                             <p>Pending Calls</p>
@@ -142,55 +178,78 @@
                     </div>
                 </div>
 
-                <section class="leaderboard-section" style="margin-top: 25px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+                <section class="leaderboard-section"
+                    style="margin-top: 25px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
                     <div class="section-header" style="margin-bottom: 15px;">
-                        <h2 style="color: #1e293b; font-size: 18px;"><i class="ri-trophy-fill" style="color: #f59e0b;"></i> Top Performers (Leaderboard)</h2>
+                        <h2 style="color: #1e293b; font-size: 18px;"><i class="ri-trophy-fill"
+                                style="color: #f59e0b;"></i> Top Performers (Leaderboard)</h2>
                     </div>
-                    <div id="leaderboardContainer" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin;">
+                    <div id="leaderboardContainer"
+                        style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin;">
                         <p style="color: #64748b; font-size: 14px;">Loading top performers... ⏳</p>
                     </div>
                 </section>
-                
+
                 <div class="stats-grid" style="margin-top: 15px;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
-                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i class="ri-money-rupee-circle-line"></i></div>
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i
+                                class="ri-money-rupee-circle-line"></i></div>
                         <div class="stat-info">
                             <h3 id="earnTotal" style="color: white; font-size: 28px;">₹0</h3>
                             <p style="color: #d1fae5; font-weight: 500;">Total Earned (20% Comm)</p>
                         </div>
                     </div>
-                   <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; position: relative;">
-                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i class="ri-wallet-3-line"></i></div>
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; position: relative;">
+                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i
+                                class="ri-wallet-3-line"></i></div>
                         <div class="stat-info">
                             <h3 id="earnPending" style="color: white; font-size: 28px;">₹0</h3>
                             <p style="color: #fef3c7; font-weight: 500;">Pending Payout</p>
                         </div>
-                       <button onclick="openPayoutModal()" style="position: absolute; bottom: 15px; right: 15px; background: white; color: #d97706; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s;">Withdraw 💸</button>
+                        <button onclick="openPayoutModal()"
+                            style="position: absolute; bottom: 15px; right: 15px; background: white; color: #d97706; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s;">Withdraw
+                            💸</button>
                     </div>
                 </div>
-<div class="staff-card" style="margin-top: 20px; padding: 20px; border-radius: 12px; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-                        <h3 style="color: #1e293b; font-size: 15px; margin: 0;"><i class="ri-focus-2-line" style="color: #ef4444; margin-right: 5px;"></i> Monthly Target</h3>
-                        <span id="targetText" style="color: #6c63ff; font-weight: bold; font-size: 14px; background: #f3f0ff; padding: 4px 10px; border-radius: 20px;">₹0 / ₹50,000</span>
+                <div class="staff-card"
+                    style="margin-top: 20px; padding: 20px; border-radius: 12px; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                    <div
+                        style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
+                        <h3 style="color: #1e293b; font-size: 15px; margin: 0;"><i class="ri-focus-2-line"
+                                style="color: #ef4444; margin-right: 5px;"></i> Monthly Target</h3>
+                        <span id="targetText"
+                            style="color: #6c63ff; font-weight: bold; font-size: 14px; background: #f3f0ff; padding: 4px 10px; border-radius: 20px;">₹0
+                            / ₹50,000</span>
                     </div>
-                    <div style="width: 100%; background: #f1f5f9; border-radius: 10px; height: 14px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                        <div id="targetProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6c63ff, #a78bfa); border-radius: 10px; transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                    <div
+                        style="width: 100%; background: #f1f5f9; border-radius: 10px; height: 14px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                        <div id="targetProgressBar"
+                            style="width: 0%; height: 100%; background: linear-gradient(90deg, #6c63ff, #a78bfa); border-radius: 10px; transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                        </div>
                     </div>
-                    <p id="targetMotivation" style="font-size: 12px; color: #64748b; margin-top: 12px; text-align: center; font-weight: 500;">Loading target... ⏳</p>
+                    <p id="targetMotivation"
+                        style="font-size: 12px; color: #64748b; margin-top: 12px; text-align: center; font-weight: 500;">
+                        Loading target... ⏳</p>
                 </div>
-                <div class="staff-card" style="margin-top: 25px; margin-bottom: 25px; border-top: 4px solid #8b5cf6; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; padding: 20px; border-radius: 12px;">
-                    <h3 style="color: #1e293b; margin-bottom: 20px; font-size: 18px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                <div class="staff-card"
+                    style="margin-top: 25px; margin-bottom: 25px; border-top: 4px solid #8b5cf6; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; padding: 20px; border-radius: 12px;">
+                    <h3
+                        style="color: #1e293b; margin-bottom: 20px; font-size: 18px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
                         <i class="ri-user-add-line" style="color: #8b5cf6; margin-right: 5px;"></i> Add Your Own Lead
                     </h3>
                     <form onsubmit="staffAddSelfLead(event)">
                         <div class="modern-form-grid">
                             <div>
                                 <label class="modern-label">Client Name</label>
-                                <input type="text" id="selfClientName" class="modern-input" placeholder="e.g. John Doe" required>
+                                <input type="text" id="selfClientName" class="modern-input" placeholder="e.g. John Doe"
+                                    required>
                             </div>
                             <div>
                                 <label class="modern-label">Contact No.</label>
-                                <input type="text" id="selfContact" class="modern-input" placeholder="Phone or Insta ID" required>
+                                <input type="text" id="selfContact" class="modern-input" placeholder="Phone or Insta ID"
+                                    required>
                             </div>
                             <div>
                                 <label class="modern-label">Service Pitch</label>
@@ -226,13 +285,15 @@
                         </table>
                     </div>
                 </section>
-            </div> <div id="view-leaves" class="tab-content" style="display: none;">
+            </div>
+            <div id="view-leaves" class="tab-content" style="display: none;">
                 <section class="task-section">
                     <div class="section-header">
                         <h2>🏖️ Apply for Leave</h2>
                     </div>
-                    
-                    <div class="staff-card" style="margin-bottom: 25px; border-top: 4px solid #f59e0b; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; padding: 20px; border-radius: 12px;">
+
+                    <div class="staff-card"
+                        style="margin-bottom: 25px; border-top: 4px solid #f59e0b; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; padding: 20px; border-radius: 12px;">
                         <form onsubmit="applyForLeave(event)">
                             <div class="modern-form-grid" style="grid-template-columns: 1fr 1fr;">
                                 <div>
@@ -246,21 +307,32 @@
                             </div>
                             <div style="margin-bottom: 20px;">
                                 <label class="modern-label">Reason for Leave</label>
-                                <textarea id="leaveReason" rows="3" class="modern-input" placeholder="Please describe the reason briefly..." required></textarea>
+                                <textarea id="leaveReason" rows="3" class="modern-input"
+                                    placeholder="Please describe the reason briefly..." required></textarea>
                             </div>
                             <button type="submit" class="btn-modern btn-amber">Submit Application 🏖️</button>
                         </form>
                     </div>
 
-                    <div class="section-header"><h2>📋 My Leave History</h2></div>
+                    <div class="section-header">
+                        <h2>📋 My Leave History</h2>
+                    </div>
                     <div class="task-table-wrapper">
                         <table class="task-table">
-                            <thead><tr><th>Applied On</th><th>Duration</th><th>Reason</th><th>Status</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Applied On</th>
+                                    <th>Duration</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
                             <tbody id="leaveHistoryBody"></tbody>
                         </table>
                     </div>
                 </section>
-            </div> <div id="view-tasks" class="tab-content" style="display: none;">
+            </div>
+            <div id="view-tasks" class="tab-content" style="display: none;">
                 <section class="task-section">
                     <div class="section-header">
                         <h2>All Assigned Leads (History)</h2>
@@ -281,8 +353,10 @@
                         </table>
                     </div>
                 </section>
-            </div> <div id="view-notices" class="tab-content" style="display: none;">
-                <section class="task-section" style="background: transparent; box-shadow: none; border: none; padding: 0;">
+            </div>
+            <div id="view-notices" class="tab-content" style="display: none;">
+                <section class="task-section"
+                    style="background: transparent; box-shadow: none; border: none; padding: 0;">
                     <div class="section-header">
                         <h2>📢 Official Notice Board</h2>
                     </div>
@@ -290,7 +364,8 @@
                         <p style="color: #64748b;">Loading notices...</p>
                     </div>
                 </section>
-            </div> <div id="view-payouts" class="tab-content" style="display: none;">
+            </div>
+            <div id="view-payouts" class="tab-content" style="display: none;">
                 <section class="task-section">
                     <div class="section-header">
                         <h2>💸 My Payout History</h2>
@@ -306,12 +381,16 @@
                                 </tr>
                             </thead>
                             <tbody id="payoutHistoryBody">
-                                <tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">Loading history...</td></tr>
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">Loading
+                                        history...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </section>
-            </div> <div id="view-settings" class="tab-content" style="display: none;">
+            </div>
+            <div id="view-settings" class="tab-content" style="display: none;">
                 <section class="task-section">
                     <div class="section-header">
                         <h2>⚙️ Account Settings</h2>
@@ -321,28 +400,40 @@
                             <h3>Profile Picture</h3>
                             <div class="avatar-upload-settings">
                                 <img id="settings-avatar-preview" src="" alt="Profile">
-                                <input type="file" id="profilePhotoInput" accept="image/*" style="display: none;" onchange="previewPhoto(event)">
-                                <label for="profilePhotoInput" class="btn-outline" style="text-align: center; display: inline-block; width: 100%;">Select Photo</label>
-                                <button class="btn-update" id="savePhotoBtn" onclick="saveProfilePhoto()" style="width: 100%; display: none; margin-top: 10px;">Update Photo</button>
+                                <input type="file" id="profilePhotoInput" accept="image/*" style="display: none;"
+                                    onchange="previewPhoto(event)">
+                                <label for="profilePhotoInput" class="btn-outline"
+                                    style="text-align: center; display: inline-block; width: 100%;">Select Photo</label>
+                                <button class="btn-update" id="savePhotoBtn" onclick="saveProfilePhoto()"
+                                    style="width: 100%; display: none; margin-top: 10px;">Update Photo</button>
                             </div>
                         </div>
                         <div class="settings-card">
                             <h3>Change Password</h3>
-                            <div class="input-group">
-                                <label>Current Password</label>
-                                <input type="password" id="currentPassword" placeholder="Enter current password">
-                            </div>
-                            <div class="input-group">
-                                <label>New Password</label>
-                                <input type="password" id="newPassword" placeholder="Enter new password">
-                            </div>
-                            <button class="btn-update" style="width: 100%;" onclick="updatePassword()">Update Password</button>
+                            <form onsubmit="event.preventDefault(); updatePassword();">
+                                <input type="text" name="username" value="staff" style="display:none;"
+                                    autocomplete="username">
+                                <div class="input-group">
+                                    <label>Current Password</label>
+                                    <input type="password" id="currentPassword" placeholder="Enter current password"
+                                        autocomplete="current-password">
+                                </div>
+                                <div class="input-group">
+                                    <label>New Password</label>
+                                    <input type="password" id="newPassword" placeholder="Enter new password"
+                                        autocomplete="new-password">
+                                </div>
+                                <button type="submit" class="btn-update" style="width: 100%;">Update
+                                    Password</button>
+                            </form>
                         </div>
                     </div>
                 </section>
-            </div> <div id="idCardModal" class="modal-overlay" style="display: none;">
+            </div>
+            <div id="idCardModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content" style="max-width: 350px; text-align: center;">
-                    <span class="close-btn" onclick="closeIDCard()" style="position: absolute; right: 20px; top: 15px; cursor: pointer;">&times;</span>
+                    <span class="close-btn" onclick="closeIDCard()"
+                        style="position: absolute; right: 20px; top: 15px; cursor: pointer;">&times;</span>
                     <div class="id-card-wrapper" id="printableIDCard">
                         <div class="id-card">
                             <div class="id-header">
@@ -357,7 +448,8 @@
                                 <p id="idCardRole" class="role">Role</p>
                                 <div class="id-info">
                                     <p><strong>EMP ID:</strong> <span id="idCardEmpId">Loading...</span></p>
-                                    <p><strong>Email:</strong> <span id="idCardEmail">email@vibespheremedia.com</span></p>
+                                    <p><strong>Email:</strong> <span id="idCardEmail">email@vibespheremedia.com</span>
+                                    </p>
                                 </div>
                             </div>
                             <div class="id-footer">
@@ -365,42 +457,173 @@
                             </div>
                         </div>
                     </div>
-                    <button class="btn-update" onclick="printIDCard()" style="width: 100%; margin-top: 25px; padding: 12px; font-size: 16px;">
+                    <button class="btn-update" onclick="printIDCard()"
+                        style="width: 100%; margin-top: 25px; padding: 12px; font-size: 16px;">
                         <i class="ri-download-2-line"></i> Download / Print ID
                     </button>
                 </div>
             </div>
-<div id="view-chat" class="tab-content" style="display: none; height: 85vh;">
-    <section class="task-section" style="height: 100%; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; background: #f8fafc;">
-        <div style="background: #ffffff; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 18px; color: #1e293b;"><i class="ri-chat-smile-3-fill" style="color: #6c63ff;"></i> Agency Global Chat</h2>
-            <span id="chatStatusBadge" style="background: #d1fae5; color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">Live 🟢</span>
-        </div>
+            <div id="view-chat" class="tab-content" style="display: none; height: 85vh;">
+                <section class="task-section"
+                    style="height: 100%; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; background: #f8fafc;">
+                    <div
+                        style="background: #ffffff; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; font-size: 18px; color: #1e293b;"><i class="ri-chat-smile-3-fill"
+                                style="color: #6c63ff;"></i> Agency Global Chat</h2>
+                        <span id="chatStatusBadge"
+                            style="background: #d1fae5; color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">Live
+                            🟢</span>
+                    </div>
 
-        <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                    <div id="chatMessages"
+                        style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                    </div>
+
+                    <div
+                        style="background: #ffffff; padding: 15px 20px; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px; position: relative;">
+
+                        <div id="staffChatFilePreview"
+                            style="display: none; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; position: relative;">
+                            <div id="staffChatPreviewContent"></div>
+                            <span onclick="removeStaffChatFile()"
+                                style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; font-weight: bold;">X</span>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" id="staffChatFileInput" style="display: none;" accept="image/*,.pdf"
+                                onchange="previewStaffChatFile(event)">
+                            <button onclick="document.getElementById('staffChatFileInput').click()"
+                                style="background: #f1f5f9; color: #64748b; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; flex-shrink: 0;"
+                                title="Attach Image or PDF">
+                                <i class="ri-attachment-2"></i>
+                            </button>
+
+                            <!-- 🎤 Voice Recording Button -->
+                            <button id="staffMicBtn" onclick="toggleStaffVoiceRecording()"
+                                style="background: #f1f5f9; color: #64748b; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.3s; flex-shrink: 0;"
+                                title="Record Voice Note">
+                                🎤
+                            </button>
+                            <span id="staffVoiceTimer"
+                                style="display:none; font-size:13px; font-weight:bold; color:#ef4444; min-width:50px;">00:00</span>
+
+                            <input type="text" id="chatInput" placeholder="Type a message..."
+                                style="flex: 1; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 25px; outline: none; background: #f1f5f9; font-size: 14px;"
+                                onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                            <button onclick="sendChatMessage()"
+                                style="background: #6c63ff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.3s; flex-shrink: 0;"><i
+                                    class="ri-send-plane-fill"></i></button>
+                        </div>
+                    </div>
+                </section>
             </div>
 
-        <div style="background: #ffffff; padding: 15px 20px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
-            <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 25px; outline: none; background: #f1f5f9; font-size: 14px;" onkeypress="if(event.key === 'Enter') sendChatMessage()">
-            <button onclick="sendChatMessage()" style="background: #6c63ff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.3s;"><i class="ri-send-plane-fill"></i></button>
-        </div>
-    </section>
-</div>
-            <div id="payoutModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center;">
-                <div class="modal-content" style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-                    <span onclick="closePayoutModal()" style="position: absolute; right: 20px; top: 15px; cursor: pointer; font-size: 24px; color: #64748b;">&times;</span>
-                    <h2 style="margin-bottom: 5px; color: #1e293b;"><i class="ri-bank-card-line" style="color: #f59e0b;"></i> Withdraw Funds</h2>
-                    <p style="margin-bottom: 20px; font-size: 14px; color: #64748b;">Available Balance: <strong id="modalAvailableBal" style="color: #10b981; font-size: 16px;">₹0</strong></p>
-                    
+            <!-- 🎧 STAFF HELPDESK SECTION -->
+            <div id="view-helpdesk" class="tab-content" style="display: none;">
+                <section class="task-section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h2 style="margin:0;"><i class="ri-customer-service-2-line" style="color:#6c63ff;"></i> Client
+                            Helpdesk</h2>
+                        <span id="staffTicketCount"
+                            style="background:#e0e7ff;color:#6c63ff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:bold;">0
+                            Tickets</span>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="task-table" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Subject</th>
+                                    <th>Issue</th>
+                                    <th>Status</th>
+                                    <th>Reply</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTicketsTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 📚 STAFF KNOWLEDGE BASE SECTION -->
+            <div id="view-kb" class="tab-content" style="display: none;">
+                <section class="task-section">
+                    <h2 style="margin-bottom:20px;"><i class="ri-book-read-line" style="color:#6c63ff;"></i> Knowledge
+                        Base 📚</h2>
+                    <p style="color:#64748b;margin-bottom:20px;font-size:14px;">Sales Scripts, Pricing PDFs, Important
+                        Links — everything you need to crush your targets! 🚀</p>
+                    <div id="staffResourcesList"
+                        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px;"></div>
+                </section>
+            </div>
+
+            <!-- 🎬 STAFF MEETINGS SECTION -->
+            <div id="view-meetings" class="tab-content" style="display: none;">
+                <section class="task-section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h2 style="margin:0;"><i class="ri-vidicon-line" style="color:#6c63ff;"></i> Team Meetings</h2>
+                        <span id="staffMeetCount"
+                            style="background:#e0e7ff;color:#6c63ff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:bold;">0
+                            Meetings</span>
+                    </div>
+                    <div id="staffMeetingsList"
+                        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;"></div>
+                </section>
+                </section>
+            </div>
+
+            <!-- 🎬 STAFF JAAS.VC MEETING CONTAINER (Hidden by default) -->
+            <div id="staff-jaas-container"
+                style="display:none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 9999; background: #0f172a; overflow: hidden; flex-direction: column;">
+                <div
+                    style="background: #1e293b; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+                    <h3 style="color: white; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                        <i class="ri-vidicon-fill" style="color: #6c63ff;"></i> Live Meeting
+                    </h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="staff-jaas-copy-btn" onclick="copyMeetingLink('staff-jaas-copy-btn')"
+                            style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s;"
+                            onmouseover="this.style.background='#059669'"
+                            onmouseout="this.style.background='#10b981'">🔗 Copy Link</button>
+                        <button onclick="toggleFullScreen('staff-jaas-container')"
+                            style="background: #475569; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s;"
+                            onmouseover="this.style.background='#64748b'"
+                            onmouseout="this.style.background='#475569'">🔲 Full Screen</button>
+                        <button onclick="leaveStaffJaasCall()"
+                            style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s;"
+                            onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">❌
+                            Exit Meeting</button>
+                    </div>
+                </div>
+                <div id="staff-jitsi-iframe-wrapper" style="width:100%; flex-grow: 1;"></div>
+            </div>
+
+            <div id="payoutModal" class="modal-overlay"
+                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center;">
+                <div class="modal-content"
+                    style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <span onclick="closePayoutModal()"
+                        style="position: absolute; right: 20px; top: 15px; cursor: pointer; font-size: 24px; color: #64748b;">&times;</span>
+                    <h2 style="margin-bottom: 5px; color: #1e293b;"><i class="ri-bank-card-line"
+                            style="color: #f59e0b;"></i> Withdraw Funds</h2>
+                    <p style="margin-bottom: 20px; font-size: 14px; color: #64748b;">Available Balance: <strong
+                            id="modalAvailableBal" style="color: #10b981; font-size: 16px;">₹0</strong></p>
+
                     <form id="payoutForm" onsubmit="submitPayoutRequest(event)">
                         <div class="input-group" style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">Amount to Withdraw (₹)</label>
-                            <input type="number" id="payoutAmount" min="1" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">Amount
+                                to Withdraw (₹)</label>
+                            <input type="number" id="payoutAmount" min="1" required
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box;">
                         </div>
 
                         <div class="input-group" style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">Withdrawal Method</label>
-                            <select id="payoutMethod" required onchange="togglePaymentFields()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; cursor: pointer; box-sizing: border-box;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">Withdrawal
+                                Method</label>
+                            <select id="payoutMethod" required onchange="togglePaymentFields()"
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; cursor: pointer; box-sizing: border-box;">
                                 <option value="">-- Select Method --</option>
                                 <option value="UPI">📱 UPI Transfer</option>
                                 <option value="Bank">🏦 Bank Transfer</option>
@@ -408,104 +631,145 @@
                         </div>
 
                         <div id="upiFields" style="display: none; margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">UPI ID</label>
-                            <input type="text" id="upiId" placeholder="e.g. 9876543210@ybl" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box;">
+                            <label
+                                style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #475569;">UPI
+                                ID</label>
+                            <input type="text" id="upiId" placeholder="e.g. 9876543210@ybl"
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box;">
                         </div>
 
                         <div id="bankFields" style="display: none; margin-bottom: 15px;">
-                            <input type="text" id="accName" placeholder="Account Holder Name" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 10px; outline: none; box-sizing: border-box;">
-                            <input type="number" id="accNo" placeholder="Account Number" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 10px; outline: none; box-sizing: border-box;">
-                            <input type="text" id="ifscCode" placeholder="IFSC Code" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box; text-transform: uppercase;">
+                            <input type="text" id="accName" placeholder="Account Holder Name"
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 10px; outline: none; box-sizing: border-box;">
+                            <input type="number" id="accNo" placeholder="Account Number"
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 10px; outline: none; box-sizing: border-box;">
+                            <input type="text" id="ifscCode" placeholder="IFSC Code"
+                                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; box-sizing: border-box; text-transform: uppercase;">
                         </div>
 
-                        <button type="submit" id="btnSubmitPayout" style="width: 100%; background: #f59e0b; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 10px;">Send Request 🚀</button>
+                        <button type="submit" id="btnSubmitPayout"
+                            style="width: 100%; background: #f59e0b; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 10px;">Send
+                            Request 🚀</button>
                     </form>
                 </div>
             </div>
 
         </main>
     </div>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    // ==========================================
-    // 1. SECURITY & PROFILE SETUP
-    // ==========================================
-    const staffData = JSON.parse(localStorage.getItem('staffData'));
+    <script src="/js/NotificationManager.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ==========================================
+        // 1. SECURITY & PROFILE SETUP
+        // ==========================================
+        let staffData = null;
 
-    if (!staffData) {
-        window.location.href = 'staff-login.html';
-    } else {
-        const defaultDp = `https://ui-avatars.com/api/?name=${staffData.name}&background=7d5fff&color=fff&size=200`;
-        const finalDp = staffData.profilePhoto ? staffData.profilePhoto : defaultDp;
+        async function checkAuthAndLoadData() {
+            try {
+                const res = await fetch('/api/staff/me', { credentials: 'include' });
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = 'staff-login.html';
+                    return;
+                }
+                const data = await res.json();
+                if (data.success && data.staff) {
+                    staffData = data.staff;
+                    const defaultDp = `https://ui-avatars.com/api/?name=${staffData.name}&background=7d5fff&color=fff&size=200`;
+                    const finalDp = staffData.profilePhoto ? staffData.profilePhoto : defaultDp;
 
-        if (document.getElementById('idCardPhoto')) document.getElementById('idCardPhoto').src = finalDp;
-        if (document.getElementById('settings-avatar-preview')) document.getElementById('settings-avatar-preview').src = finalDp;
-        if (document.getElementById('headerProfileImg')) document.getElementById('headerProfileImg').src = finalDp;
-        
-        const firstName = staffData.name.split(' ')[0];
-        document.querySelector('.dashboard-header h1').innerHTML = `Welcome back, ${firstName}! 👋`;
-        document.querySelector('.dropdown-header strong').innerText = staffData.name;
-        document.querySelector('.dropdown-header span').innerText = staffData.email;
+                    if (document.getElementById('idCardPhoto')) document.getElementById('idCardPhoto').src = finalDp;
+                    if (document.getElementById('settings-avatar-preview')) document.getElementById('settings-avatar-preview').src = finalDp;
+                    if (document.getElementById('headerProfileImg')) document.getElementById('headerProfileImg').src = finalDp;
 
-        document.getElementById('idCardName').innerText = staffData.name;
-        document.getElementById('idCardEmail').innerText = staffData.email;
-        document.getElementById('idCardRole').innerText = staffData.role || 'Sales Executive';
-        document.getElementById('idCardEmpId').innerText = staffData.empId || 'Please ask Admin to recreate your ID';
-    }
+                    const firstName = staffData.name.split(' ')[0];
+                    document.querySelector('.dashboard-header h1').innerHTML = `Welcome back, ${firstName}! 👋`;
+                    document.querySelector('.dropdown-header strong').innerText = staffData.name;
+                    document.querySelector('.dropdown-header span').innerText = staffData.email;
 
-    function staffLogout() {
-        localStorage.removeItem('staffData');
-        window.location.href = 'staff-login.html';
-    }
+                    document.getElementById('idCardName').innerText = staffData.name;
+                    document.getElementById('idCardEmail').innerText = staffData.email;
+                    document.getElementById('idCardRole').innerText = staffData.role || 'Sales Executive';
+                    document.getElementById('idCardEmpId').innerText = staffData.empId || 'Please ask Admin to recreate your ID';
 
-    // ==========================================
-    // 2. UI FUNCTIONS (TABS & MENU)
-    // ==========================================
-    function switchTab(tabId) {
-        let contents = document.querySelectorAll('.tab-content');
-        contents.forEach(content => content.style.display = 'none');
+                    // Reveal dashboard once authenticated
+                    document.querySelector('.dashboard-container').style.display = 'flex';
 
-        let navItems = document.querySelectorAll('.sidebar-menu li');
-        navItems.forEach(item => item.classList.remove('active'));
+                    fetchMyTasks();
+                    fetchNotices();
+                    fetchStaffStats();
+                    fetchLeaderboard();
+                    fetchMyPayouts();
+                    fetchMyLeaves();
+                    window.initializeDutyStatus();
+                    window.requestNotificationPermission();
 
-        const viewElement = document.getElementById('view-' + tabId);
-        if (viewElement) viewElement.style.display = 'block';
-
-        const navElement = document.getElementById('nav-' + tabId);
-        if (navElement) navElement.classList.add('active'); 
-    }
-
-    function toggleProfileMenu() {
-        const menu = document.getElementById('profile-menu');
-        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
-    }
-
-    window.onclick = function(event) {
-        if (!event.target.matches('.profile-circle')) {
-            const menu = document.getElementById('profile-menu');
-            if (menu && menu.style.display === 'block') menu.style.display = 'none';
+                    // 🟢 Join Socket Room for Real-Time Updates
+                    if (socket && staffData.email) {
+                        socket.emit('join_room', staffData.email);
+                        console.log("🚀 Real-Time Room Joined:", staffData.email);
+                    }
+                } else {
+                    window.location.href = 'staff-login.html';
+                }
+            } catch (e) {
+                window.location.href = 'staff-login.html';
+            }
         }
-    }
+        checkAuthAndLoadData();
 
-    function openIDCard() { document.getElementById('idCardModal').style.display = 'flex'; }
-    function closeIDCard() { document.getElementById('idCardModal').style.display = 'none'; }
-    function printIDCard() { window.print(); }
+        async function staffLogout() {
+            try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch (e) { }
+            window.location.href = 'staff-login.html';
+        }
 
-    // ==========================================
-    // 3. FETCH DATA LOGIC
-    // ==========================================
-    
-    async function fetchNotices() {
-        try {
-            const response = await fetch('/api/staff/notices');
-            const data = await response.json();
-            const container = document.getElementById('noticeContainer');
-            
-            if(data.success && data.notices.length > 0) {
-                container.innerHTML = '';
-                data.notices.forEach((notice, index) => {
-                    let borderColor = index % 2 === 0 ? '#6c63ff' : '#10b981';
-                    container.innerHTML += `
+        // ==========================================
+        // 2. UI FUNCTIONS (TABS & MENU)
+        // ==========================================
+        function switchTab(tabId) {
+            let contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.style.display = 'none');
+
+            let navItems = document.querySelectorAll('.sidebar-menu li');
+            navItems.forEach(item => item.classList.remove('active'));
+
+            const viewElement = document.getElementById('view-' + tabId);
+            if (viewElement) viewElement.style.display = 'block';
+
+            const navElement = document.getElementById('nav-' + tabId);
+            if (navElement) navElement.classList.add('active');
+        }
+
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profile-menu');
+            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.matches('.profile-circle')) {
+                const menu = document.getElementById('profile-menu');
+                if (menu && menu.style.display === 'block') menu.style.display = 'none';
+            }
+        }
+
+        function openIDCard() { document.getElementById('idCardModal').style.display = 'flex'; }
+        function closeIDCard() { document.getElementById('idCardModal').style.display = 'none'; }
+        function printIDCard() { window.print(); }
+
+        // ==========================================
+        // 3. FETCH DATA LOGIC
+        // ==========================================
+
+        async function fetchNotices() {
+            try {
+                const response = await fetch('/api/staff/notices', { credentials: 'include' });
+                const data = await response.json();
+                const container = document.getElementById('noticeContainer');
+
+                if (data.success && data.notices.length > 0) {
+                    container.innerHTML = '';
+                    data.notices.forEach((notice, index) => {
+                        let borderColor = index % 2 === 0 ? '#6c63ff' : '#10b981';
+                        container.innerHTML += `
                         <div class="notice-card" style="border-left-color: ${borderColor};">
                             <span class="notice-date">${new Date(notice.date).toLocaleString()}</span>
                             <h3>${notice.title}</h3>
@@ -513,51 +777,52 @@
                             <div class="notice-author">By ${notice.author}</div>
                         </div>
                     `;
+                    });
+                } else {
+                    container.innerHTML = '<p style="color: #64748b;">No new notices at the moment.</p>';
+                }
+            } catch (e) { console.error("Notice fetch error:", e); }
+        }
+
+        async function fetchMyTasks() {
+            try {
+                const response = await fetch('/api/staff/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
                 });
-            } else {
-                container.innerHTML = '<p style="color: #64748b;">No new notices at the moment.</p>';
-            }
-        } catch(e) { console.error("Notice fetch error:", e); }
-    }
+                const data = await response.json();
+                if (data.success) renderDashboard(data.tasks);
+            } catch (e) { console.error("Task fetch error:", e); }
+        }
 
-    async function fetchMyTasks() {
-        try {
-            const response = await fetch('/api/staff/tasks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email })
-            });
-            const data = await response.json();
-            if(data.success) renderDashboard(data.tasks);
-        } catch(e) { console.error("Task fetch error:", e); }
-    }
+        function renderDashboard(tasks) {
+            const dashTbody = document.querySelector('#view-dashboard .task-table tbody');
+            const tasksTbody = document.querySelector('#view-tasks .task-table tbody');
 
-    function renderDashboard(tasks) {
-        const dashTbody = document.querySelector('#view-dashboard .task-table tbody');
-        const tasksTbody = document.querySelector('#view-tasks .task-table tbody');
-        
-        if(dashTbody) dashTbody.innerHTML = ''; 
-        if(tasksTbody) tasksTbody.innerHTML = '';
-        
-        let completed = 0;
-        let pending = 0;
+            if (dashTbody) dashTbody.innerHTML = '';
+            if (tasksTbody) tasksTbody.innerHTML = '';
 
-        if(tasks.length === 0) {
-            const emptyMsg = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b; font-size: 16px;">
+            let completed = 0;
+            let pending = 0;
+
+            if (tasks.length === 0) {
+                const emptyMsg = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b; font-size: 16px;">
                 <i class="ri-cup-line" style="font-size: 30px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
                 No leads assigned yet! Relax 🎉
             </td></tr>`;
-            if(dashTbody) dashTbody.innerHTML = emptyMsg;
-            if(tasksTbody) tasksTbody.innerHTML = emptyMsg;
-        } else {
-            tasks.forEach(task => {
-                if(task.status === 'interested' || task.status === 'rejected') completed++;
-                else pending++;
+                if (dashTbody) dashTbody.innerHTML = emptyMsg;
+                if (tasksTbody) tasksTbody.innerHTML = emptyMsg;
+            } else {
+                tasks.forEach(task => {
+                    if (task.status === 'interested' || task.status === 'rejected') completed++;
+                    else pending++;
 
-                const trHTML = `
+                    const trHTML = `
                     <td><strong>${task.clientName}</strong><br><span class="sub-text">${task.clientType || 'Lead'}</span></td>
                     <td>${task.contactNumber}</td>
                     <td><span class="badge-service">${task.servicePitch}</span></td>
+                    <td>${task.aiScore ? `<span style="font-size:12px;font-weight:bold;background:${task.aiScore.includes('Hot') ? '#fef2f2' : task.aiScore.includes('Cold') ? '#eff6ff' : '#fffbeb'};padding:3px 8px;border-radius:15px;">${task.aiScore}</span>` : '<span style="color:#ccc;font-size:11px;">...</span>'}</td>
                     <td>
                         <select class="status-dropdown">
                             <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
@@ -570,101 +835,105 @@
                     <td><input type="text" class="notes-input" value="${task.notes || ''}" placeholder="Type feedback..."></td>
                     <td><button class="btn-update" onclick="updateTask(this, '${task._id}')">Save</button></td>
                 `;
-                
-                if(dashTbody && (task.status === 'pending' || task.status === 'call-back' || task.status === 'not-answering')) {
-                    const tr1 = document.createElement('tr');
-                    tr1.innerHTML = trHTML;
-                    dashTbody.appendChild(tr1);
-                }
-                
-                if(tasksTbody) {
-                    const tr2 = document.createElement('tr');
-                    tr2.innerHTML = trHTML;
-                    tasksTbody.appendChild(tr2);
-                }
-            });
-            
-            if(dashTbody && dashTbody.innerHTML === '') {
-                 dashTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #16a34a; font-size: 16px;">
+
+                    if (dashTbody && (task.status === 'pending' || task.status === 'call-back' || task.status === 'not-answering')) {
+                        const tr1 = document.createElement('tr');
+                        tr1.id = `dash-task-row-${task._id}`;
+                        tr1.style.transition = 'opacity 0.5s ease';
+                        tr1.innerHTML = trHTML;
+                        dashTbody.appendChild(tr1);
+                    }
+
+                    if (tasksTbody) {
+                        const tr2 = document.createElement('tr');
+                        tr2.id = `tasks-task-row-${task._id}`;
+                        tr2.style.transition = 'opacity 0.5s ease';
+                        tr2.innerHTML = trHTML;
+                        tasksTbody.appendChild(tr2);
+                    }
+                });
+
+                if (dashTbody && dashTbody.innerHTML === '') {
+                    dashTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #16a34a; font-size: 16px;">
                     <i class="ri-checkbox-circle-fill" style="font-size: 30px; display: block; margin-bottom: 10px;"></i>
                     All caught up for today! Check 'My Tasks' for completed leads.
                 </td></tr>`;
-            }
-        }
-
-        const statCards = document.querySelectorAll('.stat-info h3');
-        if(statCards.length > 0) {
-            statCards[0].innerText = tasks.length; 
-            statCards[1].innerText = completed;    
-            statCards[2].innerText = pending;      
-        }
-    }
-
-    async function updateTask(btnElement, taskId) {
-        const row = btnElement.closest('tr');
-        const status = row.querySelector('.status-dropdown').value;
-        const notes = row.querySelector('.notes-input').value;
-        
-        const originalText = btnElement.innerText;
-        btnElement.innerText = "Saving...";
-        
-        try {
-            const response = await fetch('/api/staff/update-task', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ taskId, status, notes })
-            });
-            const data = await response.json();
-            
-            if(data.success) {
-                btnElement.innerText = "Saved ✓";
-                btnElement.style.background = "#16a34a";
-                setTimeout(() => { fetchMyTasks(); }, 1500);
-            }
-        } catch(e) {
-            alert("Error saving task! Check your internet.");
-            btnElement.innerText = originalText;
-        }
-    }
-
-    async function fetchStaffStats() {
-        try {
-            const response = await fetch('/api/staff/stats', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email })
-            });
-            const data = await response.json();
-            if(data.success) {
-                document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
-                document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
-            }
-        } catch(e) { console.error("Stats fetch error:", e); }
-    }
-
-    async function fetchLeaderboard() {
-        const container = document.getElementById('leaderboardContainer');
-        try {
-            const response = await fetch('/api/staff/leaderboard');
-            if (!response.ok) throw new Error("API not found or Server Error");
-            
-            const data = await response.json();
-            container.innerHTML = '';
-
-            if(data.success && data.leaderboard && data.leaderboard.length > 0) {
-                const hasEarnings = data.leaderboard.some(s => s.totalEarnings > 0);
-                
-                if (!hasEarnings) {
-                    container.innerHTML = '<p style="color: #64748b; font-size: 14px; width: 100%; text-align: center; padding: 10px;">No top performers yet. Convert a lead to be the first! 🚀</p>';
-                    return;
                 }
+            }
 
-                data.leaderboard.forEach((staff, index) => {
-                    if(staff.totalEarnings > 0) {
-                        let rankIcon = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🎖️'));
-                        let photo = staff.profilePhoto || `https://ui-avatars.com/api/?name=${staff.name}&background=7d5fff&color=fff`;
-                        
-                        container.innerHTML += `
+            const statCards = document.querySelectorAll('.stat-info h3');
+            if (statCards.length > 0) {
+                statCards[0].innerText = tasks.length;
+                statCards[1].innerText = completed;
+                statCards[2].innerText = pending;
+            }
+        }
+
+        async function updateTask(btnElement, taskId) {
+            const row = btnElement.closest('tr');
+            const status = row.querySelector('.status-dropdown').value;
+            const notes = row.querySelector('.notes-input').value;
+
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "Saving...";
+
+            try {
+                const response = await fetch('/api/staff/update-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId, status, notes }), credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    btnElement.innerText = "Saved ✓";
+                    btnElement.style.background = "#16a34a";
+                    setTimeout(() => { fetchMyTasks(); }, 1500);
+                }
+            } catch (e) {
+                alert("Error saving task! Check your internet.");
+                btnElement.innerText = originalText;
+            }
+        }
+
+        async function fetchStaffStats() {
+            try {
+                const response = await fetch('/api/staff/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
+                    document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
+                }
+            } catch (e) { console.error("Stats fetch error:", e); }
+        }
+
+        async function fetchLeaderboard() {
+            const container = document.getElementById('leaderboardContainer');
+            try {
+                const response = await fetch('/api/staff/leaderboard', { credentials: 'include' });
+                if (!response.ok) throw new Error("API not found or Server Error");
+
+                const data = await response.json();
+                container.innerHTML = '';
+
+                if (data.success && data.leaderboard && data.leaderboard.length > 0) {
+                    const hasEarnings = data.leaderboard.some(s => s.totalEarnings > 0);
+
+                    if (!hasEarnings) {
+                        container.innerHTML = '<p style="color: #64748b; font-size: 14px; width: 100%; text-align: center; padding: 10px;">No top performers yet. Convert a lead to be the first! 🚀</p>';
+                        return;
+                    }
+
+                    data.leaderboard.forEach((staff, index) => {
+                        if (staff.totalEarnings > 0) {
+                            let rankIcon = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🎖️'));
+                            let photo = staff.profilePhoto || `https://ui-avatars.com/api/?name=${staff.name}&background=7d5fff&color=fff`;
+
+                            container.innerHTML += `
                             <div style="min-width: 140px; background: #f8fafc; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
                                 <div style="font-size: 24px; margin-bottom: 5px;">${rankIcon}</div>
                                 <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid #e2e8f0;">
@@ -672,107 +941,107 @@
                                 <p style="margin: 5px 0 0 0; font-size: 13px; color: #10b981; font-weight: bold;">₹${staff.totalEarnings.toLocaleString('en-IN')}</p>
                             </div>
                         `;
-                    }
-                });
-            } else {
-                container.innerHTML = '<p style="color: #64748b; font-size: 14px; padding: 10px;">No staff data found.</p>';
+                        }
+                    });
+                } else {
+                    container.innerHTML = '<p style="color: #64748b; font-size: 14px; padding: 10px;">No staff data found.</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p style="color: #dc2626; font-size: 14px; padding: 10px;">⚠️ Could not load leaderboard.</p>';
             }
-        } catch(e) { 
-            container.innerHTML = '<p style="color: #dc2626; font-size: 14px; padding: 10px;">⚠️ Could not load leaderboard.</p>';
         }
-    }
 
-    // ==========================================
-    // 4. LEAVES, LEADS & PAYOUTS
-    // ==========================================
-    window.staffAddSelfLead = async function(e) {
-        e.preventDefault();
-        const btn = e.target.querySelector('button');
-        btn.innerText = "Adding...";
-        try {
-            const res = await fetch('/api/staff/add-lead', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    clientName: document.getElementById('selfClientName').value,
-                    contactNumber: document.getElementById('selfContact').value,
-                    servicePitch: document.getElementById('selfService').value,
-                    email: staffData.email
-                })
-            });
-            const result = await res.json();
-            if(result.success) { alert(result.message); e.target.reset(); fetchMyTasks(); }
-        } catch(err) { alert("Error adding lead"); }
-        btn.innerText = "Add Lead to CRM 🚀";
-    }
+        // ==========================================
+        // 4. LEAVES, LEADS & PAYOUTS
+        // ==========================================
+        window.staffAddSelfLead = async function (e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = "Adding...";
+            try {
+                const res = await fetch('/api/staff/add-lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientName: document.getElementById('selfClientName').value,
+                        contactNumber: document.getElementById('selfContact').value,
+                        servicePitch: document.getElementById('selfService').value,
+                        email: staffData.email
+                    }), credentials: 'include'
+                });
+                const result = await res.json();
+                if (result.success) { alert(result.message); e.target.reset(); fetchMyTasks(); }
+            } catch (err) { alert("Error adding lead"); }
+            btn.innerText = "Add Lead to CRM 🚀";
+        }
 
-    window.applyForLeave = async function(e) {
-        e.preventDefault();
-        try {
-            const res = await fetch('/api/staff/apply-leave', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    email: staffData.email, name: staffData.name,
-                    dateFrom: document.getElementById('leaveFrom').value,
-                    dateTo: document.getElementById('leaveTo').value,
-                    reason: document.getElementById('leaveReason').value
-                })
-            });
-            const result = await res.json();
-            if(result.success) { alert(result.message); e.target.reset(); fetchMyLeaves(); }
-        } catch(err) { alert("Error applying leave"); }
-    }
+        window.applyForLeave = async function (e) {
+            e.preventDefault();
+            try {
+                const res = await fetch('/api/staff/apply-leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: staffData.email, name: staffData.name,
+                        dateFrom: document.getElementById('leaveFrom').value,
+                        dateTo: document.getElementById('leaveTo').value,
+                        reason: document.getElementById('leaveReason').value
+                    }), credentials: 'include'
+                });
+                const result = await res.json();
+                if (result.success) { alert(result.message); e.target.reset(); fetchMyLeaves(); }
+            } catch (err) { alert("Error applying leave"); }
+        }
 
-    window.fetchMyLeaves = async function() {
-        const tbody = document.getElementById('leaveHistoryBody');
-        try {
-            const res = await fetch('/api/staff/my-leaves', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: staffData.email })
-            });
-            const data = await res.json();
-            if(data.success && data.leaves) {
-                tbody.innerHTML = data.leaves.map(l => {
-                    let color = l.status === 'Approved' ? 'green' : (l.status === 'Rejected' ? 'red' : 'orange');
-                    return `<tr>
+        window.fetchMyLeaves = async function () {
+            const tbody = document.getElementById('leaveHistoryBody');
+            try {
+                const res = await fetch('/api/staff/my-leaves', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
+                });
+                const data = await res.json();
+                if (data.success && data.leaves) {
+                    tbody.innerHTML = data.leaves.map(l => {
+                        let color = l.status === 'Approved' ? 'green' : (l.status === 'Rejected' ? 'red' : 'orange');
+                        return `<tr>
                         <td>${new Date(l.appliedOn).toLocaleDateString()}</td>
                         <td>${l.dateFrom} to ${l.dateTo}</td>
                         <td>${l.reason}</td>
                         <td style="color:${color}; font-weight:bold;">${l.status}</td>
                     </tr>`;
-                }).join('');
-            }
-        } catch(e) {}
-    }
-
-    async function fetchMyPayouts() {
-        const tbody = document.getElementById('payoutHistoryBody');
-        try {
-            const response = await fetch('/api/staff/my-payouts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email })
-            });
-            const data = await response.json();
-            
-            if (data.success) {
-                tbody.innerHTML = '';
-                if (data.payouts.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">No payout requests found yet. Start closing deals! 🚀</td></tr>';
-                    return;
+                    }).join('');
                 }
-                data.payouts.forEach(p => {
-                    let statusBadge = p.status === 'Paid' 
-                        ? `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Paid ✅</span>` 
-                        : `<span style="background:#fef3c7; color:#d97706; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending ⏳</span>`;
-                        
-                    let methodText = p.paymentMethod === 'UPI' && p.paymentDetails
-                        ? `📱 UPI: <strong>${p.paymentDetails.upiId}</strong>` 
-                        : `🏦 Bank: <strong>${p.paymentDetails ? p.paymentDetails.accNo : 'N/A'}</strong>`;
+            } catch (e) { }
+        }
 
-                    tbody.innerHTML += `
+        async function fetchMyPayouts() {
+            const tbody = document.getElementById('payoutHistoryBody');
+            try {
+                const response = await fetch('/api/staff/my-payouts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    tbody.innerHTML = '';
+                    if (data.payouts.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">No payout requests found yet. Start closing deals! 🚀</td></tr>';
+                        return;
+                    }
+                    data.payouts.forEach(p => {
+                        let statusBadge = p.status === 'Paid'
+                            ? `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Paid ✅</span>`
+                            : `<span style="background:#fef3c7; color:#d97706; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending ⏳</span>`;
+
+                        let methodText = p.paymentMethod === 'UPI' && p.paymentDetails
+                            ? `📱 UPI: <strong>${p.paymentDetails.upiId}</strong>`
+                            : `🏦 Bank: <strong>${p.paymentDetails ? p.paymentDetails.accNo : 'N/A'}</strong>`;
+
+                        tbody.innerHTML += `
                         <tr>
                             <td>${new Date(p.date).toLocaleDateString()}</td>
                             <td><strong style="color: #10b981; font-size: 15px;">₹${p.amount.toLocaleString('en-IN')}</strong></td>
@@ -780,405 +1049,853 @@
                             <td>${statusBadge}</td>
                         </tr>
                     `;
-                });
-            }
-        } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #ef4444;">⚠️ Failed to load history. Check your internet connection.</td></tr>';
-        }
-    }
-
-    let currentPendingBalance = 0;
-    window.openPayoutModal = function() {
-        const balanceText = document.getElementById('earnPending').innerText; 
-        currentPendingBalance = parseInt(balanceText.replace(/[^\d]/g, '')) || 0;
-        
-        if (currentPendingBalance <= 0) return alert("Aapke paas withdraw karne ke liye balance nahi hai.");
-        
-        document.getElementById('modalAvailableBal').innerText = `₹${currentPendingBalance.toLocaleString('en-IN')}`;
-        document.getElementById('payoutAmount').max = currentPendingBalance; 
-        document.getElementById('payoutAmount').value = currentPendingBalance; 
-        
-        document.getElementById('payoutModal').style.display = 'flex';
-    };
-
-    window.closePayoutModal = function() {
-        document.getElementById('payoutModal').style.display = 'none';
-        document.getElementById('payoutForm').reset();
-        togglePaymentFields();
-    };
-
-    window.togglePaymentFields = function() {
-        const method = document.getElementById('payoutMethod').value;
-        document.getElementById('upiFields').style.display = method === 'UPI' ? 'block' : 'none';
-        document.getElementById('bankFields').style.display = method === 'Bank' ? 'block' : 'none';
-        
-        document.getElementById('upiId').required = method === 'UPI';
-        document.getElementById('accName').required = method === 'Bank';
-        document.getElementById('accNo').required = method === 'Bank';
-        document.getElementById('ifscCode').required = method === 'Bank';
-    };
-
-    window.submitPayoutRequest = async function(e) {
-        e.preventDefault();
-        
-        const amount = parseInt(document.getElementById('payoutAmount').value);
-        if (amount > currentPendingBalance) return alert("Amount available balance se zyada hai!");
-
-        const method = document.getElementById('payoutMethod').value;
-        let details = {};
-
-        if (method === 'UPI') details.upiId = document.getElementById('upiId').value;
-        else {
-            details.accName = document.getElementById('accName').value;
-            details.accNo = document.getElementById('accNo').value;
-            details.ifsc = document.getElementById('ifscCode').value.toUpperCase();
-        }
-
-        const btn = document.getElementById('btnSubmitPayout');
-        btn.innerText = "Processing...";
-
-        try {
-            const response = await fetch('/api/staff/request-payout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email, amount: amount, paymentMethod: method, paymentDetails: details })
-            });
-            const data = await response.json();
-            
-            if(data.success) {
-                alert("✅ " + data.message);
-                closePayoutModal();
-                fetchStaffStats(); 
-                fetchMyPayouts(); 
-            } else {
-                alert("❌ Error: " + data.message);
-            }
-        } catch(err) { alert("⚠️ Request bhejne me error aaya."); }
-        
-        btn.innerText = "Send Request 🚀";
-    };
-
-    // ==========================================
-    // 5. DUTY STATUS & SETTINGS
-    // ==========================================
-    window.isWorkingOnline = staffData ? (staffData.isOnline || false) : false;
-
-    window.initializeDutyStatus = function() {
-        const btn = document.getElementById('dutyBtn');
-        const text = document.getElementById('dutyText');
-        if(!btn || !text) return;
-        
-        if(window.isWorkingOnline) {
-            btn.style.background = '#10b981'; 
-            text.innerText = 'Online (Working)';
-        } else {
-            btn.style.background = '#ef4444'; 
-            text.innerText = 'Offline';
-        }
-    };
-
-    window.toggleDutyStatus = async function() {
-        window.isWorkingOnline = !window.isWorkingOnline;
-        window.initializeDutyStatus(); 
-
-        try {
-            const response = await fetch('/api/staff/toggle-status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email, isOnline: window.isWorkingOnline })
-            });
-            const data = await response.json();
-            
-            if(data.success) {
-                staffData.isOnline = window.isWorkingOnline;
-                localStorage.setItem('staffData', JSON.stringify(staffData));
-            } else throw new Error("Backend failed");
-        } catch(e) {
-            alert("⚠️ Status update nahi hua. Internet check karo.");
-            window.isWorkingOnline = !window.isWorkingOnline;
-            window.initializeDutyStatus();
-        }
-    };
-
-    async function updatePassword() {
-        const currentPwd = document.getElementById('currentPassword').value;
-        const newPwd = document.getElementById('newPassword').value;
-        if(!currentPwd || !newPwd) return alert("Please fill both password fields!");
-
-        const btn = document.querySelector('button[onclick="updatePassword()"]');
-        btn.innerText = "Updating...";
-
-        try {
-            const response = await fetch('/api/staff/update-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email, currentPassword: currentPwd, newPassword: newPwd })
-            });
-            const data = await response.json();
-            
-            if(data.success) {
-                btn.innerText = "Password Changed ✓";
-                btn.style.background = "#16a34a";
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-            } else {
-                alert(data.message);
-                btn.innerText = "Update Password";
-            }
-        } catch(e) { alert("Error changing password"); }
-        setTimeout(() => { btn.innerText = "Update Password"; btn.style.background = "#1e293b"; }, 3000);
-    }
-
-    let tempPhotoBase64 = null; 
-    function previewPhoto(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function() {
-            tempPhotoBase64 = reader.result; 
-            const settingsImg = document.getElementById('settings-avatar-preview');
-            if (settingsImg) settingsImg.src = tempPhotoBase64;
-            document.getElementById('savePhotoBtn').style.display = 'block';
-        }
-        reader.readAsDataURL(file);
-    }
-
-    async function saveProfilePhoto() {
-        if (!tempPhotoBase64) return;
-        const btn = document.getElementById('savePhotoBtn');
-        const originalText = btn.innerText;
-        btn.innerText = "Updating...";
-
-        try {
-            const response = await fetch('/api/staff/update-photo', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email, photoBase64: tempPhotoBase64 })
-            });
-            const data = await response.json();
-            if(data.success) {
-                staffData.profilePhoto = tempPhotoBase64;
-                localStorage.setItem('staffData', JSON.stringify(staffData));
-                if (document.getElementById('idCardPhoto')) document.getElementById('idCardPhoto').src = tempPhotoBase64;
-                if (document.getElementById('settings-avatar-preview')) document.getElementById('settings-avatar-preview').src = tempPhotoBase64;
-                if (document.getElementById('headerProfileImg')) document.getElementById('headerProfileImg').src = tempPhotoBase64;
-                btn.innerText = "Updated ✓";
-                btn.style.background = "#16a34a"; 
-                setTimeout(() => { btn.style.display = 'none'; btn.innerText = originalText; btn.style.background = "#1e293b"; }, 2000);
-            } else { alert("Backend Error: " + data.message); btn.innerText = originalText; }
-        } catch(e) { alert("Server se connect nahi ho paya!"); btn.innerText = originalText; }
-    }
-
-    // ==========================================
-    // 🔔 BROWSER NOTIFICATION PERMISSION
-    // ==========================================
-    window.requestNotificationPermission = function() {
-        // Check karo ki browser notifications support karta hai ya nahi
-        if (!("Notification" in window)) {
-            console.log("This browser does not support desktop notifications.");
-            return;
-        }
-
-        // Agar permission abhi tak na 'granted' hai aur na hi 'denied' hai (matlab pehli baar aaya hai)
-        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-            Notification.requestPermission().then((permission) => {
-                if (permission === "granted") {
-                    // Mast sa ek Welcome Notification bhej do
-                    new Notification("VibeSphere Portal ✅", {
-                        body: "Notifications allowed! Ab aapko Leads aur Chat ki live updates yahan milti rahengi.",
-                        icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" // Ek chota sa bell icon
                     });
                 }
-            });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #ef4444;">⚠️ Failed to load history. Check your internet connection.</td></tr>';
+            }
         }
-    };
-  // ==========================================
-// 💬 TEAM CHAT LOGIC (STAFF)
-// ==========================================
 
-// 🟢 FIX 2: Bulletproof Socket Connection
-const socket = io(window.location.origin, {
-    transports: ['websocket', 'polling'],
-    secure: true,
-    reconnection: true,
-    reconnectionAttempts: 5
-});
+        let currentPendingBalance = 0;
+        window.openPayoutModal = function () {
+            const balanceText = document.getElementById('earnPending').innerText;
+            currentPendingBalance = parseInt(balanceText.replace(/[^\d]/g, '')) || 0;
 
-let isChatBlocked = false;
+            if (currentPendingBalance <= 0) return alert("Aapke paas withdraw karne ke liye balance nahi hai.");
 
-// Page load par purani chat aur settings lao
-async function initChat() {
-    try {
-        const setRes = await fetch('/api/chat/settings');
-        const setJson = await setRes.json();
-        if(setJson.success) updateChatStatusUI(setJson.isChatBlocked);
+            document.getElementById('modalAvailableBal').innerText = `₹${currentPendingBalance.toLocaleString('en-IN')}`;
+            document.getElementById('payoutAmount').max = currentPendingBalance;
+            document.getElementById('payoutAmount').value = currentPendingBalance;
 
-        const hisRes = await fetch('/api/chat/history');
-        const hisJson = await hisRes.json();
-        if(hisJson.success) {
-            document.getElementById('chatMessages').innerHTML = '';
-            hisJson.messages.forEach(msg => appendMessageUI(msg));
-            scrollToBottom();
+            document.getElementById('payoutModal').style.display = 'flex';
+        };
+
+        window.closePayoutModal = function () {
+            document.getElementById('payoutModal').style.display = 'none';
+            document.getElementById('payoutForm').reset();
+            togglePaymentFields();
+        };
+
+        window.togglePaymentFields = function () {
+            const method = document.getElementById('payoutMethod').value;
+            document.getElementById('upiFields').style.display = method === 'UPI' ? 'block' : 'none';
+            document.getElementById('bankFields').style.display = method === 'Bank' ? 'block' : 'none';
+
+            document.getElementById('upiId').required = method === 'UPI';
+            document.getElementById('accName').required = method === 'Bank';
+            document.getElementById('accNo').required = method === 'Bank';
+            document.getElementById('ifscCode').required = method === 'Bank';
+        };
+
+        window.submitPayoutRequest = async function (e) {
+            e.preventDefault();
+
+            const amount = parseInt(document.getElementById('payoutAmount').value);
+            if (amount > currentPendingBalance) return alert("Amount available balance se zyada hai!");
+
+            const method = document.getElementById('payoutMethod').value;
+            let details = {};
+
+            if (method === 'UPI') details.upiId = document.getElementById('upiId').value;
+            else {
+                details.accName = document.getElementById('accName').value;
+                details.accNo = document.getElementById('accNo').value;
+                details.ifsc = document.getElementById('ifscCode').value.toUpperCase();
+            }
+
+            const btn = document.getElementById('btnSubmitPayout');
+            btn.innerText = "Processing...";
+
+            try {
+                const response = await fetch('/api/staff/request-payout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email, amount: amount, paymentMethod: method, paymentDetails: details }), credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert("✅ " + data.message);
+                    closePayoutModal();
+                    fetchStaffStats();
+                    fetchMyPayouts();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            } catch (err) { alert("⚠️ Request bhejne me error aaya."); }
+
+            btn.innerText = "Send Request 🚀";
+        };
+
+        // ==========================================
+        // 5. DUTY STATUS & SETTINGS
+        // ==========================================
+        window.isWorkingOnline = staffData ? (staffData.isOnline || false) : false;
+
+        window.initializeDutyStatus = function () {
+            const btn = document.getElementById('dutyBtn');
+            const text = document.getElementById('dutyText');
+            if (!btn || !text) return;
+
+            if (window.isWorkingOnline) {
+                btn.style.background = '#10b981';
+                text.innerText = 'Online (Working)';
+            } else {
+                btn.style.background = '#ef4444';
+                text.innerText = 'Offline';
+            }
+        };
+
+        window.toggleDutyStatus = async function () {
+            window.isWorkingOnline = !window.isWorkingOnline;
+            window.initializeDutyStatus();
+
+            try {
+                const response = await fetch('/api/staff/toggle-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email, isOnline: window.isWorkingOnline }), credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    staffData.isOnline = window.isWorkingOnline;
+                } else throw new Error("Backend failed");
+            } catch (e) {
+                alert("⚠️ Status update nahi hua. Internet check karo.");
+                window.isWorkingOnline = !window.isWorkingOnline;
+                window.initializeDutyStatus();
+            }
+        };
+
+        async function updatePassword() {
+            const currentPwd = document.getElementById('currentPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            if (!currentPwd || !newPwd) return alert("Please fill both password fields!");
+
+            const btn = document.querySelector('button[onclick="updatePassword()"]');
+            btn.innerText = "Updating...";
+
+            try {
+                const response = await fetch('/api/staff/update-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email, currentPassword: currentPwd, newPassword: newPwd }), credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    btn.innerText = "Password Changed ✓";
+                    btn.style.background = "#16a34a";
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                } else {
+                    alert(data.message);
+                    btn.innerText = "Update Password";
+                }
+            } catch (e) { alert("Error changing password"); }
+            setTimeout(() => { btn.innerText = "Update Password"; btn.style.background = "#1e293b"; }, 3000);
         }
-    } catch(e) {}
-}
 
-function updateChatStatusUI(blocked) {
-    isChatBlocked = blocked;
-    const badge = document.getElementById('chatStatusBadge');
-    const input = document.getElementById('chatInput');
-    if(blocked) {
-        badge.innerHTML = 'Blocked 🔴'; badge.style.background = '#fee2e2'; badge.style.color = '#dc2626';
-        input.placeholder = "Admin has paused the chat..."; input.disabled = true;
-    } else {
-        badge.innerHTML = 'Live 🟢'; badge.style.background = '#d1fae5'; badge.style.color = '#10b981';
-        input.placeholder = "Type a message..."; input.disabled = false;
-    }
-}
+        let tempPhotoBase64 = null;
+        function previewPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function () {
+                tempPhotoBase64 = reader.result;
+                const settingsImg = document.getElementById('settings-avatar-preview');
+                if (settingsImg) settingsImg.src = tempPhotoBase64;
+                document.getElementById('savePhotoBtn').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
 
-function appendMessageUI(msg) {
-    const box = document.getElementById('chatMessages');
-    const isMe = msg.senderEmail === staffData.email;
-    const isAdmin = msg.role === 'Admin';
-    
-    let bubbleColor = isMe ? '#6c63ff' : '#ffffff';
-    let textColor = isMe ? '#ffffff' : '#1e293b';
-    let alignSelf = isMe ? 'flex-end' : 'flex-start';
-    let borderRadius = isMe ? '15px 15px 0 15px' : '15px 15px 15px 0';
-    
-    // 🟢 YAHAN FIX KIYA HAI: 'center' hata kar 'flex-start' kar diya taaki left me rahe
-    if(isAdmin) { 
-        bubbleColor = '#1e293b'; 
-        textColor = '#ffffff'; 
-        borderRadius = '15px 15px 15px 0'; 
-        alignSelf = 'flex-start'; 
-    }
+        async function saveProfilePhoto() {
+            if (!tempPhotoBase64) return;
+            const btn = document.getElementById('savePhotoBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Updating...";
 
-    const photo = msg.profilePhoto || `https://ui-avatars.com/api/?name=${msg.senderName}&background=ddd&color=333`;
-    const time = new Date(msg.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            try {
+                const response = await fetch('/api/staff/update-photo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email, photoBase64: tempPhotoBase64 }), credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    staffData.profilePhoto = tempPhotoBase64;
+                    if (document.getElementById('idCardPhoto')) document.getElementById('idCardPhoto').src = tempPhotoBase64;
+                    if (document.getElementById('settings-avatar-preview')) document.getElementById('settings-avatar-preview').src = tempPhotoBase64;
+                    if (document.getElementById('headerProfileImg')) document.getElementById('headerProfileImg').src = tempPhotoBase64;
+                    btn.innerText = "Updated ✓";
+                    btn.style.background = "#16a34a";
+                    setTimeout(() => { btn.style.display = 'none'; btn.innerText = originalText; btn.style.background = "#1e293b"; }, 2000);
+                } else { alert("Backend Error: " + data.message); btn.innerText = originalText; }
+            } catch (e) { alert("Server se connect nahi ho paya!"); btn.innerText = originalText; }
+        }
 
-    let html = `
+        // ==========================================
+        // 🔔 BROWSER NOTIFICATION PERMISSION
+        // ==========================================
+        window.requestNotificationPermission = function () {
+            // Check karo ki browser notifications support karta hai ya nahi
+            if (!("Notification" in window)) {
+                console.log("This browser does not support desktop notifications.");
+                return;
+            }
+
+            // Agar permission abhi tak na 'granted' hai aur na hi 'denied' hai (matlab pehli baar aaya hai)
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission().then((permission) => {
+                    if (permission === "granted") {
+                        // Mast sa ek Welcome Notification bhej do
+                        new Notification("VibeSphere Portal ✅", {
+                            body: "Notifications allowed! Ab aapko Leads aur Chat ki live updates yahan milti rahengi.",
+                            icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" // Ek chota sa bell icon
+                        });
+                    }
+                });
+            }
+        };
+        // ==========================================
+        // 💬 TEAM CHAT LOGIC (STAFF)
+        // ==========================================
+
+        // 🟢 FIX 2: Bulletproof Socket Connection
+        const socket = io(window.location.origin, {
+            transports: ['websocket', 'polling'],
+            secure: true,
+            reconnection: true,
+            reconnectionAttempts: 5
+        });
+
+        // ==========================================
+        // 🚀 REAL-TIME LIVE UPDATE LISTENERS (SPA)
+        // ==========================================
+
+        // Lead Assigned
+        socket.on('lead_assigned', (data) => {
+            if (typeof fetchMyTasks === 'function') fetchMyTasks();
+            if (window.notificationManager) {
+                window.notificationManager.notify("Nayi lead aayi hai!", `${data.clientName}: ${data.servicePitch}`);
+            }
+        });
+
+        // Notice Update
+        socket.on('notice_posted', () => {
+            if (typeof fetchNotices === 'function') fetchNotices();
+            if (window.notificationManager) {
+                window.notificationManager.notify("New Notice Board Post", "Check the latest update from Admin.");
+            }
+        });
+        socket.on('notice_deleted', () => {
+            if (typeof fetchNotices === 'function') fetchNotices();
+        });
+
+        // Meeting Update
+        socket.on('meeting_scheduled', (data) => {
+            if (typeof fetchStaffMeetings === 'function') fetchStaffMeetings();
+            if (window.notificationManager) {
+                window.notificationManager.notify("New Meeting Scheduled", `${data.topic} at ${new Date(data.scheduledTime).toLocaleString()}`);
+            }
+        });
+        socket.on('meeting_cancelled', () => {
+            if (typeof fetchStaffMeetings === 'function') fetchStaffMeetings();
+        });
+
+        // Leave Status Update
+        socket.on('leave_status_updated', (data) => {
+            if (typeof fetchMyLeaves === 'function') fetchMyLeaves();
+            if (window.notificationManager) {
+                window.notificationManager.notify(`Leave ${data.status}`, `Aapki leave request ${data.status} ho gayi hai.`);
+            }
+        });
+
+        // Payout Approved
+        socket.on('payout_approved', () => {
+            if (typeof fetchMyPayouts === 'function') fetchMyPayouts();
+            if (typeof fetchStaffStats === 'function') fetchStaffStats();
+            if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
+            if (window.notificationManager) {
+                window.notificationManager.notify("Payment Received! 💰", "Admin has approved your payout request.");
+            }
+        });
+
+        // 🟢 Meeting Updated (Rescheduled)
+        socket.on('meeting_updated', (data) => {
+            if (typeof fetchStaffMeetings === 'function') fetchStaffMeetings();
+            if (window.notificationManager) {
+                window.notificationManager.notify("🔔 Meeting Rescheduled", `${data.topic} ka time update ho gaya hai.`);
+            }
+        });
+
+
+
+        let isChatBlocked = false;
+
+        // Page load par purani chat aur settings lao
+        async function initChat() {
+            try {
+                const setRes = await fetch('/api/chat/settings', { credentials: 'include' });
+                const setJson = await setRes.json();
+                if (setJson.success) updateChatStatusUI(setJson.isChatBlocked);
+
+                const hisRes = await fetch('/api/chat/history', { credentials: 'include' });
+                const hisJson = await hisRes.json();
+                if (hisJson.success) {
+                    document.getElementById('chatMessages').innerHTML = '';
+                    hisJson.messages.forEach(msg => appendMessageUI(msg));
+                    scrollToBottom();
+                }
+            } catch (e) { }
+        }
+
+        function updateChatStatusUI(blocked) {
+            isChatBlocked = blocked;
+            const badge = document.getElementById('chatStatusBadge');
+            const input = document.getElementById('chatInput');
+            if (blocked) {
+                badge.innerHTML = 'Blocked 🔴'; badge.style.background = '#fee2e2'; badge.style.color = '#dc2626';
+                input.placeholder = "Admin has paused the chat..."; input.disabled = true;
+            } else {
+                badge.innerHTML = 'Live 🟢'; badge.style.background = '#d1fae5'; badge.style.color = '#10b981';
+                input.placeholder = "Type a message..."; input.disabled = false;
+            }
+        }
+
+        function appendMessageUI(msg) {
+            const box = document.getElementById('chatMessages');
+            const isMe = msg.senderEmail === staffData.email;
+            const isAdmin = msg.role === 'Admin';
+
+            let bubbleColor = isMe ? '#6c63ff' : '#ffffff';
+            let textColor = isMe ? '#ffffff' : '#1e293b';
+            let alignSelf = isMe ? 'flex-end' : 'flex-start';
+            let borderRadius = isMe ? '15px 15px 0 15px' : '15px 15px 15px 0';
+
+            if (isAdmin) {
+                bubbleColor = '#1e293b';
+                textColor = '#ffffff';
+                borderRadius = '15px 15px 15px 0';
+                alignSelf = 'flex-start';
+            }
+
+            const photo = msg.profilePhoto || `https://ui-avatars.com/api/?name=${msg.senderName}&background=ddd&color=333`;
+            const time = new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // ☁️ Render Image, PDF, or Audio attachment
+            let mediaHtml = '';
+            if (msg.fileUrl) {
+                if (msg.fileType === 'audio') {
+                    mediaHtml = `<div style="margin:5px 0;"><div style="display:flex;align-items:center;gap:8px;background:${isMe || isAdmin ? 'rgba(255,255,255,0.15)' : '#f0fdf4'};padding:8px 12px;border-radius:10px;border:1px solid ${isMe || isAdmin ? 'rgba(255,255,255,0.2)' : '#bbf7d0'};"><span style="font-size:20px;">🎤</span><audio controls src="${msg.fileUrl}" style="height:34px;max-width:200px;" preload="metadata"></audio></div></div>`;
+                } else if (msg.fileType === 'pdf') {
+                    mediaHtml = `<div style="margin:5px 0;"><a href="${msg.fileUrl}" target="_blank" style="display:flex;align-items:center;gap:8px;background:${isMe || isAdmin ? 'rgba(255,255,255,0.15)' : '#f8fafc'};padding:10px 12px;border-radius:8px;text-decoration:none;border:1px solid ${isMe || isAdmin ? 'rgba(255,255,255,0.2)' : '#e2e8f0'};"><span style="font-size:24px;">📄</span><div><div style="font-size:12px;color:${isMe || isAdmin ? '#ffffff' : '#1e293b'};font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${msg.fileName || 'Document.pdf'}</div><div style="font-size:10px;color:${isMe || isAdmin ? 'rgba(255,255,255,0.7)' : '#6c63ff'};font-weight:500;">Download ↗</div></div></a></div>`;
+                } else {
+                    mediaHtml = `<div style="margin:5px 0;"><img src="${msg.fileUrl}" style="max-width:180px;border-radius:8px;cursor:pointer;border:1px solid rgba(0,0,0,0.1);" onclick="window.open('${msg.fileUrl}','_blank')" onerror="this.style.display='none'"></div>`;
+                }
+            }
+
+            let html = `
         <div style="display: flex; gap: 10px; align-self: ${alignSelf}; max-width: 80%; flex-direction: ${isMe ? 'row-reverse' : 'row'};" id="msg-${msg._id}">
             ${!isMe ? `<img src="${photo}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">` : ''}
             <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
                 ${!isMe ? `<span style="font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: bold;">${isAdmin ? '👑 ADMIN' : msg.senderName}</span>` : ''}
                 <div style="background: ${bubbleColor}; color: ${textColor}; padding: 10px 15px; border-radius: ${borderRadius}; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 14px;">
-                    ${msg.message}
+                    ${mediaHtml}
+                    ${msg.message || ''}
                 </div>
                 <span style="font-size: 10px; color: #94a3b8; margin-top: 3px;">${time}</span>
             </div>
         </div>
     `;
-    box.innerHTML += html;
-}
+            box.innerHTML += html;
+        }
 
-function sendChatMessage() {
-    if(isChatBlocked) return alert("Chat is currently blocked by Admin.");
-    if(staffData.isMuted) return alert("You have been muted by Admin.");
-    
-    const input = document.getElementById('chatInput');
-    const text = input.value.trim();
-    if(!text) return;
+        // ==========================================
+        // ☁️ STAFF CHAT FILE ATTACHMENT LOGIC
+        // ==========================================
+        let selectedStaffChatFile = null; // { fileUrl, fileType, fileName }
+        let isStaffUploading = false;
 
-    socket.emit('send_message', {
-        senderName: staffData.name,
-        senderEmail: staffData.email,
-        role: 'Staff',
-        message: text,
-        profilePhoto: staffData.profilePhoto
-    });
-    input.value = '';
-}
+        window.previewStaffChatFile = async function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) return alert("File size must be less than 10MB!");
 
-function scrollToBottom() {
-    const box = document.getElementById('chatMessages');
-    if(box) setTimeout(() => box.scrollTop = box.scrollHeight, 100);
-}
+            const previewDiv = document.getElementById('staffChatPreviewContent');
+            const previewContainer = document.getElementById('staffChatFilePreview');
 
-// Socket Listeners
-// 🟢 LIVE CHAT NOTIFICATION
-socket.on('receive_message', (msg) => { 
-    appendMessageUI(msg); 
-    scrollToBottom(); 
-    
-    // Agar message maine nahi bheja hai (kisi aur ne bheja hai), tabhi notification aaye
-    if (msg.senderEmail !== staffData.email && Notification.permission === "granted") {
-        new Notification(`💬 New Message from ${msg.role === 'Admin' ? 'Admin' : msg.senderName}`, {
-            body: msg.message,
-            icon: msg.profilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-        });
-    }
-});
-socket.on('message_deleted', (id) => { const m = document.getElementById(`msg-${id}`); if(m) m.remove(); });
-socket.on('chat_status_changed', (data) => { updateChatStatusUI(data.isChatBlocked); });
-socket.on('chat_error', (err) => { alert("🚨 " + err); });
-// 🟢 1. Apne Room (Email) mein join karo taaki personal lead ke alerts mil sakein
-if(staffData) {
-    socket.emit('join_room', staffData.email);
-}
+            isStaffUploading = true;
+            previewContainer.style.display = 'block';
+            previewDiv.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><div style="width:18px;height:18px;border:3px solid #e2e8f0;border-top:3px solid #6c63ff;border-radius:50%;animation:staffSpin 1s linear infinite;"></div><span style="font-size:13px;color:#475569;">Uploading...</span></div><style>@keyframes staffSpin{to{transform:rotate(360deg)}}</style>`;
 
-// 🟢 2. LIVE LEAD NOTIFICATION
-socket.on('new_lead_assigned', (data) => {
-    if (Notification.permission === "granted") {
-        new Notification("🎯 Nayi Lead Aayi Hai!", {
-            body: `Admin ne aapko naya lead diya hai: ${data.clientName} (${data.servicePitch}). Jaldi check karo!`,
-            icon: "https://cdn-icons-png.flaticon.com/512/1006/1006517.png" // Target Icon
-        });
-    }
-    fetchMyTasks(); // 🟢 Nayi lead aate hi background mein table bhi auto-refresh ho jayegi!
-});
-// Init on load
-if(staffData) { initChat(); }
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
 
-async function fetchStaffStats() {
-        try {
-            const response = await fetch('/api/staff/stats', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: staffData.email })
-            });
-            const data = await response.json();
-            if(data.success) {
-                document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
-                document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
-                
-                // 🟢 NAYA FIX: Progress Bar Calculations
-                if(document.getElementById('targetText')) {
-                    const target = data.monthlyTarget || 50000;
-                    const earned = data.totalEarnings || 0;
-                    let percent = (earned / target) * 100;
-                    if(percent > 100) percent = 100; // 100% se aage bar ko bahar mat nikalne do
+                const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
+                const data = await res.json();
 
-                    document.getElementById('targetText').innerText = `₹${earned.toLocaleString('en-IN')} / ₹${target.toLocaleString('en-IN')}`;
-                    document.getElementById('targetProgressBar').style.width = `${percent}%`;
+                if (data.success) {
+                    selectedStaffChatFile = { fileUrl: data.fileUrl, fileType: data.fileType, fileName: data.fileName };
 
-                    // Smart Motivation Text
-                    let motivation = "Start calling clients and close some deals! 🚀";
-                    if(percent === 0) motivation = "0 pe out nahi hona hai, aaj hi pitch karo! 🏏";
-                    else if(percent >= 10 && percent < 50) motivation = "Great start! Keep the momentum going! 🔥";
-                    else if(percent >= 50 && percent < 100) motivation = "Halfway there! 🎯 You are doing amazing!";
-                    else if(percent >= 100) motivation = "Target Hit! 🏆 You are an absolute Rockstar!";
-                    
-                    document.getElementById('targetMotivation').innerText = motivation;
+                    if (data.fileType === 'image') {
+                        previewDiv.innerHTML = `<img src="${data.fileUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:5px;">`;
+                    } else {
+                        previewDiv.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📄</span><span style="font-size:12px;color:#475569;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${data.fileName}</span></div>`;
+                    }
+                } else {
+                    throw new Error(data.message);
                 }
+            } catch (e) {
+                alert('Upload failed: ' + e.message);
+                previewContainer.style.display = 'none';
+                selectedStaffChatFile = null;
             }
-        } catch(e) { console.error("Stats fetch error:", e); }
-    }
+            isStaffUploading = false;
+        };
 
-    // ==========================================
-    // INITIALIZATION
-    // ==========================================
-    if(staffData) {
-        fetchMyTasks();
-        fetchNotices(); 
-        fetchStaffStats(); 
-        fetchLeaderboard(); 
-        fetchMyPayouts(); 
-        fetchMyLeaves(); 
-        window.initializeDutyStatus(); 
-        window.requestNotificationPermission();
-    }
+        // ==========================================
+        // 🎤 STAFF VOICE RECORDING LOGIC
+        // ==========================================
+        let staffMediaRecorder = null;
+        let staffAudioChunks = [];
+        let staffRecordingTimer = null;
+        let staffRecordingSeconds = 0;
 
-</script>
+        window.toggleStaffVoiceRecording = function () {
+            if (isChatBlocked) return alert('Chat is currently blocked by Admin.');
+            if (staffData.isMuted) return alert('You have been muted by Admin.');
+
+            if (staffMediaRecorder && staffMediaRecorder.state === 'recording') {
+                staffMediaRecorder.stop();
+            } else {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                    staffAudioChunks = [];
+                    staffRecordingSeconds = 0;
+                    const options = MediaRecorder.isTypeSupported('audio/webm') ? { mimeType: 'audio/webm' } : {};
+                    staffMediaRecorder = new MediaRecorder(stream, options);
+
+                    staffMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) staffAudioChunks.push(e.data); };
+
+                    staffMediaRecorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        clearInterval(staffRecordingTimer);
+                        const micBtn = document.getElementById('staffMicBtn');
+                        const timerEl = document.getElementById('staffVoiceTimer');
+                        micBtn.innerHTML = '🎤'; micBtn.style.background = '#f1f5f9'; micBtn.style.color = '#64748b';
+                        timerEl.style.display = 'none';
+
+                        const blob = new Blob(staffAudioChunks, { type: staffMediaRecorder.mimeType || 'audio/webm' });
+                        if (blob.size < 1000) return;
+
+                        const formData = new FormData();
+                        const ext = (staffMediaRecorder.mimeType || 'audio/webm').includes('webm') ? 'webm' : 'ogg';
+                        formData.append('file', blob, `voice_note_${Date.now()}.${ext}`);
+
+                        micBtn.innerHTML = '⏳'; micBtn.style.background = '#fef3c7';
+                        try {
+                            const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
+                            if (data.success) {
+                                const msgData = {
+                                    senderName: staffData.name,
+                                    senderEmail: staffData.email,
+                                    role: 'Staff',
+                                    message: '',
+                                    fileUrl: data.fileUrl,
+                                    fileType: data.fileType,
+                                    fileName: data.fileName,
+                                    profilePhoto: staffData.profilePhoto
+                                };
+                                socket.emit('send_message', msgData);
+                            } else { alert('Voice upload failed: ' + data.message); }
+                        } catch (err) { alert('Voice upload error!'); }
+                        micBtn.innerHTML = '🎤'; micBtn.style.background = '#f1f5f9';
+                    };
+
+                    staffMediaRecorder.start();
+                    const micBtn = document.getElementById('staffMicBtn');
+                    const timerEl = document.getElementById('staffVoiceTimer');
+                    micBtn.innerHTML = '⏹'; micBtn.style.background = '#fee2e2'; micBtn.style.color = '#ef4444';
+                    timerEl.style.display = 'inline'; timerEl.innerText = '00:00';
+                    staffRecordingTimer = setInterval(() => {
+                        staffRecordingSeconds++;
+                        const m = String(Math.floor(staffRecordingSeconds / 60)).padStart(2, '0');
+                        const s = String(staffRecordingSeconds % 60).padStart(2, '0');
+                        timerEl.innerText = `${m}:${s}`;
+                    }, 1000);
+                }).catch(err => {
+                    alert('🎤 Microphone access denied! Please allow mic permission.');
+                });
+            }
+        };
+
+        window.removeStaffChatFile = function () {
+            selectedStaffChatFile = null;
+            document.getElementById('staffChatFileInput').value = '';
+            document.getElementById('staffChatFilePreview').style.display = 'none';
+        };
+
+        function sendChatMessage() {
+            if (isChatBlocked) return alert("Chat is currently blocked by Admin.");
+            if (staffData.isMuted) return alert("You have been muted by Admin.");
+            if (isStaffUploading) return alert('File abhi upload ho rahi hai, zara ruko!');
+
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text && !selectedStaffChatFile) return;
+
+            const msgData = {
+                senderName: staffData.name,
+                senderEmail: staffData.email,
+                role: 'Staff',
+                message: text,
+                profilePhoto: staffData.profilePhoto
+            };
+
+            if (selectedStaffChatFile) {
+                msgData.fileUrl = selectedStaffChatFile.fileUrl;
+                msgData.fileType = selectedStaffChatFile.fileType;
+                msgData.fileName = selectedStaffChatFile.fileName;
+            }
+
+            socket.emit('send_message', msgData);
+            input.value = '';
+            removeStaffChatFile();
+        }
+
+        function scrollToBottom() {
+            const box = document.getElementById('chatMessages');
+            if (box) setTimeout(() => box.scrollTop = box.scrollHeight, 100);
+        }
+
+        // Socket Listeners
+        // 🟢 LIVE CHAT NOTIFICATION
+        socket.on('receive_message', (msg) => {
+            appendMessageUI(msg);
+            scrollToBottom();
+
+            // Agar message maine nahi bheja hai (kisi aur ne bheja hai), tabhi notification aaye
+            if (msg.senderEmail !== staffData.email && Notification.permission === "granted") {
+                new Notification(`💬 New Message from ${msg.role === 'Admin' ? 'Admin' : msg.senderName}`, {
+                    body: msg.message,
+                    icon: msg.profilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                });
+            }
+        });
+        socket.on('message_deleted', (id) => { const m = document.getElementById(`msg-${id}`); if (m) m.remove(); });
+        socket.on('chat_status_changed', (data) => { updateChatStatusUI(data.isChatBlocked); });
+        socket.on('chat_error', (err) => { alert("🚨 " + err); });
+        // 🟢 1. Apne Room (Email) mein join karo taaki personal lead ke alerts mil sakein
+        if (staffData) {
+            socket.emit('join_room', staffData.email);
+        }
+
+        // 🟢 2. LIVE LEAD NOTIFICATION (DOM MANIPULATION + NOTIFICATION UI)
+        socket.on('new_lead_assigned', (data) => {
+            const nm = new NotificationManager();
+            nm.playSound();
+            nm.showNativeNotification(
+                "🎯 Nayi Lead Aayi Hai!",
+                `Admin ne aapko naya lead diya hai: ${data.clientName} (${data.servicePitch}). Jaldi check karo!`,
+                window.location.href
+            );
+
+            // Re-fetch to render full row efficiently as task structure is complex
+            fetchMyTasks();
+        });
+
+        socket.on('task_deleted', (taskId) => {
+            ['dash-task-row', 'tasks-task-row'].forEach(prefix => {
+                const tr = document.getElementById(`${prefix}-${taskId}`);
+                if (tr) {
+                    tr.style.opacity = '0';
+                    setTimeout(() => tr.remove(), 500);
+                }
+            });
+        });
+
+        socket.on('task_updated', (updatedTask) => {
+            // Re-render the specific task row if we know how, or just fetch if staff is on tasks panel
+            if (updatedTask.assignedTo === staffData.email) fetchMyTasks();
+        });
+        // Init on load
+        if (staffData) { initChat(); }
+
+        async function fetchStaffStats() {
+            try {
+                const response = await fetch('/api/staff/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
+                    document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
+
+                    // 🟢 NAYA FIX: Progress Bar Calculations
+                    if (document.getElementById('targetText')) {
+                        const target = data.monthlyTarget || 50000;
+                        const earned = data.totalEarnings || 0;
+                        let percent = (earned / target) * 100;
+                        if (percent > 100) percent = 100; // 100% se aage bar ko bahar mat nikalne do
+
+                        document.getElementById('targetText').innerText = `₹${earned.toLocaleString('en-IN')} / ₹${target.toLocaleString('en-IN')}`;
+                        document.getElementById('targetProgressBar').style.width = `${percent}%`;
+
+                        // Smart Motivation Text
+                        let motivation = "Start calling clients and close some deals! 🚀";
+                        if (percent === 0) motivation = "0 pe out nahi hona hai, aaj hi pitch karo! 🏏";
+                        else if (percent >= 10 && percent < 50) motivation = "Great start! Keep the momentum going! 🔥";
+                        else if (percent >= 50 && percent < 100) motivation = "Halfway there! 🎯 You are doing amazing!";
+                        else if (percent >= 100) motivation = "Target Hit! 🏆 You are an absolute Rockstar!";
+
+                        document.getElementById('targetMotivation').innerText = motivation;
+                    }
+                }
+            } catch (e) { console.error("Stats fetch error:", e); }
+        }
+
+        // ==========================================
+        // 🎧 STAFF HELPDESK FUNCTIONS
+        // ==========================================
+        async function fetchStaffTickets() {
+            try {
+                const res = await fetch('/api/admin/tickets', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) return;
+
+                document.getElementById('staffTicketCount').innerText = data.tickets.length + ' Tickets';
+                const tbody = document.getElementById('staffTicketsTable');
+                tbody.innerHTML = '';
+
+                if (data.tickets.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No tickets yet 🎉</td></tr>';
+                    return;
+                }
+
+                data.tickets.forEach(t => {
+                    const statusBg = { 'Open': '#fff7ed', 'In Progress': '#eff6ff', 'Resolved': '#f0fdf4' };
+                    const statusColor = { 'Open': '#f59e0b', 'In Progress': '#3b82f6', 'Resolved': '#10b981' };
+                    const repliesHtml = t.replies.map(r => `<div style="font-size:11px;color:#475569;background:#f8fafc;padding:4px 8px;border-radius:6px;margin-top:3px;"><strong>${r.sender}:</strong> ${r.message}</div>`).join('');
+
+                    tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${t.clientName || 'Client'}</strong><br><small style="color:#94a3b8;">${t.clientEmail}</small></td>
+                        <td style="font-weight:600;">${t.subject}</td>
+                        <td style="max-width:200px;font-size:13px;">${t.issue}${repliesHtml}</td>
+                        <td>
+                            <select onchange="updateStaffTicket('${t._id}', this.value)" style="padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:bold;color:${statusColor[t.status] || '#333'};">
+                                <option value="Open" ${t.status === 'Open' ? 'selected' : ''}>🟡 Open</option>
+                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>🔵 In Progress</option>
+                                <option value="Resolved" ${t.status === 'Resolved' ? 'selected' : ''}>✅ Resolved</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:4px;">
+                                <input type="text" id="sreply-${t._id}" placeholder="Reply..." style="flex:1;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;">
+                                <button onclick="replyStaffTicket('${t._id}')" style="background:#6c63ff;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">Send</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            } catch (e) { console.error('Staff ticket fetch error:', e); }
+        }
+
+        async function updateStaffTicket(id, status) {
+            try {
+                await fetch('/api/admin/update-ticket', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ ticketId: id, status, sender: staffData.name })
+                });
+                fetchStaffTickets();
+            } catch (e) { alert('Failed to update'); }
+        }
+
+        async function replyStaffTicket(id) {
+            const reply = document.getElementById('sreply-' + id).value.trim();
+            if (!reply) return alert('Type a reply first');
+            try {
+                await fetch('/api/admin/update-ticket', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ ticketId: id, reply, sender: staffData.name })
+                });
+                fetchStaffTickets();
+            } catch (e) { alert('Failed to reply'); }
+        }
+
+        // ==========================================
+        // 📚 STAFF KNOWLEDGE BASE FUNCTIONS
+        // ==========================================
+        async function fetchStaffResources() {
+            try {
+                const res = await fetch('/api/resources', { credentials: 'include' });
+                const data = await res.json();
+                const list = document.getElementById('staffResourcesList');
+                list.innerHTML = '';
+                if (!data.resources || data.resources.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;grid-column:1/-1;">No resources available yet 📚</div>';
+                    return;
+                }
+                data.resources.forEach(r => {
+                    const typeIcons = { 'link': '🔗', 'text': '📝', 'pdf': '📄' };
+                    const typeBg = { 'link': '#eff6ff', 'text': '#f0fdf4', 'pdf': '#fef3c7' };
+                    const contentHtml = r.type === 'link' ? `<a href="${r.content}" target="_blank" style="color:#6c63ff;text-decoration:none;word-break:break-all;font-size:13px;">🔗 ${r.content}</a>`
+                        : r.type === 'pdf' ? `<a href="${r.content}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#6c63ff;color:white;padding:8px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">📥 Download PDF</a>`
+                            : `<p style="font-size:13px;color:#475569;margin:0;white-space:pre-wrap;max-height:120px;overflow-y:auto;">${r.content}</p>`;
+
+                    list.innerHTML += `
+                    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:18px;transition:0.3s;" onmouseover="this.style.boxShadow='0 8px 20px rgba(0,0,0,0.06)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='translateY(0)'">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                            <span style="font-size:11px;background:${typeBg[r.type]};padding:3px 10px;border-radius:12px;font-weight:bold;">${typeIcons[r.type]} ${r.type.toUpperCase()}</span>
+                            <span style="font-size:11px;color:#94a3b8;">${new Date(r.date).toLocaleDateString()}</span>
+                        </div>
+                        <h4 style="margin-bottom:10px;color:#1e293b;font-size:15px;">${r.title}</h4>
+                        ${contentHtml}
+                    </div>`;
+                });
+            } catch (e) { console.error('Staff resources error:', e); }
+        }
+
+        // ==========================================
+        // 🎬 STAFF MEETING FUNCTIONS
+        // ==========================================
+        async function fetchStaffMeetings() {
+            try {
+                const res = await fetch('/api/meetings', { credentials: 'include' });
+                const data = await res.json();
+                const list = document.getElementById('staffMeetingsList');
+                list.innerHTML = '';
+
+                if (!data.meetings || data.meetings.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;grid-column:1/-1;">No meetings scheduled 🎬</div>';
+                    document.getElementById('staffMeetCount').innerText = '0 Meetings';
+                    return;
+                }
+
+                document.getElementById('staffMeetCount').innerText = data.meetings.length + ' Meetings';
+
+                data.meetings.forEach(m => {
+                    const statusColors = { 'Scheduled': '#f59e0b', 'Live': '#10b981', 'Ended': '#94a3b8' };
+                    const statusBg = { 'Scheduled': '#fffbeb', 'Live': '#f0fdf4', 'Ended': '#f8fafc' };
+                    const isUpcoming = new Date(m.scheduledTime) > new Date() || m.status === 'Live';
+                    const staffName = staffData ? staffData.name : 'Staff';
+
+                    list.innerHTML += `
+                    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;border-left:4px solid ${statusColors[m.status] || '#cbd5e1'};transition:0.3s;" onmouseover="this.style.boxShadow='0 8px 20px rgba(0,0,0,0.06)'" onmouseout="this.style.boxShadow='none'">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <span style="font-size:12px;padding:3px 10px;border-radius:12px;font-weight:bold;background:${statusBg[m.status]};color:${statusColors[m.status]};">${m.status === 'Live' ? '🔴 LIVE NOW' : m.status === 'Ended' ? '⭕ Ended' : '📅 Scheduled'}</span>
+                        </div>
+                        <h4 style="margin-bottom:8px;color:#1e293b;font-size:16px;">${m.topic}</h4>
+                        <p style="font-size:13px;color:#64748b;margin-bottom:14px;">🕒 ${new Date(m.scheduledTime).toLocaleString()}</p>
+                        ${isUpcoming ? `<button onclick="joinStaffMeeting('${m.roomName}', '${staffName}')" style="width:100%;background:#6c63ff;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px;transition:0.3s;display:flex;align-items:center;justify-content:center;gap:8px;" onmouseover="this.style.background='#5a52d5'" onmouseout="this.style.background='#6c63ff'"><i class="ri-vidicon-line"></i> Join Meeting</button>` : '<p style="color:#94a3b8;font-size:13px;text-align:center;">Meeting ended</p>'}
+                    </div>`;
+                });
+            } catch (e) { console.error('Staff meetings error:', e); }
+        }
+
+        function joinStaffMeeting(roomName, displayName) {
+            // Hide dashboard sections and show JaaS container
+            document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+            document.getElementById('staff-jaas-container').style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // 🔒 Scroll Lock for Mobile Touch Fix
+
+            const container = document.getElementById('staff-jitsi-iframe-wrapper');
+            container.innerHTML = '';
+
+            // Load JaaS External API script
+            const script = document.createElement('script');
+            script.src = 'https://8x8.vc/external_api.js';
+            script.onload = () => {
+                const cleanRoomName = roomName.trim();
+                window.currentStaffJaasRoomName = cleanRoomName;
+                const api = new JitsiMeetExternalAPI('8x8.vc', {
+                    roomName: cleanRoomName,
+                    parentNode: container,
+                    width: '100%',
+                    height: '100%',
+                    userInfo: { displayName: displayName || 'Staff' },
+                    configOverwrite: {
+                        startWithAudioMuted: true,
+                        startWithVideoMuted: false,
+                        prejoinPageEnabled: false
+                    },
+                    interfaceConfigOverwrite: {
+                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'participants-pane', 'tileview', 'hangup'],
+                        SHOW_JITSI_WATERMARK: false,
+                        SHOW_WATERMARK_FOR_GUESTS: false
+                    }
+                });
+
+                window.currentStaffJaasApi = api;
+
+                // When user leaves the meeting
+                api.addEventListener('videoConferenceLeft', () => {
+                    leaveStaffJaasCall();
+                });
+            };
+            document.body.appendChild(script);
+        }
+
+        function toggleFullScreen(elemId) {
+            const elem = document.getElementById(elemId);
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) elem.requestFullscreen();
+                else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function copyMeetingLink(btnId) {
+            if (!window.currentStaffJaasRoomName) return;
+            const roomId = window.currentStaffJaasRoomName.split('/').pop();
+            const link = `https://vibespheremedia.in/join-meeting?room=${encodeURIComponent(roomId)}`;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.getElementById(btnId);
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+            }).catch(err => console.error('Failed to copy link: ', err));
+        }
+
+        function leaveStaffJaasCall() {
+            if (document.fullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+
+            if (window.currentStaffJaasApi) {
+                window.currentStaffJaasApi.dispose();
+                window.currentStaffJaasApi = null;
+            }
+            document.getElementById('staff-jitsi-iframe-wrapper').innerHTML = '';
+            document.getElementById('staff-jaas-container').style.display = 'none';
+            document.body.style.overflow = 'auto'; // 🔓 Release Scroll Lock
+
+            // Return to view-meetings tab
+            document.getElementById('view-meetings').style.display = 'block';
+        }
+
+        // Socket: Meeting notifications
+        socket.on('new_meeting_scheduled', (data) => {
+            alert(`🎬 New Meeting Scheduled!\nTopic: ${data.topic}\nTime: ${new Date(data.scheduledTime).toLocaleString()}`);
+            if (document.getElementById('view-meetings').style.display !== 'none') fetchStaffMeetings();
+        });
+
+        socket.on('meeting_going_live', () => {
+            alert('🔴 A meeting is going LIVE now! Check Meetings tab.');
+        });
+
+    </script>
 </body>
+
 </html>

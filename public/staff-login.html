@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,50 +17,130 @@
             margin: 0;
             font-family: 'Outfit', sans-serif;
         }
+
         .login-card {
             background: white;
             padding: 40px;
             border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
             width: 100%;
             max-width: 400px;
             text-align: center;
         }
-        .login-card h2 { color: #111; font-size: 28px; margin-bottom: 5px; }
-        .login-card h2 span { color: #7d5fff; }
-        .login-card p { color: #64748b; font-size: 14px; margin-bottom: 30px; }
-        .input-group { text-align: left; margin-bottom: 20px; }
-        .input-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 8px; }
-        .input-group input { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: 0.3s; box-sizing: border-box; }
-        .input-group input:focus { border-color: #7d5fff; box-shadow: 0 0 0 3px rgba(125, 95, 255, 0.1); }
-        .btn-login { width: 100%; padding: 14px; background: #1e293b; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; margin-bottom: 10px;}
-        .btn-login:hover { background: #7d5fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(125, 95, 255, 0.3); }
-        .back-link { display: inline-block; margin-top: 20px; font-size: 14px; color: #7d5fff; text-decoration: none; font-weight: 500; cursor: pointer; }
-        .back-link:hover { text-decoration: underline; }
-        .hidden { display: none; }
+
+        .login-card h2 {
+            color: #111;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .login-card h2 span {
+            color: #7d5fff;
+        }
+
+        .login-card p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        .input-group input:focus {
+            border-color: #7d5fff;
+            box-shadow: 0 0 0 3px rgba(125, 95, 255, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 10px;
+        }
+
+        .btn-login:hover {
+            background: #7d5fff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(125, 95, 255, 0.3);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #7d5fff;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
+
 <body class="staff-login-bg">
 
     <div class="login-card">
         <h2>VibeSphere<span>.</span></h2>
-        
+
         <div id="loginSection">
             <p>Secure Staff Portal Login</p>
             <form id="staffLoginForm">
                 <div class="input-group">
                     <label>Staff Email</label>
-                    <input type="email" id="staffEmail" placeholder="e.g. rahul@vibespheremedia.in" required>
+                    <input type="email" id="staffEmail" placeholder="e.g. rahul@vibespheremedia.in"
+                        autocomplete="username" required>
                 </div>
                 <div class="input-group">
                     <label style="display: flex; justify-content: space-between;">
                         Password
-                        <a onclick="showForgot()" style="color: #7d5fff; font-weight: 500; cursor: pointer; text-decoration: none; font-size: 12px;">Forgot?</a>
+                        <a onclick="showForgot()"
+                            style="color: #7d5fff; font-weight: 500; cursor: pointer; text-decoration: none; font-size: 12px;">Forgot?</a>
                     </label>
-                    <input type="password" id="staffPassword" placeholder="••••••••" required>
+                    <input type="password" id="staffPassword" placeholder="••••••••" autocomplete="current-password"
+                        required>
                 </div>
-                
-                <p id="error-msg" style="color: #dc2626; font-size: 13px; text-align: left; display: none; margin-bottom: 15px; font-weight: 500;">Invalid email or password.</p>
+
+                <p id="error-msg"
+                    style="color: #dc2626; font-size: 13px; text-align: left; display: none; margin-bottom: 15px; font-weight: 500;">
+                    Invalid email or password.</p>
                 <button type="submit" class="btn-login" id="loginBtn">Login to Dashboard</button>
             </form>
             <a href="/" class="back-link"><i class="ri-arrow-left-line"></i> Back to Main Website</a>
@@ -71,7 +152,7 @@
                 <div class="input-group">
                     <label>Enter your registered Email</label>
                     <input type="email" id="forgotEmail" placeholder="Email Address" required>
-                    
+
                     <p style="color: #ea580c; font-size: 12px; margin-top: 8px; margin-bottom: 0; font-weight: 500;">
                         <i class="ri-information-line"></i> Security: Maximum 3 OTP requests per 24 hours.
                     </p>
@@ -85,12 +166,14 @@
             <p>Verify OTP & Update Password</p>
             <form id="resetForm">
                 <div class="input-group">
+                    <input type="text" name="username" value="staff" style="display:none;" autocomplete="username">
                     <label>Enter 6-digit OTP</label>
-                    <input type="text" id="resetOtp" placeholder="XXXXXX" required>
+                    <input type="text" id="resetOtp" placeholder="XXXXXX" autocomplete="one-time-code" required>
                 </div>
                 <div class="input-group">
                     <label>New Password</label>
-                    <input type="password" id="resetNewPass" placeholder="••••••••" required>
+                    <input type="password" id="resetNewPass" placeholder="••••••••" autocomplete="new-password"
+                        required>
                 </div>
                 <button type="submit" class="btn-login" id="resetBtn">Update Password</button>
             </form>
@@ -118,13 +201,13 @@
         }
 
         // 1. LOGIN API
-        document.getElementById('staffLoginForm').addEventListener('submit', async function(e) {
+        document.getElementById('staffLoginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const email = document.getElementById('staffEmail').value;
             const password = document.getElementById('staffPassword').value;
             const btn = document.getElementById('loginBtn');
             const errorMsg = document.getElementById('error-msg');
-            
+
             btn.innerText = "Verifying...";
             errorMsg.style.display = 'none';
 
@@ -132,12 +215,12 @@
                 const response = await fetch('/api/staff/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ email, password })
                 });
                 const data = await response.json();
-                
-                if(data.success) {
-                    localStorage.setItem('staffData', JSON.stringify(data.staff));
+
+                if (data.success) {
                     btn.innerText = "Success! Redirecting...";
                     btn.style.background = "#16a34a";
                     setTimeout(() => { window.location.href = 'staff-dashboard.html'; }, 1000);
@@ -146,7 +229,7 @@
                     errorMsg.style.display = 'block';
                     btn.innerText = "Login to Dashboard";
                 }
-            } catch(err) {
+            } catch (err) {
                 errorMsg.innerText = "Server Error!";
                 errorMsg.style.display = 'block';
                 btn.innerText = "Login to Dashboard";
@@ -155,7 +238,7 @@
 
         // 2. FORGOT PASSWORD API
         let savedResetEmail = "";
-        document.getElementById('forgotForm').addEventListener('submit', async function(e) {
+        document.getElementById('forgotForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const email = document.getElementById('forgotEmail').value;
             const btn = document.getElementById('forgotBtn');
@@ -169,17 +252,17 @@
                 });
                 const data = await response.json();
                 alert(data.message);
-                
-                if(data.success) {
+
+                if (data.success) {
                     savedResetEmail = email; // Store for next step
                     showReset(); // OTP verification form dikhao
                 }
-            } catch(err) { alert("Server Error"); }
+            } catch (err) { alert("Server Error"); }
             btn.innerText = "Send OTP";
         });
 
         // 3. RESET PASSWORD API
-        document.getElementById('resetForm').addEventListener('submit', async function(e) {
+        document.getElementById('resetForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const otp = document.getElementById('resetOtp').value;
             const newPassword = document.getElementById('resetNewPass').value;
@@ -194,15 +277,16 @@
                 });
                 const data = await response.json();
                 alert(data.message);
-                
-                if(data.success) {
+
+                if (data.success) {
                     showLogin(); // Wapas login par bhejo
                     document.getElementById('resetOtp').value = '';
                     document.getElementById('resetNewPass').value = '';
                 }
-            } catch(err) { alert("Server Error"); }
+            } catch (err) { alert("Server Error"); }
             btn.innerText = "Update Password";
         });
     </script>
 </body>
+
 </html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Join Meeting | VibeSphere Media</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://8x8.vc/external_api.js" crossorigin="anonymous"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100dvh;
+            background-color: #0f172a;
+            /* VibeSphere Dark Theme */
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            /* Prevent scrolling */
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f8fafc;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(108, 99, 255, 0.2);
+            border-top-color: #6c63ff;
+            /* VibeSphere Blue/Purple Theme */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #error-message {
+            display: none;
+            color: #ef4444;
+            font-weight: 500;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        #jitsi-container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading UI -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <h2 id="loading-status" style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">Checking
+            Meeting Status...</h2>
+        <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">Please wait while we verify your room</p>
+        <div id="error-message">Invalid Meeting Link. Redirecting to home...</div>
+    </div>
+
+    <!-- 🔒 PASSWORD OVERLAY -->
+    <div id="password-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:9000; flex-direction:column; justify-content:center; align-items:center; color:#f8fafc;">
+        <div
+            style="background:#1e293b; padding:40px; border-radius:20px; width:90%; max-width:400px; text-align:center; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
+            <div style="font-size:40px; margin-bottom:20px;">🔒</div>
+            <h2 style="margin-bottom:10px;">Meeting Protected</h2>
+            <p style="color:#94a3b8; font-size:14px; margin-bottom:25px;">This room requires a password to enter.</p>
+            <input type="password" id="joinPass" placeholder="Enter Password"
+                style="width:100%; padding:15px; background:#0f172a; border:1px solid #334155; border-radius:10px; color:white; font-size:16px; margin-bottom:20px; outline:none; text-align:center;">
+            <button onclick="verifyJoinPassword()"
+                style="width:100%; padding:15px; background:#6c63ff; border:none; border-radius:10px; color:white; font-weight:bold; cursor:pointer; font-size:16px; transition:0.3s;">Join
+                Room</button>
+            <div id="passError" style="color:#ef4444; font-size:12px; margin-top:10px; display:none;">Incorrect
+                Password! ❌</div>
+        </div>
+    </div>
+
+    <!-- ⏳ COUNTDOWN OVERLAY -->
+    <div id="countdown-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:8000; flex-direction:column; justify-content:center; align-items:center; color:#f8fafc;">
+        <div style="text-align:center;">
+            <h2 id="countdown-topic" style="font-size:24px; margin-bottom:10px;">Weekly Team Sync</h2>
+            <p style="color:#94a3b8; margin-bottom:30px;">The meeting has not started yet.</p>
+            <div id="timer"
+                style="font-size:64px; font-weight:700; font-variant-numeric: tabular-nums; letter-spacing: 2px; color:#6c63ff;">
+                00:00:00</div>
+            <p id="countdown-sub" style="color:#64748b; font-size:14px; margin-top:15px;">Meeting starts in...</p>
+        </div>
+    </div>
+
+    <!-- Jitsi Container -->
+    <div id="jitsi-container"></div>
+
+    <script>
+        let roomNameParam = null;
+        let meetingDetails = null;
+        let countdownInterval = null;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            roomNameParam = urlParams.get('room');
+
+            if (!roomNameParam) {
+                showError("Invalid or Missing Meeting Link.");
+                return;
+            }
+
+            try {
+                // 1. Fetch Meeting Info
+                const res = await fetch(`/api/meeting-info/${roomNameParam}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    showError("Meeting not found or cancelled.");
+                    return;
+                }
+
+                meetingDetails = data;
+
+                if (data.status === 'Ended' || data.status === 'Cancelled') {
+                    showError("This meeting has already ended or been cancelled.");
+                    return;
+                }
+
+                // 2. Password Check
+                if (data.hasPassword) {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('password-overlay').style.display = 'flex';
+                } else {
+                    checkAndStartMeeting();
+                }
+
+            } catch (err) {
+                showError("Connection error. Please try again.");
+            }
+        });
+
+        async function verifyJoinPassword() {
+            const password = document.getElementById('joinPass').value;
+            const err = document.getElementById('passError');
+            err.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/meeting/verify-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room: roomNameParam, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('password-overlay').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('password-overlay').style.display = 'none';
+                        checkAndStartMeeting();
+                    }, 500);
+                } else {
+                    err.style.display = 'block';
+                }
+            } catch (e) { alert("Security error"); }
+        }
+
+        function checkAndStartMeeting() {
+            const now = new Date();
+            const start = new Date(meetingDetails.scheduledTime);
+
+            if (start > now && meetingDetails.status !== 'Live') {
+                showCountdown();
+            } else {
+                startJitsi();
+            }
+        }
+
+        function showCountdown() {
+            document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('countdown-topic').innerText = meetingDetails.topic;
+            document.getElementById('countdown-overlay').style.display = 'flex';
+
+            const target = new Date(meetingDetails.scheduledTime).getTime();
+
+            countdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff <= 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('countdown-overlay').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('countdown-overlay').style.display = 'none';
+                        startJitsi();
+                    }, 500);
+                    return;
+                }
+
+                const hrs = Math.floor(diff / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+                document.getElementById('timer').innerText =
+                    `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function startJitsi() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('loading-status').innerText = "Initializing Jitsi Meeting...";
+
+            const cleanRoomId = roomNameParam.trim();
+            const fullRoomName = `vpaas-magic-cookie-a79c97228cc74f76934669ab12f092f0/${cleanRoomId}`;
+
+            try {
+                const api = new JitsiMeetExternalAPI('8x8.vc', {
+                    roomName: fullRoomName,
+                    parentNode: document.getElementById('jitsi-container'),
+                    width: '100%',
+                    height: '100%',
+                    userInfo: { displayName: 'Guest Participant' },
+                    configOverwrite: { startWithAudioMuted: true, prejoinPageEnabled: true },
+                    interfaceConfigOverwrite: {
+                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'participants-pane', 'tileview', 'hangup'],
+                        SHOW_JITSI_WATERMARK: false
+                    }
+                });
+
+                api.addEventListener('videoConferenceJoined', () => {
+                    document.getElementById('loading-overlay').style.opacity = '0';
+                    setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 500);
+                });
+
+                api.addEventListener('videoConferenceLeft', () => {
+                    window.location.href = 'https://vibespheremedia.in';
+                });
+
+                // Fallback fade
+                setTimeout(() => {
+                    if (document.getElementById('loading-overlay').style.display !== 'none') {
+                        document.getElementById('loading-overlay').style.opacity = '0';
+                        setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 500);
+                    }
+                }, 5000);
+
+            } catch (err) {
+                showError("Jitsi Load Error");
+            }
+        }
+
+        function showError(msg) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const errorElement = document.getElementById('error-message');
+            const spinner = document.querySelector('.spinner');
+
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.style.opacity = '1';
+            spinner.style.display = 'none';
+            document.getElementById('loading-status').style.display = 'none';
+            errorElement.innerText = msg + " Redirecting...";
+            errorElement.style.display = "block";
+
+            setTimeout(() => { window.location.href = 'https://vibespheremedia.in'; }, 4000);
+        }
+    </script>
+</body>
+
+</html>
