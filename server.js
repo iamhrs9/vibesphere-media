@@ -1,5 +1,8 @@
-require('dotenv').config();
-const express = require('express');
+try {
+    require('dotenv').config();
+} catch (e) {
+    console.warn("⚠️ dotenv module not found. Falling back to system environment variables.");
+} const express = require('express');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const http = require('http');
@@ -127,12 +130,54 @@ io.on('connection', (socket) => {
 });
 const PORT = process.env.PORT || 3000;
 const rateLimit = require('express-rate-limit'); // 
-app.use(cors({
-    origin: true,
-    credentials: true
-}));
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow any origin (same-origin, mobile apps, cross-origin browsers).
+        // Must be a function (not `true`) when credentials: true is set,
+        // otherwise browsers reject the preflight.
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 200 // Avoid 204 which some browsers mishandle
+};
+// Apply CORS globally (handles all regular requests)
+app.use(cors(corsOptions));
+// Explicitly handle OPTIONS preflight for EVERY route using the SAME config
+// This is required so browsers get Access-Control-Allow-Credentials: true on preflight
+app.options('*', cors(corsOptions));
 app.use(cookieParser());
 
+
+// ==========================================
+// 🛡️ AUTHENTICATION MIDDLEWARE
+// ==========================================
+async function checkAuth(req, res, next) {
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).json({ error: "Access Denied. Please login." });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+
+        // If the token belongs to an Admin, pass through immediately (they don't exist in the User DB)
+        if (decoded.role === 'Admin') {
+            req.user = { role: 'Admin' };
+            return next();
+        }
+
+        // Find user and attach to request for regular clients
+        const user = await User.findOne({ email: decoded.email }).select('-password');
+        if (!user) return res.status(401).json({ error: "User session not found." });
+
+        if (user.isBanned) return res.status(403).json({ error: "Account restricted." });
+
+        req.user = user;
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Invalid or expired session" });
+    }
+}
 
 // ==========================================
 // 🎨 PREMIUM INVOICE DESIGN (BUG FREE)
@@ -249,7 +294,7 @@ function buildProfessionalInvoice(doc, order) {
 let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "DEFAULT_SECRET_KEY";
 
-app.use(cors());
+// NOTE: CORS is already configured above with credentials: true — do NOT add a second app.use(cors()) here
 
 // ✅ 10MB Limit for Photos
 app.use(express.json({ limit: '10mb' }));
@@ -284,6 +329,11 @@ const otpLimiter = rateLimit({
 });
 // Frontend files serve
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
+
+// Dynamic page routes (serve HTML shell, JS fetches data from API)
+app.get('/service/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'service-detail.html')));
+app.get('/package/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'package-detail.html')));
+app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
 
 // --- 2. Database Connection ---
 const mongoURI = process.env.MONGO_URI;
@@ -551,18 +601,24 @@ app.post('/api/auth/login', async (req, res) => {
             const browserName = agentData.browser.name || 'Unknown Browser';
             const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-            // Create JWT Token for Client
+            // Determine Expiration and Role based on user data
+            const isAdmin = user.role === 'admin' || user.role === 'Admin';
+            const jwtExpiresIn = isAdmin ? '1d' : '3650d';
+            const cookieMaxAge = isAdmin ? 24 * 60 * 60 * 1000 : 10 * 365 * 24 * 60 * 60 * 1000;
+            const tokenRole = isAdmin ? 'Admin' : 'Client';
+
+            // Create JWT Token
             const token = jwt.sign({
                 email: user.email,
-                role: 'Client',
+                role: tokenRole,
                 name: user.name
-            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
+            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: jwtExpiresIn });
 
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'Strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                maxAge: cookieMaxAge
             });
 
             user.activeSessions.push({
@@ -578,8 +634,8 @@ app.post('/api/auth/login', async (req, res) => {
             // ==========================================
 
 
-            // Client ko turant login karwa do (Taaki wo wait na kare)
-            res.json({ success: true, user: { name: user.name, email: user.email } });
+            // Client ko turant login karwa do
+            res.json({ success: true, message: "Login successful" });
 
             // ==========================================
             // 🟢 BACKGROUND SECURITY EMAIL PROCESS 
@@ -742,20 +798,24 @@ app.post('/api/auth/verify-magic-link', async (req, res) => {
                 : agentData.os.name || 'Unknown Device';
 
             const browserName = agentData.browser.name || 'Unknown Browser';
-            const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
+            // Create JWT Token
+            const tokenGenerated = jwt.sign({
+                email: user.email,
+                role: 'Client',
+                name: user.name
+            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
 
-            user.activeSessions.push({
-                token: "CLIENT_LOGGED_IN",
-                device: deviceName,
-                browser: browserName,
-                ip: ipAddress,
-                lastActive: Date.now()
+            res.cookie('token', tokenGenerated, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
-            await user.save();
+
             console.log(`🛡️ Magic Login Alert: ${user.email} logged in from ${deviceName} using ${browserName}`);
             // ==========================================
             // Seedha login de do
-            res.json({ success: true, user: { name: user.name, email: user.email }, token: "CLIENT_LOGGED_IN" });
+            res.json({ success: true, message: "Magic link verified" });
         } else {
             res.json({ success: false, message: "Invalid Magic Link." });
         }
@@ -1720,6 +1780,68 @@ const reviewSchema = new mongoose.Schema({
 });
 const Review = mongoose.model('Review', reviewSchema);
 
+// ==========================================
+// 🏢 SERVICE SCHEMA
+// ==========================================
+const serviceSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    slug: { type: String, required: true, unique: true },  // e.g. 'instagram-growth'
+    tagline: { type: String, default: '' },
+    description: { type: String, default: '' },            // Short (for cards)
+    fullDescription: { type: String, default: '' },        // Long (for detail page)
+    aboutText: { type: String, default: '' },
+    icon: { type: String, default: '🚀' },
+    benefits: [{ iconUrl: String, title: String, description: String }],
+    processSteps: [{ stepNumber: Number, title: String, description: String }],
+    faqs: [{ question: String, answer: String }],
+    isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+const Service = mongoose.model('Service', serviceSchema);
+
+// ==========================================
+// 📦 PACKAGE SCHEMA (with Manual Geo-Pricing)
+// ==========================================
+const packageSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    features: [String],
+    serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+    rating: { type: Number, default: 4.9, min: 1, max: 5 },
+    faqs: [{ question: String, answer: String }],
+    reviews: [{
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        userName: String,
+        rating: { type: Number, min: 1, max: 5 },
+        comment: String,
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+    pricing: {
+        priceIN: { type: Number, required: true },     // India price in ₹
+        priceUS: { type: Number, required: true },     // USA price in $
+        priceGlobal: { type: Number, required: true } // Rest of world in $
+    },
+    isActive: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false }
+}, { timestamps: true });
+const Package = mongoose.model('Package', packageSchema);
+
+// ==========================================
+// 🛒 CART SCHEMA (Server-side, auth-linked)
+// ==========================================
+const cartItemSchema = new mongoose.Schema({
+    packageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true },
+    quantity: { type: Number, default: 1, min: 1 },
+    priceAtAdd: Number,   // Price locked at time of adding
+    currency: { type: String, default: 'INR' } // 'INR', 'USD'
+});
+const cartSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    items: [cartItemSchema],
+    updatedAt: { type: Date, default: Date.now }
+});
+const Cart = mongoose.model('Cart', cartSchema);
+
 // 1. Get Reviews
 app.get('/api/reviews', async (req, res) => {
     try {
@@ -1871,76 +1993,51 @@ Always end your response with a Call to Action (CTA) or a closing question:
 
     let replyText = null;
 
-    // ════════════════════════════════════════════════════════
-    // 🔗 API PROVIDER CHAIN (tried in order, first win stops)
-    // ════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
+    // 🎲 RANDOMIZED LOAD BALANCING — 5 AI Providers, shuffled per request
+    // ════════════════════════════════════════════════════════════════
     const OR_KEY = process.env.OPENROUTER_API_KEY;
     const GROQ_KEY = process.env.GROQ_API_KEY;
 
-    const providers = [
-        // 🥇 PRIMARY: OpenRouter — Arcee Trinity Large (Best reasoning for sales scripts)
+    // Helper: OpenRouter call factory (avoids code duplication)
+    const makeORCall = (modelId) => async () => {
+        if (!OR_KEY) throw new Error('No OpenRouter key');
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 7000); // 7s strict timeout
+        try {
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OR_KEY}`,
+                    'HTTP-Referer': 'https://vibespheremedia.in',
+                    'X-Title': 'VibeSphere VibeGenie AI'
+                },
+                body: JSON.stringify({ model: modelId, messages }),
+                signal: ctrl.signal
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
+            const text = data.choices?.[0]?.message?.content;
+            if (!text) throw new Error('empty_response');
+            return text;
+        } finally { clearTimeout(t); }
+    };
+
+    // All 5 providers defined in a fixed pool
+    const providerPool = [
         {
             name: 'OpenRouter [Arcee Trinity Large]',
-            call: async () => {
-                if (!OR_KEY) throw new Error('No OpenRouter key');
-                const ctrl = new AbortController();
-                const t = setTimeout(() => ctrl.abort(), 6000); // 6s strict timeout
-                try {
-                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OR_KEY}`,
-                            'HTTP-Referer': 'https://vibespheremedia.in',
-                            'X-Title': 'VibeSphere VibeGenie AI'
-                        },
-                        body: JSON.stringify({
-                            model: 'arcee-ai/trinity-large-preview:free',
-                            messages
-                        }),
-                        signal: ctrl.signal
-                    });
-                    const data = await res.json();
-                    if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
-                    const text = data.choices?.[0]?.message?.content;
-                    if (!text) throw new Error('empty_response');
-                    return text;
-                } finally { clearTimeout(t); }
-            }
+            call: makeORCall('arcee-ai/trinity-large-preview:free')
         },
-
-        // 🥈 SECONDARY: OpenRouter — Z-AI GLM 4.5 Air (Capable fallback)
         {
             name: 'OpenRouter [GLM 4.5 Air]',
-            call: async () => {
-                if (!OR_KEY) throw new Error('No OpenRouter key');
-                const ctrl = new AbortController();
-                const t = setTimeout(() => ctrl.abort(), 6000); // 6s strict timeout
-                try {
-                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OR_KEY}`,
-                            'HTTP-Referer': 'https://vibespheremedia.in',
-                            'X-Title': 'VibeSphere VibeGenie AI'
-                        },
-                        body: JSON.stringify({
-                            model: 'z-ai/glm-4.5-air:free',
-                            messages
-                        }),
-                        signal: ctrl.signal
-                    });
-                    const data = await res.json();
-                    if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
-                    const text = data.choices?.[0]?.message?.content;
-                    if (!text) throw new Error('empty_response');
-                    return text;
-                } finally { clearTimeout(t); }
-            }
+            call: makeORCall('z-ai/glm-4.5-air:free')
         },
-
-        // 🥉 TERTIARY: Google Gemma (Direct Gemini API — instruction injected)
+        {
+            name: 'OpenRouter [Llama 3.3 70B]',
+            call: makeORCall('meta-llama/llama-3.3-70b-instruct:free')
+        },
         {
             name: 'Google Gemma [gemma-3-27b-it]',
             call: async () => {
@@ -1965,8 +2062,6 @@ Always end your response with a Call to Action (CTA) or a closing question:
                 return text;
             }
         },
-
-        // 🛡️ FINAL BACKUP: Groq — Llama 3.1 8B (Ultra-fast last resort)
         {
             name: 'Groq [Llama 3.1 8B]',
             call: async () => {
@@ -1994,8 +2089,15 @@ Always end your response with a Call to Action (CTA) or a closing question:
         }
     ];
 
+    // Fisher-Yates shuffle — randomize order for every request
+    const providers = [...providerPool];
+    for (let i = providers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [providers[i], providers[j]] = [providers[j], providers[i]];
+    }
+    console.log(`🎲 Provider order: ${providers.map(p => p.name).join(' → ')}`);
 
-    // Iterate through providers — stop at first success
+    // Iterate shuffled providers — stop at first success
     for (const provider of providers) {
         try {
             console.log(`🔃 Trying ${provider.name}...`);
@@ -2010,7 +2112,7 @@ Always end your response with a Call to Action (CTA) or a closing question:
 
     if (!replyText) {
         replyText = 'System is temporarily busy. Please try again shortly!';
-        console.error('❌ All AI providers failed.');
+        console.error('❌ All 5 AI providers failed.');
     }
 
 
@@ -2019,6 +2121,357 @@ Always end your response with a Call to Action (CTA) or a closing question:
 });
 
 
+
+
+// ============================================================
+// 🌍 GEO-DETECTION MIDDLEWARE (ip-api.com — no API key needed)
+// ============================================================
+async function detectCountry(req) {
+    try {
+        // Check X-Forwarded-For for proxied/production environments
+        const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+        // Skip detection for local IPs
+        if (!ip || ip === '::1' || ip.startsWith('127.') || ip.startsWith('192.168.')) return 'IN';
+        const response = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode`);
+        const data = await response.json();
+        return data.countryCode || 'GLOBAL';
+    } catch (e) {
+        return 'GLOBAL';
+    }
+}
+
+function selectPrice(pkg, countryCode) {
+    if (countryCode === 'IN') return { price: pkg.pricing.priceIN, currency: 'INR', symbol: '₹' };
+    if (countryCode === 'US') return { price: pkg.pricing.priceUS, currency: 'USD', symbol: '$' };
+    return { price: pkg.pricing.priceGlobal, currency: 'USD', symbol: '$' };
+}
+
+// ============================================================
+// 🏢 PUBLIC SERVICE ROUTES
+// ============================================================
+
+// GET all active services
+app.get('/api/services', async (req, res) => {
+    try {
+        const services = await Service.find({ isActive: true }).sort({ createdAt: -1 });
+        res.json({ success: true, services });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// GET single service + its packages (with geo-price)
+app.get('/api/services/:id', async (req, res) => {
+    try {
+        const service = await Service.findById(req.params.id);
+        if (!service) return res.status(404).json({ success: false, error: 'Service not found' });
+        const rawPkgs = await Package.find({ serviceId: req.params.id, isActive: true });
+        const countryCode = await detectCountry(req);
+        const packages = rawPkgs.map(pkg => {
+            const geo = selectPrice(pkg, countryCode);
+            return { ...pkg.toObject(), geo };
+        });
+        res.json({ success: true, service, packages, countryCode });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// GET specific packages for a service (requested by user)
+app.get('/api/services/:id/packages', async (req, res) => {
+    try {
+        const rawPkgs = await Package.find({ serviceId: req.params.id, isActive: true });
+        const countryCode = await detectCountry(req);
+        const packages = rawPkgs.map(pkg => {
+            const geo = selectPrice(pkg, countryCode);
+            return { ...pkg.toObject(), geo };
+        });
+        res.json({ success: true, packages, countryCode });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 📦 PUBLIC PACKAGE ROUTES
+// ============================================================
+
+// GET all active packages (optional ?serviceId= filter, with geo-price)
+app.get('/api/packages', async (req, res) => {
+    try {
+        const filter = { isActive: true };
+        if (req.query.serviceId) filter.serviceId = req.query.serviceId;
+        const rawPkgs = await Package.find(filter).populate('serviceId', 'title slug').sort({ createdAt: -1 });
+        const countryCode = await detectCountry(req);
+        const packages = rawPkgs.map(pkg => {
+            const geo = selectPrice(pkg, countryCode);
+            return { ...pkg.toObject(), geo };
+        });
+        res.json({ success: true, packages, countryCode });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// GET single package with geo-price
+app.get('/api/packages/:id', async (req, res) => {
+    try {
+        const pkg = await Package.findById(req.params.id).populate('serviceId', 'title slug');
+        if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+        const countryCode = await detectCountry(req);
+        const geo = selectPrice(pkg, countryCode);
+
+        // Filter for approved reviews only for public view
+        const approvedReviews = (pkg.reviews || []).filter(r => r.status === 'approved');
+
+        // Recalculate average rating based on approved reviews (if any, else fallback to pkg default)
+        let displayRating = pkg.rating;
+        if (approvedReviews.length > 0) {
+            const sum = approvedReviews.reduce((acc, r) => acc + r.rating, 0);
+            displayRating = Number((sum / approvedReviews.length).toFixed(1));
+        }
+
+        const pkgObj = pkg.toObject();
+        pkgObj.reviews = approvedReviews;
+        pkgObj.rating = displayRating;
+        pkgObj.geo = geo;
+
+        res.json({ success: true, package: pkgObj, countryCode });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 🔧 ADMIN — SERVICE CRUD
+// ============================================================
+
+// GET all services (admin)
+app.get('/api/admin/services', async (req, res) => {
+    try {
+        const services = await Service.find().sort({ createdAt: -1 });
+        res.json({ success: true, services });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// CREATE service
+app.post('/api/admin/services', async (req, res) => {
+    try {
+        const { title, slug, description, fullDescription, tagline, aboutText, icon, benefits, processSteps, faqs } = req.body;
+        if (!title || !slug) return res.status(400).json({ success: false, error: 'title and slug required' });
+
+        const service = await Service.create({
+            title, slug, description, fullDescription, tagline, aboutText, icon,
+            benefits: benefits || [],
+            processSteps: processSteps || [],
+            faqs: faqs || []
+        });
+        res.json({ success: true, service });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// UPDATE service
+app.put('/api/admin/services/:id', async (req, res) => {
+    try {
+        const service = await Service.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!service) return res.status(404).json({ success: false, error: 'Not found' });
+        res.json({ success: true, service });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// DELETE service
+app.delete('/api/admin/services/:id', async (req, res) => {
+    try {
+        await Service.findByIdAndDelete(req.params.id);
+        await Package.deleteMany({ serviceId: req.params.id }); // cascade delete packages
+        res.json({ success: true, message: 'Service and its packages deleted' });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 🔧 ADMIN — PACKAGE CRUD
+// ============================================================
+
+// GET all packages (admin, with service name)
+app.get('/api/admin/packages', async (req, res) => {
+    try {
+        const packages = await Package.find().populate('serviceId', 'title').sort({ createdAt: -1 });
+        res.json({ success: true, packages });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// CREATE package
+app.post('/api/admin/packages', async (req, res) => {
+    try {
+        const { title, description, features, serviceId, rating, faqs, pricing, isFeatured } = req.body;
+        if (!title || !serviceId || !pricing?.priceIN || !pricing?.priceUS || !pricing?.priceGlobal)
+            return res.status(400).json({ success: false, error: 'title, serviceId, and all 3 prices required' });
+        const pkg = await Package.create({
+            title, description, features: features || [],
+            serviceId, rating: rating || 4.9, faqs: faqs || [],
+            pricing, isFeatured: isFeatured || false
+        });
+        res.json({ success: true, package: pkg });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// UPDATE package
+app.put('/api/admin/packages/:id', async (req, res) => {
+    try {
+        const pkg = await Package.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!pkg) return res.status(404).json({ success: false, error: 'Not found' });
+        res.json({ success: true, package: pkg });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// SUBMIT review for a package
+app.post('/api/packages/:id/reviews', checkAuth, async (req, res) => {
+    try {
+        const { rating, comment } = req.body;
+        const userId = req.user?._id;
+        const userName = req.user?.name || 'Anonymous';
+
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ success: false, error: 'Rating (1-5) is required' });
+        }
+
+        const pkg = await Package.findById(req.params.id);
+        if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+        // Add review as pending
+        pkg.reviews.push({
+            user: userId,
+            userName,
+            rating: Number(rating),
+            comment: comment || '',
+            status: 'pending',
+            createdAt: new Date()
+        });
+
+        await pkg.save();
+        res.json({ success: true, message: 'Review submitted for approval' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET all pending reviews (admin)
+app.get('/api/admin/reviews/pending', checkAuth, async (req, res) => {
+    if (req.user.role?.toLowerCase() !== 'admin') return res.status(403).json({ success: false, error: 'Unauthorized' });
+    try {
+        const packages = await Package.find({ 'reviews.status': 'pending' });
+        let pendingReviews = [];
+        packages.forEach(pkg => {
+            pkg.reviews.forEach(rev => {
+                if (rev.status === 'pending') {
+                    pendingReviews.push({
+                        packageId: pkg._id,
+                        packageTitle: pkg.title,
+                        reviewId: rev._id,
+                        userName: rev.userName,
+                        rating: rev.rating,
+                        comment: rev.comment,
+                        createdAt: rev.createdAt
+                    });
+                }
+            });
+        });
+        res.json({ success: true, reviews: pendingReviews });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Update review status (admin)
+app.patch('/api/admin/packages/:packageId/reviews/:reviewId/status', checkAuth, async (req, res) => {
+    if (req.user.role?.toLowerCase() !== 'admin') return res.status(403).json({ success: false, error: 'Unauthorized' });
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
+
+    try {
+        const pkg = await Package.findById(req.params.packageId);
+        if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+        const review = pkg.reviews.id(req.params.reviewId);
+        if (!review) return res.status(404).json({ success: false, error: 'Review not found' });
+
+        review.status = status;
+
+        // If approved, recalculate the package's overall rating using ONLY approved reviews
+        if (status === 'approved') {
+            const approvedReviews = pkg.reviews.filter(r => r.status === 'approved');
+            const total = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
+            pkg.rating = parseFloat((total / approvedReviews.length).toFixed(1));
+        }
+
+        await pkg.save();
+        res.json({ success: true, message: `Review ${status}` });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+// DELETE package
+app.delete('/api/admin/packages/:id', async (req, res) => {
+    try {
+        await Package.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Package deleted' });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================
+// 🛒 CART ROUTES (Auth-protected, server-side)
+// ============================================================
+
+// GET user's cart
+app.get('/api/cart', checkAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        if (!userId) return res.status(401).json({ success: false, error: 'Login required' });
+        const cart = await Cart.findOne({ userId }).populate('items.packageId', 'title pricing');
+        res.json({ success: true, cart: cart || { items: [] } });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ADD item to cart
+app.post('/api/cart', checkAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        if (!userId) return res.status(401).json({ success: false, error: 'Login required' });
+        const { packageId } = req.body;
+        if (!packageId) return res.status(400).json({ success: false, error: 'packageId required' });
+
+        // Detect geo-price to lock in at time of add
+        const pkg = await Package.findById(packageId);
+        if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+        const countryCode = await detectCountry(req);
+        const geo = selectPrice(pkg, countryCode);
+
+        let cart = await Cart.findOne({ userId });
+        if (!cart) cart = new Cart({ userId, items: [] });
+
+        // If already in cart, just update locked price
+        const existing = cart.items.find(i => i.packageId.toString() === packageId);
+        if (existing) {
+            existing.priceAtAdd = geo.price;
+            existing.currency = geo.currency;
+        } else {
+            cart.items.push({ packageId, priceAtAdd: geo.price, currency: geo.currency });
+        }
+        cart.updatedAt = new Date();
+        await cart.save();
+        res.json({ success: true, cart });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// REMOVE item from cart
+app.delete('/api/cart/:packageId', checkAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        if (!userId) return res.status(401).json({ success: false, error: 'Login required' });
+        const cart = await Cart.findOne({ userId });
+        if (!cart) return res.json({ success: true });
+        cart.items = cart.items.filter(i => i.packageId.toString() !== req.params.packageId);
+        await cart.save();
+        res.json({ success: true, cart });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// CLEAR entire cart
+app.delete('/api/cart', checkAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        if (!userId) return res.status(401).json({ success: false, error: 'Login required' });
+        await Cart.findOneAndDelete({ userId });
+        res.json({ success: true, message: 'Cart cleared' });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
 
 // ==========================================
 // 💳 PAYMENT & ADMIN ROUTES (UPDATED)
@@ -2136,26 +2589,29 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-function checkAuth(req, res, next) {
-    const token = req.cookies.token || req.headers['authorization'];
-    if (!token) return res.status(401).json({ error: "Access Denied" });
 
-    // Legacy Support mapping for standalone bypasses
-    if (token === ADMIN_TOKEN || token === "SECRET_VIBESPHERE_KEY_123") return next();
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
-        // We can attach the user to req objects (e.g. req.user = decoded) if needed later
-        next();
-    } catch (err) {
-        res.status(401).json({ error: "Invalid or expired session" });
-    }
-}
 
 // Global Cookie Logout
-app.post('/api/logout', (req, res) => {
-    res.clearCookie('token');
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+    });
     res.json({ success: true, message: "Logged out completely." });
+});
+
+// GET Current Session Info (Replacement for /api/client/me)
+app.get('/api/auth/me', checkAuth, (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            _id: req.user._id,
+            name: req.user.name,
+            email: req.user.email,
+            role: req.user.role || 'Client'
+        }
+    });
 });
 
 // GET Current Admin Context via Cookie
@@ -2188,7 +2644,7 @@ app.get('/api/client/me', async (req, res) => {
                 console.log(`❌ Client not found: ${decoded.email}`);
                 return res.status(401).json({ success: false });
             }
-            res.json({ success: true, user: { name: user.name, email: user.email } });
+            res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
         } else {
             console.log(`⚠️ Role mismatch for ${decoded.email}: Expected Client, got ${decoded.role}`);
             res.status(401).json({ success: false, message: "Role mismatch." });
@@ -2454,7 +2910,7 @@ app.post('/api/auth/google', async (req, res) => {
         });
 
         // Login Success
-        res.json({ success: true, user: { name: user.name, email: user.email, picture: user.picture } });
+        res.json({ success: true, message: "Google account connected" });
 
     } catch (e) {
         console.error("Google Auth Error:", e);

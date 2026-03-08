@@ -815,6 +815,11 @@
 
             async function initClientSession() {
                 try {
+                    // Wait for the global auth system to initialize if it hasn't already
+                    if (typeof VibeAuth !== 'undefined' && !VibeAuth.isInitialized()) {
+                        await VibeAuth.init();
+                    }
+
                     const res = await fetch('/api/client/me', { credentials: 'include' });
                     if (res.status === 401 || res.status === 403) {
                         window.location.href = '/login.html';
@@ -974,7 +979,8 @@
                                 });
                             })
                             .catch(err => {
-                                document.getElementById('ordersList').innerHTML = `<p style="text-align:center; color:red;">Error loading orders.</p>`;
+                                console.error("Orders Load Error:", err);
+                                document.getElementById('ordersList').innerHTML = `<p style="text-align:center; color:red; padding:20px;">Error loading orders. Please refresh.</p>`;
                             });
 
                         // 🟢 Fetch other dependent data only AFTER user is defined

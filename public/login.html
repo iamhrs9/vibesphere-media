@@ -24,13 +24,11 @@
         /* --- LOGIN SECTION (Center Alignment) --- */
         .login-wrapper {
             flex: 1;
-            /* Ye baki bachi jagah lega */
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 40px 20px;
             background: radial-gradient(circle at top left, #f3e8ff, #f8fafc);
-            /* Halka Purple Glow */
         }
 
         /* --- AUTH BOX STYLE --- */
@@ -39,7 +37,6 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-            /* Soft Shadow */
             width: 100%;
             max-width: 400px;
             text-align: center;
@@ -69,7 +66,6 @@
             box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.1);
         }
 
-        /* Eye Icon */
         .password-group {
             position: relative;
             width: 100%;
@@ -94,7 +90,6 @@
             color: #6c63ff;
         }
 
-        /* Button */
         .btn {
             width: 100%;
             padding: 14px;
@@ -132,7 +127,6 @@
             display: none;
         }
 
-        /* Mobile Fix */
         @media (max-width: 768px) {
             .auth-box {
                 padding: 30px 20px;
@@ -160,17 +154,18 @@
     <div class="login-wrapper">
         <div class="auth-box">
 
-            <div id="loginForm">
+            <div id="loginSection">
                 <div style="font-size: 3rem; margin-bottom: 10px;">👋</div>
                 <h2>Welcome Back</h2>
                 <p style="color:#64748b; margin-bottom: 25px; font-size: 0.9rem;">Login to manage your orders</p>
 
-                <form onsubmit="event.preventDefault(); login();">
-                    <input type="email" id="lEmail" placeholder="Email Address" autocomplete="username">
+                <form id="loginForm">
+                    <input type="email" id="email" placeholder="Email Address" autocomplete="username" required>
 
                     <div class="password-group">
-                        <input type="password" id="lPass" placeholder="Password" autocomplete="current-password">
-                        <i class="ri-eye-line toggle-eye" onclick="togglePass('lPass', this)"></i>
+                        <input type="password" id="password" placeholder="Password" autocomplete="current-password"
+                            required>
+                        <i class="ri-eye-line toggle-eye" onclick="togglePass('password', this)"></i>
                     </div>
 
                     <div style="text-align: right; margin-top: -5px; margin-bottom: 15px;">
@@ -230,11 +225,11 @@
                     </div>
 
                     <button type="submit" class="btn">Sign Up Now</button>
-                    <p class="switch" onclick="toggleForm('loginForm')">Already have an account? <span>Login</span></p>
+                    <p class="switch" onclick="toggleForm('loginSection')">Already have an account? <span>Login</span>
+                    </p>
                 </form>
             </div>
 
-            <!-- FORGOT PASSWORD FORM -->
             <div id="forgotPasswordForm" class="hidden">
                 <div style="font-size: 3rem; margin-bottom: 10px;">🔑</div>
                 <h2>Reset Password</h2>
@@ -248,7 +243,7 @@
                 </p>
 
                 <button class="btn" onclick="sendResetOtp()">Send OTP</button>
-                <p class="switch" onclick="toggleForm('loginForm')">Back to <span>Login</span></p>
+                <p class="switch" onclick="toggleForm('loginSection')">Back to <span>Login</span></p>
             </div>
 
             <div id="resetPasswordForm" class="hidden">
@@ -265,7 +260,7 @@
                     </div>
 
                     <button type="submit" class="btn">Update Password</button>
-                    <p class="switch" onclick="toggleForm('loginForm')">Cancel and back to <span>Login</span></p>
+                    <p class="switch" onclick="toggleForm('loginSection')">Cancel and back to <span>Login</span></p>
                 </form>
             </div>
 
@@ -284,7 +279,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
     <script>
         const API = '/api/auth';
 
@@ -300,7 +294,7 @@
         }
 
         function toggleForm(formId) {
-            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('signupForm').classList.add('hidden');
             document.getElementById('forgotPasswordForm').classList.add('hidden');
             document.getElementById('resetPasswordForm').classList.add('hidden');
@@ -314,7 +308,9 @@
 
         async function signup() {
             const btn = document.querySelector('#signupForm .btn');
+            const originalText = btn.innerText;
             btn.innerText = "Creating Account...";
+            btn.disabled = true;
 
             const name = document.getElementById('sName').value;
             const email = document.getElementById('sEmail').value;
@@ -330,52 +326,19 @@
                 const data = await res.json();
                 alert(data.message);
 
-                // 🟢 FIX: Ab browser ko pata hai ki success ke baad Login Form kholna hai
                 if (data.success) {
-                    toggleForm('loginForm');
-                    // Taki form clear ho jaye agli baar ke liye
+                    toggleForm('loginSection');
                     document.getElementById('sName').value = '';
                     document.getElementById('sEmail').value = '';
                     document.getElementById('sPass').value = '';
                     document.getElementById('sPhone').value = '';
                 }
             } catch (e) {
-                console.error("Signup Crash Error:", e); // Error ko console me dikhane ke liye
+                console.error("Signup Crash Error:", e);
                 alert("Something went wrong!");
             }
-            btn.innerText = "Sign Up Now";
-        }
-
-        async function login() {
-            const btn = document.querySelector('#loginForm .btn');
-            btn.innerText = "Verifying...";
-
-            const email = document.getElementById('lEmail').value;
-            const password = document.getElementById('lPass').value;
-
-            try {
-                console.log(`Attempting login at: ${API}/login`);
-                const res = await fetch(`${API}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ email, password })
-                });
-                console.log("Login HTTP Status:", res.status);
-                const data = await res.json();
-                console.log("Login Response Data:", data);
-
-                if (data.success) {
-                    window.location.href = '/dashboard.html';
-                } else {
-                    alert(data.message);
-                    btn.innerText = "Login Securely";
-                }
-            } catch (e) {
-                console.error("Login Fetch Error:", e);
-                alert("Login Error");
-                btn.innerText = "Login Securely";
-            }
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
 
         async function handleCredentialResponse(response) {
@@ -395,7 +358,6 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- PASSWORD RESET LOGIC ---
         let resetEmail = "";
 
         async function sendResetOtp() {
@@ -403,7 +365,10 @@
             const email = document.getElementById('fEmail').value;
             if (!email) return alert("Please enter your email.");
 
+            const originalText = btn.innerText;
             btn.innerText = "Sending OTP...";
+            btn.disabled = true;
+
             try {
                 const res = await fetch(`${API}/forgot-password`, {
                     method: 'POST',
@@ -414,11 +379,12 @@
                 alert(data.message);
 
                 if (data.success) {
-                    resetEmail = email; // Store for next step
+                    resetEmail = email;
                     toggleForm('resetPasswordForm');
                 }
             } catch (e) { alert("Error sending OTP."); }
-            btn.innerText = "Send OTP";
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
 
         async function verifyAndResetPassword() {
@@ -428,7 +394,10 @@
 
             if (!otp || !newPassword) return alert("Please fill all fields.");
 
+            const originalText = btn.innerText;
             btn.innerText = "Verifying...";
+            btn.disabled = true;
+
             try {
                 const res = await fetch(`${API}/reset-password`, {
                     method: 'POST',
@@ -439,22 +408,19 @@
                 alert(data.message);
 
                 if (data.success) {
-                    toggleForm('loginForm');
-                    // Clear inputs
+                    toggleForm('loginSection');
                     document.getElementById('fEmail').value = "";
                     document.getElementById('rOtp').value = "";
                     document.getElementById('rNewPass').value = "";
                 }
             } catch (e) { alert("Error resetting password."); }
-            btn.innerText = "Update Password";
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
-        async function requestMagicLink() {
-            // Yahan apne actual email input field ki ID daal dena
-            const email = document.getElementById('lEmail').value;
 
-            if (!email) {
-                return alert("⚠️ Pehle apna Email ID box mein daaliye!");
-            }
+        async function requestMagicLink() {
+            const email = document.getElementById('email').value;
+            if (!email) return alert("⚠️ Please enter your email address first!");
 
             alert("Sending magic link... Please wait ⏳");
 
@@ -465,18 +431,17 @@
                     body: JSON.stringify({ email })
                 });
                 const data = await res.json();
-
                 if (data.success) {
-                    alert(data.message); // Success message
+                    alert(data.message);
                 } else {
                     alert("❌ " + data.message);
                 }
-            } catch (e) {
-                alert("Server error. Try again.");
-            }
+            } catch (e) { alert("Server error. Try again."); }
         }
-
     </script>
+    <script src="/js/utils/auth.js"></script>
+    <script src="/js/utils/global-ui.js"></script>
+    <script src="/js/login.js" defer></script>
 </body>
 
 </html>

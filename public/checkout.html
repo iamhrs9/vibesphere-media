@@ -1,27 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - VibeSphere</title>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
-        body { font-family: 'Poppins', sans-serif; background: #f7fafc; padding: 40px 20px; display: flex; justify-content: center; }
-        .checkout-box { background: white; width: 100%; max-width: 500px; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .summary { background: #F3E8FF; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 5px solid #6B46C1; }
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        label { font-weight: 600; color: #555; font-size: 14px; margin-top: 10px; display: block; }
-        .btn-pay { width: 100%; margin-top: 20px; border:none; padding: 15px; font-size: 16px; border-radius: 6px; background: #6B46C1; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-pay:hover { background: #553C9A; }
-        .btn-pay:disabled { background: #ccc; cursor: not-allowed; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f7fafc;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .checkout-box {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .summary {
+            background: #F3E8FF;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 5px solid #6B46C1;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .btn-pay {
+            width: 100%;
+            margin-top: 20px;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 6px;
+            background: #6B46C1;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-pay:hover {
+            background: #553C9A;
+        }
+
+        .btn-pay:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="checkout-box">
         <h2>Finalize Your Order</h2>
-        
+
         <div class="summary">
             <h4 style="margin: 0 0 10px 0;">📦 Plan: <span id="dispPkg" style="color: #6B46C1;">Loading...</span></h4>
             <h4 style="margin: 0;">💰 Price: <span id="dispPrice">0</span></h4>
@@ -42,27 +105,66 @@
         </form>
     </div>
 
-   <script>
-       // ==========================================
-       // 💳 SMART CHECKOUT SYSTEM (Updated)
-       // ==========================================
+    <script>
+        // ==========================================
+        // 💳 SMART CHECKOUT SYSTEM (Updated)
+        // ==========================================
 
-        // 1. URL SE DATA NIKALO
+        // 1. URL SE DATA NIKALO YA CART FETCH KARO
         const params = new URLSearchParams(window.location.search);
-        
-        const pkg = params.get('package');
-        const price = params.get('price'); // e.g., "$19" or "640 NPR"
-        const insta = params.get('insta');
-        
-        // Agar URL me currency hai toh wo lo, nahi toh INR default
-        const currencyFromURL = params.get('currency') || "INR"; 
 
-        // Screen par dikhao
-        if(pkg) {
-            document.getElementById('dispPkg').innerText = pkg;
-            document.getElementById('dispPrice').innerText = price; 
-            document.getElementById('dispInsta').innerText = insta || "Not Provided";
-        }
+        let pkg = params.get('package');
+        let price = params.get('price'); // e.g., "$19" or "640 NPR"
+        let insta = params.get('insta');
+        let currencyFromURL = params.get('currency') || "INR";
+        let isCartCheckout = false;
+        let cartItems = [];
+
+        // Screen par dikhao ya Cart Fetch karo
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (pkg && price) {
+                // Single item checkout flow
+                document.getElementById('dispPkg').innerText = pkg;
+                document.getElementById('dispPrice').innerText = price;
+                document.getElementById('dispInsta').innerText = insta || "Not Provided";
+            } else {
+                // Cart checkout flow
+                isCartCheckout = true;
+                document.getElementById('dispPkg').innerText = "Loading Cart...";
+                try {
+                    const res = await fetch('/api/cart', { credentials: 'include' });
+                    const data = await res.json();
+
+                    if (!data.success || !data.cart || data.cart.items.length === 0) {
+                        alert("Your cart is empty. Please add items before checkout.");
+                        window.location.href = '/cart.html';
+                        return;
+                    }
+
+                    cartItems = data.cart.items;
+                    let totalAmount = 0;
+                    let packageNames = [];
+                    currencyFromURL = cartItems[0]?.currency || "INR";
+                    const symbol = currencyFromURL === 'INR' ? '₹' : '$';
+
+                    cartItems.forEach(item => {
+                        totalAmount += (item.priceAtAdd || 0);
+                        packageNames.push(item.packageId?.title || 'Package');
+                    });
+
+                    pkg = `Cart Order (${cartItems.length} items): ` + packageNames.slice(0, 2).join(', ') + (cartItems.length > 2 ? '...' : '');
+                    price = `${symbol}${totalAmount}`;
+
+                    document.getElementById('dispPkg').innerText = pkg;
+                    document.getElementById('dispPrice').innerText = price;
+                    document.getElementById('dispInsta').innerText = "Will be collected per package";
+                } catch (err) {
+                    console.error("Failed to fetch cart:", err);
+                    alert("Error loading cart. Please try again or login.");
+                    window.location.href = '/cart.html';
+                }
+            }
+        });
 
         // 2. PAYMENT LOGIC
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
@@ -71,11 +173,15 @@
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
-            
+
             // Amount Clean Karo (sirf numbers bacha ke rakho)
             const rawPrice = document.getElementById('dispPrice').innerText;
+            if (rawPrice === "0" || parseFloat(rawPrice.replace(/[^0-9.]/g, '')) === 0) {
+                alert("Invalid total amount. Please wait for cart to load.");
+                return;
+            }
             const finalAmount = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
-            
+
             // Button Update
             const btn = document.querySelector('.btn-pay');
             btn.innerText = "Processing Payment...";
@@ -86,12 +192,13 @@
                 const orderResponse = await fetch('/api/create-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        amount: finalAmount, 
-                        currency: currencyFromURL // ✅ Ab sahi currency jayegi (USD/INR/NPR)
-                    }) 
+                    body: JSON.stringify({
+                        amount: finalAmount,
+                        currency: currencyFromURL, // ✅ Ab sahi currency jayegi (USD/INR/NPR)
+                    }),
+                    credentials: 'include'
                 });
-                
+
                 if (!orderResponse.ok) throw new Error("Server Error");
                 const orderData = await orderResponse.json();
 
@@ -104,7 +211,7 @@
                     "description": `Payment for ${pkg}`,
                     "order_id": orderData.id, // Razorpay Order ID
                     "handler": async function (response) {
-                        
+
                         // Step C: Payment Success hone par Verify karo
                         const verifyResponse = await fetch('/api/verify-payment', {
                             method: 'POST',
@@ -122,11 +229,16 @@
                                     phone: phone,
                                     email: email
                                 }
-                            })
+                            }),
+                            credentials: 'include'
                         });
 
                         const result = await verifyResponse.json();
-                        if(result.success) {
+                        if (result.success) {
+                            if (isCartCheckout) {
+                                // Clear the cart after successful checkout
+                                try { await fetch('/api/cart', { method: 'DELETE', credentials: 'include' }); } catch (e) { }
+                            }
                             alert("Order Placed Successfully! 🎉");
                             window.location.href = '/'; // Home page par bhej do
                         } else {
@@ -140,8 +252,8 @@
                 };
 
                 const rzp1 = new Razorpay(options);
-                
-                rzp1.on('payment.failed', function (response){
+
+                rzp1.on('payment.failed', function (response) {
                     alert("Payment Failed! Please try again.");
                     btn.disabled = false;
                     btn.innerText = "Pay Now & Place Order";
@@ -158,4 +270,5 @@
         });
     </script>
 </body>
+
 </html>

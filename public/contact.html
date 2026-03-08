@@ -1,46 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Us - VibeSphere Media</title>
+
+    <title>Contact VibeSphere Media | Get a Free Consultation</title>
+    <meta name="description"
+        content="Contact VibeSphere Media for Digital Marketing, Social Media Growth, or Website Development inquiries. Reach us via WhatsApp, Email, or Telegram. We respond fast!">
+    <meta name="keywords"
+        content="Contact VibeSphere Media, Digital Marketing Agency Contact, Social Media Agency Jaipur Contact, Website Development Inquiry India, Free Marketing Consultation">
+    <meta name="author" content="VibeSphere Media">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://vibespheremedia.in/contact" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Contact VibeSphere Media | Free Consultation">
+    <meta property="og:description"
+        content="Ready to grow your brand? Contact our Digital Marketing experts via WhatsApp or Email. Fast response guaranteed.">
+    <meta property="og:url" content="https://vibespheremedia.in/contact">
+    <meta property="og:image" content="https://vibespheremedia.in/logo.webp">
+    <meta property="og:site_name" content="VibeSphere Media">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Contact VibeSphere Media">
+    <meta name="twitter:description"
+        content="Get a free consultation for Digital Marketing or Web Dev. WhatsApp: +918302485826">
+    <meta name="twitter:image" content="https://vibespheremedia.in/logo.webp">
+
+    <!-- JSON-LD: ContactPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ContactPage",
+      "name": "Contact VibeSphere Media",
+      "url": "https://vibespheremedia.in/contact",
+      "description": "Contact VibeSphere Media for Digital Marketing services, Social Media growth packages, and Website Development consultations.",
+      "mainEntity": {
+        "@type": "Organization",
+        "name": "VibeSphere Media",
+        "telephone": "+918302485826",
+        "email": "hello@vibespheremedia.in",
+        "url": "https://vibespheremedia.in",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+918302485826",
+          "contactType": "customer support",
+          "availableLanguage": ["English", "Hindi"]
+        }
+      }
+    }
+    </script>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
 </head>
+
 <body>
 
-   <nav>
-        <a href="/" class="logo-link">
-            <img src="logo.webp" alt="VibeSphere Media Logo" class="logo-img">
-        </a>
-        
-        <ul class="nav-links" id="nav-menu">
-            <li><a href="/#home">Home</a></li>
-            <li><a href="/about">About</a></li>
-            <li><a href="/#services">Services</a></li>
-            <li><a href="/packages">Packages</a></li>
-            <li><a href="/contact">Contact</a></li>
-            <li>
-                    <a href="/blog" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
-                        Blog 
-                        <span style="font-size: 0.7rem; background: #a855f7; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">NEW</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/login" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
-                        Login 
-                       
-                    </a>
-                </li>
-        </ul>
+    <nav class="global-nav">
+        <div class="nav-container">
+            <a href="/" class="logo-link">
+                <img src="/logo.webp" alt="VibeSphere Media Logo" class="logo-img">
+            </a>
 
-        <div class="nav-right">
-            <a href="/login" class="btn-primary">Login</a>
-            <div class="menu-icon" id="hamburger-btn">
-                <i class="ri-menu-3-line"></i>
+            <ul class="nav-links" id="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/about.html">About</a></li>
+                <li><a href="/services.html">Services</a></li>
+                <li><a href="/packages.html">Packages</a></li>
+                <li><a href="/contact.html" class="active">Contact</a></li>
+                <li><a href="/blog.html">Blog</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="/cart.html" class="cart-btn" title="Your Cart">
+                    <i class="ri-shopping-cart-line"></i>
+                    <span class="cart-badge" id="cart-count">0</span>
+                </a>
+
+                <a href="/login.html" id="nav-login-btn" class="btn-login">Login</a>
+
+                <div id="user-profile" class="account-dropdown-wrapper" style="display: none;">
+                    <div class="account-trigger" id="account-trigger">
+                        <i class="ri-user-smile-line"></i> <span id="nav-username">Account</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                    <div class="dropdown-menu hidden" id="account-menu">
+                        <a href="/dashboard.html" class="dropdown-item">
+                            <i class="ri-dashboard-line"></i> Dashboard
+                        </a>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="ri-logout-box-r-line"></i> Logout
+                        </a>
+                    </div>
+                </div>
+
+                <div class="hamburger" id="hamburger-menu">
+                    <i class="ri-menu-3-line"></i>
+                </div>
             </div>
         </div>
     </nav>
@@ -51,11 +113,11 @@
             <p>Fill out the form below and we'll get back to you shortly.</p>
 
             <form id="myCustomContactForm" class="contact-form">
-                
+
                 <div class="input-group">
                     <input type="text" name="name" placeholder="Your Name" required>
                 </div>
-                
+
                 <div class="input-group">
                     <input type="email" name="email" placeholder="Your Email" required>
                 </div>
@@ -63,7 +125,7 @@
                 <div class="input-group">
                     <input type="text" name="phone" placeholder="Phone Number (Optional)">
                 </div>
-                
+
                 <div class="input-group">
                     <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
                 </div>
@@ -71,103 +133,112 @@
                 <button type="submit" class="btn-primary">Send Message</button>
 
             </form>
-            
+
             <div class="contact-methods">
-    <a href="https://wa.me/918302485826" target="_blank" class="method-card whatsapp">
-        <div class="icon-box"><i class="ri-whatsapp-line"></i></div>
-        <h3>WhatsApp</h3>
-        <p>Chat with us directly</p>
-    </a>
+                <a href="https://wa.me/918302485826" target="_blank" class="method-card whatsapp">
+                    <div class="icon-box"><i class="ri-whatsapp-line"></i></div>
+                    <h3>WhatsApp</h3>
+                    <p>Chat with us directly</p>
+                </a>
 
-    <a href="https://t.me/HarshPanwar74" target="_blank" class="method-card telegram">
-        <div class="icon-box"><i class="ri-telegram-line"></i></div>
-        <h3>Telegram</h3>
-        <p>Join our channel</p>
-    </a>
+                <a href="https://t.me/HarshPanwar74" target="_blank" class="method-card telegram">
+                    <div class="icon-box"><i class="ri-telegram-line"></i></div>
+                    <h3>Telegram</h3>
+                    <p>Join our channel</p>
+                </a>
 
-    <a href="mailto:hello@vibespheremedia.in" class="method-card email">
-        <div class="icon-box"><i class="ri-mail-send-line"></i></div>
-        <h3>Email Us</h3>
-        <p>hello@vibespheremedia.in</p>
-    </a>
+                <a href="mailto:hello@vibespheremedia.in" class="method-card email">
+                    <div class="icon-box"><i class="ri-mail-send-line"></i></div>
+                    <h3>Email Us</h3>
+                    <p>hello@vibespheremedia.in</p>
+                </a>
 
-    <a href="https://instagram.com/prajapat.iu" target="_blank" class="method-card instagram">
-        <div class="icon-box"><i class="ri-instagram-line"></i></div>
-        <h3>Instagram</h3>
-        <p>Follow updates @harsh.kz</p>
-    </a>
-</div>
+                <a href="https://instagram.com/prajapat.iu" target="_blank" class="method-card instagram">
+                    <div class="icon-box"><i class="ri-instagram-line"></i></div>
+                    <h3>Instagram</h3>
+                    <p>Follow updates @harsh.kz</p>
+                </a>
+            </div>
         </div>
-        
+
     </section>
-    
-<footer style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
+
+    <footer
+        style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 50px;">
         <div style="margin-bottom: 20px;">
             <h2 style="color: #333; font-weight: 700; margin-bottom: 5px;">VibeSphere Media</h2>
             <p style="color: #666; font-size: 0.9rem;">Growing Brands Digitally.</p>
         </div>
         <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
             <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
-            
+
             <a href="/blog" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a>
             <a href="/about" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">About</a>
-            
-            <a href="/terms&conditions" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
-            <a href="/refundpolicy" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
-            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact Support</a>
-       <a href="/verify-staff" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Verify Staff</a>
-       <a href="/careers" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Careers</a>
-       
-    </div>
+
+            <a href="/terms&conditions"
+                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Terms & Conditions</a>
+            <a href="/refundpolicy"
+                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Refund Policy</a>
+            <a href="/contact" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Contact
+                Support</a>
+            <a href="/verify-staff"
+                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Verify Staff</a>
+            <a href="/careers"
+                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Careers</a>
+
+        </div>
         <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
             <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.</p>
         </div>
     </footer>
-<style>
-    footer a:hover {
-        color: #6c63ff !important;
-    }
-</style>
+    <style>
+        footer a:hover {
+            color: #6c63ff !important;
+        }
+    </style>
 
     <script src="script.js"></script>
 
     <script>
-    document.getElementById('myCustomContactForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); 
-        
-        // Button effect (Loading animation)
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = 'Sending... <i class="ri-loader-4-line ri-spin"></i>';
-        submitBtn.disabled = true;
+        document.getElementById('myCustomContactForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-        // Collect form data
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
+            // Button effect (Loading animation)
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = 'Sending... <i class="ri-loader-4-line ri-spin"></i>';
+            submitBtn.disabled = true;
 
-        try {
-            const response = await fetch('/api/contact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+            // Collect form data
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
 
-            const result = await response.json();
-            
-            if (result.success) {
-                alert("✅ " + result.message);
-                this.reset(); 
-            } else {
-                alert("❌ Error: " + result.message);
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert("✅ " + result.message);
+                    this.reset();
+                } else {
+                    alert("❌ Error: " + result.message);
+                }
+            } catch (error) {
+                alert("Failed to connect to server. Check your connection.");
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
-        } catch (error) {
-            alert("Failed to connect to server. Check your connection.");
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    });
+        });
     </script>
 
+    <script src="/js/utils/auth.js"></script>
+    <script src="/js/utils/global-ui.js"></script>
 </body>
+
 </html>

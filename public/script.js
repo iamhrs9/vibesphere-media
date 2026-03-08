@@ -109,9 +109,9 @@ async function sendMessage() {
             body: JSON.stringify({
                 message: txt,
                 history: chatHistory
-            })
+            }),
+            credentials: 'include'
         });
-
         const data = await res.json();
 
         // 5. Remove Loading

@@ -36,7 +36,7 @@ class NotificationManager {
 
         const options = {
             body: body,
-            icon: '/images/favicon.png', // Assuming a favicon exists, otherwise fallback to default
+            icon: '/images/vibeicon.png', // Assuming a favicon exists, otherwise fallback to default
             vibrate: [200, 100, 200]
         };
 

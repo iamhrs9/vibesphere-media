@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Expert Digital Marketing Service Details | VibeSphere Media</title>
+    <meta name="description"
+        content="Explore detailed information about VibeSphere Media's digital marketing services — Social Media Management, SEO, Web Development, Video Editing and more. View packages, pricing, process, and FAQs.">
+    <meta name="keywords"
+        content="Digital Marketing Service Details, Social Media Management India, SEO Service Jaipur, Web Development Agency, VibeSphere Service Plans, Digital Agency India">
+    <meta name="author" content="VibeSphere Media">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Digital Marketing Services | VibeSphere Media">
+    <meta property="og:description"
+        content="Full-stack digital service: Content, Analytics, Community Management & more. Pick a growth package that fits your goals.">
+    <meta property="og:url" content="https://vibespheremedia.in/services">
+    <meta property="og:image" content="https://vibespheremedia.in/logo.webp">
+    <meta property="og:site_name" content="VibeSphere Media">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Service Details | VibeSphere Media">
+    <meta name="twitter:description"
+        content="Expert Social Media Management, SEO & Web Development. Explore our packages and pricing.">
+    <meta name="twitter:image" content="https://vibespheremedia.in/logo.webp">
+
+    <!-- JSON-LD: Service Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "name": "Digital Marketing Services",
+      "serviceType": "Social Media Management, SEO, Web Development",
+      "description": "VibeSphere Media provides full-stack digital marketing services including Social Media Management, SEO Optimization, Website Development, Video Editing, and Performance Advertising.",
+      "provider": {
+        "@type": "Organization",
+        "name": "VibeSphere Media",
+        "url": "https://vibespheremedia.in",
+        "telephone": "+918302485826",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Jaipur",
+          "addressRegion": "Rajasthan",
+          "addressCountry": "IN"
+        }
+      },
+      "areaServed": "IN",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Digital Marketing Packages",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Essential Social Media Package" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Growth Social Media Package" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Pro Social Media Package" } }
+        ]
+      }
+    }
+    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Base Resets */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Navbar */
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 5%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #0891b2;
+        }
+
+        .logo-img {
+            height: 40px;
+        }
+
+        /* Hero Banner */
+        .hero {
+            position: relative;
+            min-height: 85vh;
+            background: var(--hero-bg, linear-gradient(135deg, #0f0c29, #302b63, #0891b2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            padding: 120px 5% 60px;
+            overflow: hidden;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .hero.--ready {
+            opacity: 1;
+        }
+
+        .hero-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: panBg 30s linear infinite;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        @keyframes panBg {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 400px 400px;
+            }
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            backdrop-filter: blur(5px);
+        }
+
+        .hero h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(to right, #fff, #cffafe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            max-width: 900px;
+            margin-inline: auto;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            font-weight: 300;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        .btn-glow {
+            display: inline-block;
+            background: #0891b2;
+            color: white;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 30px rgba(8, 145, 178, 0.4);
+            transition: 0.3s;
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(8, 145, 178, 0.6);
+            background: #06b6d4;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 100px 5%;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+            max-width: 700px;
+            margin-inline: auto;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 1.1rem;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* About Section */
+        .about-wrap {
+            background: white;
+            border-radius: 30px;
+            padding: 60px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+        }
+
+        .about-wrap h3 {
+            font-size: 2.2rem;
+            font-family: 'Montserrat', sans-serif;
+            color: #302b63;
+            margin-bottom: 10px;
+        }
+
+        .about-wrap p {
+            font-size: 1.15rem;
+            color: #475569;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+
+        .highlight {
+            font-weight: 600;
+            color: #0891b2;
+        }
+
+        /* Benefits Grid */
+        .benefits-bg {
+            background: #f1f5f9;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+        }
+
+        .b-card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: left;
+            transition: 0.3s;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+            border-bottom: 4px solid transparent;
+        }
+
+        .b-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            border-bottom-color: #0891b2;
+        }
+
+        .icon-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: rgba(8, 145, 178, 0.1);
+            color: #0891b2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 24px;
+            transition: 0.3s;
+        }
+
+        .b-card:hover .icon-box {
+            background: #0891b2;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .b-card h4 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+
+        .b-card p {
+            font-size: 0.95rem;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* Process Steps */
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 30px;
+            position: relative;
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .step-num {
+            width: 70px;
+            height: 70px;
+            background: #302b63;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 10px 20px rgba(48, 43, 99, 0.3);
+        }
+
+        .step-card h4 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .step-card p {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+
+        /* Packages Grid */
+        .packages-bg {
+            background: linear-gradient(to bottom, #f8fafc, #e2e8f0);
+        }
+
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 40px;
+        }
+
+        .premium-pkg-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            border: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .premium-pkg-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(8, 145, 178, 0.15);
+            border-color: #0891b2;
+        }
+
+        .premium-pkg-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #302b63, #0891b2);
+        }
+
+        .pkg-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #fef08a;
+            color: #854d0e;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .pkg-header {
+            margin-bottom: 20px;
+        }
+
+        .pkg-header h3 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .pkg-desc {
+            font-size: 0.95rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .pkg-price-area {
+            margin: 20px 0 30px;
+            color: #1e293b;
+        }
+
+        .pkg-price-area .currency {
+            font-size: 1.5rem;
+            font-weight: 600;
+            vertical-align: top;
+        }
+
+        .pkg-price-area .amount {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+
+        .pkg-price-area .duration {
+            font-size: 1rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .pkg-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 40px;
+            flex-grow: 1;
+        }
+
+        .pkg-features li {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .pkg-features li i {
+            color: #0891b2;
+            font-size: 1.25rem;
+            margin-top: -2px;
+        }
+
+        .btn-pkg-buy {
+            margin-top: auto;
+            background: #1e293b;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.05rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-pkg-buy:hover {
+            background: #0891b2;
+            box-shadow: 0 10px 20px rgba(8, 145, 178, 0.2);
+        }
+
+        /* FAQs */
+        .faq-accordion {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .faq-item {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+        }
+
+        .faq-q {
+            padding: 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.3s;
+            user-select: none;
+        }
+
+        .faq-q:hover {
+            color: #0891b2;
+        }
+
+        .faq-icon {
+            font-size: 1.5rem;
+            color: #0891b2;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+
+        .faq-a {
+            padding: 0 24px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .faq-item.active .faq-a {
+            padding: 0 24px 24px;
+            max-height: 500px;
+            opacity: 1;
+            color: #64748b;
+            line-height: 1.7;
+        }
+
+        /* Fallback */
+        .fallback-msg {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.2rem;
+            color: #64748b;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            grid-column: 1/-1;
+            border: 1px dashed #cbd5e1;
+        }
+
+        @media(max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.05rem;
+            }
+
+            .about-wrap {
+                padding: 40px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="glass-ai-btn" onclick="toggleChat()">
+        <i class="ri-robot-2-line"></i>
+    </div>
+
+    <div id="chat-box">
+        <div class="chat-header">
+            <span>VibeGenie</span>
+            <button onclick="toggleChat()">×</button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="bot-msg">Hello! Iam VibeGenie. How can i help you?</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Type here..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <nav class="global-nav">
+        <div class="nav-container">
+            <a href="/" class="logo-link">
+                <img src="/logo.webp" alt="VibeSphere Media Logo" class="logo-img">
+            </a>
+
+            <ul class="nav-links" id="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/about.html">About</a></li>
+                <li><a href="/services.html">Services</a></li>
+                <li><a href="/packages.html">Packages</a></li>
+                <li><a href="/contact.html">Contact</a></li>
+                <li><a href="/blog.html">Blog</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="/cart.html" class="cart-btn" title="Your Cart">
+                    <i class="ri-shopping-cart-line"></i>
+                    <span class="cart-badge" id="cart-count">0</span>
+                </a>
+
+                <a href="/login.html" id="nav-login-btn" class="btn-login">Login</a>
+
+                <div id="user-profile" class="account-dropdown-wrapper" style="display: none;">
+                    <div class="account-trigger" id="account-trigger">
+                        <i class="ri-user-smile-line"></i> <span id="nav-username">Account</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                    <div class="dropdown-menu hidden" id="account-menu">
+                        <a href="/dashboard.html" class="dropdown-item">
+                            <i class="ri-dashboard-line"></i> Dashboard
+                        </a>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="ri-logout-box-r-line"></i> Logout
+                        </a>
+                    </div>
+                </div>
+
+                <div class="hamburger" id="hamburger-menu">
+                    <i class="ri-menu-3-line"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <header class="hero">
+        <div class="hero-pattern"></div>
+        <div>
+            <span class="hero-badge">Premium Service Engine</span>
+            <h1 id="hero-title"></h1>
+            <p id="hero-subtitle"></p>
+            <a href="#pricing" class="btn-glow">View Value Packages <i class="ri-arrow-down-line"></i></a>
+        </div>
+    </header>
+
+    <!-- ABOUT SECTION -->
+    <section class="container" id="about-section" style="display:none;">
+        <div class="about-wrap"></div>
+    </section>
+
+    <!-- BENEFITS SECTION -->
+    <section class="benefits-bg" id="benefits-section" style="display:none;">
+        <div class="container">
+            <div class="section-header">
+                <h2>The VibeSphere Advantage</h2>
+                <p>We don't just post; we engineer growth through structured digital pillars.</p>
+            </div>
+            <div class="benefits-grid"></div>
+        </div>
+    </section>
+
+    <!-- PROCESS SECTION -->
+    <section class="container" id="process-section" style="display:none;">
+        <div class="section-header">
+            <h2>Our Seamless Process</h2>
+            <p>From day one to month-end reporting, everything is on auto-pilot for you.</p>
+        </div>
+        <div class="process-grid"></div>
+    </section>
+
+    <!-- DYNAMIC PACKAGES SECTION -->
+    <section class="packages-bg" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Choose Your Growth Package</h2>
+                <p>Transparent pricing with zero hidden fees. Select the tier that matches your aggressive growth
+                    targets.</p>
+            </div>
+
+            <div class="packages-grid" id="packages-grid">
+                <!-- Fallback Loading UI before JS executes -->
+                <div class="fallback-msg">
+                    <i class="ri-loader-4-line ri-spin"
+                        style="font-size:2.5rem; color:#0891b2; display:block; margin-bottom:15px;"></i>
+                    Loading premium packages...
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ SECTION -->
+    <section class="container" id="faq-section" style="display:none;">
+        <div class="section-header">
+            <h2>Frequently Asked Questions</h2>
+            <p>Clear doubts before we partner up to scale your brand.</p>
+        </div>
+        <div class="faq-accordion"></div>
+    </section>
+
+    <!-- SUCCESS TOAST -->
+    <div id="toast"
+        style="position:fixed; bottom:30px; right:30px; background:#1e293b; color:white; padding:14px 22px; border-radius:12px; font-weight:600; display:none; z-index:9999; animation: slideUp 0.3s ease;">
+        ✅ Added to cart!</div>
+
+    <style>
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <!-- FOOTER -->
+    <footer style="background: #1a0533; color: #cbd5e1; text-align: center; padding: 40px 5%;">
+        <p>&copy; 2026 VibeSphere Media | Built for Growth.</p>
+    </footer>
+
+    <!-- LOGIC -->
+    <script src="/js/utils/auth.js"></script>
+    <script src="/js/utils/global-ui.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // 2. Dynamic Fetching Logic
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceId = urlParams.get('serviceId');
+
+        async function loadServiceData() {
+            const grid = document.getElementById('packages-grid');
+
+            if (!serviceId) {
+                grid.innerHTML = `<div class="fallback-msg"><i class="ri-error-warning-line" style="font-size:2.5rem;color:#f59e0b;display:block;margin-bottom:15px;"></i> Please navigate back and select a concrete service to view packages.</div>`;
+                return;
+            }
+
+            try {
+                // 1. Fetch Service Context & Packages (Public but session-aware for geo-pricing)
+                const res = await fetch(`/api/services/${serviceId}`, { credentials: 'include' });
+                const data = await res.json();
+
+                console.log("Service & Package Data Received:", data); // Debugging Log
+
+                if (!data.success || !data.service) {
+                    throw new Error("Service not found.");
+                }
+
+                const s = data.service;
+
+                // --- 1. DYNAMIC TEXT INJECTION ---
+                if (s.title) document.getElementById('hero-title').innerHTML = s.title;
+                if (s.tagline) document.getElementById('hero-subtitle').textContent = s.tagline;
+
+                // --- DYNAMIC HERO GRADIENT ---
+                (function applyServiceGradient() {
+                    const name = s.title || serviceId || 'default';
+                    let hash = 0;
+                    for (let i = 0; i < name.length; i++) {
+                        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                        hash = hash & hash; // 32-bit int
+                    }
+                    const hue1 = Math.abs(hash % 360);
+                    const hue2 = (hue1 + 40 + Math.abs((hash >> 8) % 30)) % 360;
+                    const hue3 = (hue2 + 50 + Math.abs((hash >> 16) % 40)) % 360;
+                    // Dark anchor + two rich mid-tones = premium feel
+                    const c1 = `hsl(${hue1}, 45%, 12%)`;
+                    const c2 = `hsl(${hue2}, 60%, 30%)`;
+                    const c3 = `hsl(${hue3}, 55%, 42%)`;
+                    document.querySelector('.hero').style.setProperty(
+                        '--hero-bg',
+                        `linear-gradient(135deg, ${c1}, ${c2}, ${c3})`
+                    );
+                })();
+
+                // Reveal hero after content is set
+                document.querySelector('.hero').classList.add('--ready');
+
+                // About Section — show only if data exists
+                const aboutSection = document.querySelector('.about-wrap');
+                if (s.aboutText && aboutSection) {
+                    aboutSection.innerHTML = `
+                        <h3>Why VibeSphere's Approach Works?</h3>
+                        <p>${s.aboutText}</p>
+                    `;
+                    document.getElementById('about-section').style.display = '';
+                }
+
+                // --- 2. DYNAMIC ARRAYS INJECTION ---
+                // Benefits
+                const benefitsGrid = document.querySelector('.benefits-grid');
+                if (s.benefits && s.benefits.length > 0 && benefitsGrid) {
+                    benefitsGrid.innerHTML = s.benefits.map(b => `
+                        <div class="b-card">
+                            <div class="icon-box"><i class="${b.iconUrl || 'ri-star-line'}"></i></div>
+                            <h4>${b.title}</h4>
+                            <p>${b.description}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('benefits-section').style.display = '';
+                }
+
+                // Process Steps
+                const processGrid = document.querySelector('.process-grid');
+                if (s.processSteps && s.processSteps.length > 0 && processGrid) {
+                    processGrid.innerHTML = s.processSteps.map((p, index) => `
+                        <div class="step-card">
+                            <div class="step-num">${p.stepNumber || (index + 1).toString().padStart(2, '0')}</div>
+                            <h4>${p.title}</h4>
+                            <p>${p.description}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('process-section').style.display = '';
+                }
+
+                // FAQs
+                const faqAccordion = document.querySelector('.faq-accordion');
+                if (s.faqs && s.faqs.length > 0 && faqAccordion) {
+                    faqAccordion.innerHTML = s.faqs.map(f => `
+                        <div class="faq-item">
+                            <div class="faq-q">${f.question} <i class="ri-arrow-down-s-line faq-icon"></i></div>
+                            <div class="faq-a">${f.answer}</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('faq-section').style.display = '';
+
+                    // Re-bind FAQ click events for newly injected DOM elements
+                    document.querySelectorAll('.faq-item').forEach(item => {
+                        const header = item.querySelector('.faq-q');
+                        header.addEventListener('click', () => {
+                            const isActive = item.classList.contains('active');
+                            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
+                            if (!isActive) item.classList.add('active');
+                        });
+                    });
+                }
+
+                // --- 3. DYNAMIC PACKAGES ---
+                const packages = data.packages || [];
+
+                if (packages.length === 0) {
+                    grid.innerHTML = `
+                        <div class="fallback-msg">
+                            <i class="ri-time-line" style="font-size:2.5rem; color:#0891b2; display:block; margin-bottom:15px;"></i>
+                            <strong>Service Being Updated</strong><br>
+                            Our team is currently finalizing the premium packages for this service.<br>Please check back shortly.
+                        </div>`;
+                    return; // stop execution if no packages so we don't try to render them
+                }
+
+                // Render dynamic premium packages
+                grid.innerHTML = packages.map(pkg => `
+                    <div class="premium-pkg-card">
+                        ${pkg.isFeatured ? '<span class="pkg-badge">🔥 Most Popular</span>' : ''}
+                        
+                        <div class="pkg-header">
+                            <h3>${pkg.title}</h3>
+                            <p class="pkg-desc">${pkg.description || 'Elevate your digital presence.'}</p>
+                        </div>
+                        
+                        <!-- Auto Geo-Priced from backend -->
+                        <div class="pkg-price-area">
+                            <span class="currency">${pkg.geo?.symbol || '₹'}</span>
+                            <span class="amount">${(pkg.geo?.price || 0).toLocaleString()}</span>
+                            ${pkg.pricing?.isOneTime ? '' : '<span class="duration">/mo</span>'}
+                        </div>
+                        
+                        <ul class="pkg-features">
+                            ${(pkg.features || []).map(f => `<li><i class="ri-check-circle-fill"></i> ${f}</li>`).join('')}
+                        </ul>
+                        
+                        <div style="display:flex; gap:10px; margin-top:auto;">
+                            <a href="/package-detail.html?packageId=${pkg._id}" class="btn-pkg-buy" style="flex:1;">Details</a>
+                            <button onclick="addToCart('${pkg._id}')" class="btn-pkg-buy" style="flex:2; background:#0891b2; border:none; cursor:pointer;">
+                                <i class="ri-shopping-cart-line"></i> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (window.VibeUI) VibeUI.updateCartCount();
+
+            } catch (e) {
+                // FALLBACK UI if no data or error
+                grid.innerHTML = `
+                    <div class="fallback-msg">
+                        <i class="ri-time-line" style="font-size:2.5rem; color:#0891b2; display:block; margin-bottom:15px;"></i>
+                        <strong>Service Being Updated</strong><br>
+                        Humari expert team is service ke premium packages design kar rahi hai. Please check back later or contact support!
+                    </div>
+                `;
+            }
+        }
+
+        async function addToCart(packageId) {
+            try {
+                // Wait for auth to initialize
+                if (typeof VibeAuth !== 'undefined' && !VibeAuth.isInitialized()) {
+                    await VibeAuth.init();
+                }
+
+                if (!VibeAuth.isLoggedIn()) {
+                    alert('Please login to add items to cart');
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
+                const btn = document.getElementById(`add-to-cart-btn-${packageId}`); // Use specific ID for the button
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = 'Adding...';
+                }
+
+                const res = await fetch('/api/cart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ packageId }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ri-shopping-cart-line"></i> Add to Cart'; // Reset button text
+                }
+
+                if (data.success) {
+                    VibeUI.showToast('✅ Added to cart!');
+                    if (window.VibeUI) VibeUI.updateCartBadge();
+                } else {
+                    alert(data.message || 'Error adding to cart');
+                }
+            } catch (e) {
+                console.error("Add to Cart Error:", e);
+                alert('Connection error. Please try again.');
+            }
+        }
+
+        loadServiceData();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Cart — VibeSphere Media</title>
+    <meta name="description" content="Review your cart and proceed to checkout at VibeSphere Media.">
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/vibeicon.png">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8fafc;
+            color: #333;
+            margin: 0;
+        }
+
+        nav {
+            background: #fff;
+            padding: 16px 5%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-img {
+            height: 38px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6B46C1, #9333ea);
+            color: white;
+            padding: 10px 22px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Page */
+        .cart-page {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 0 5%;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 32px;
+        }
+
+        @media(max-width: 768px) {
+            .cart-page {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a0533;
+            margin: 0 0 24px;
+        }
+
+        /* Cart items */
+        .cart-item {
+            background: white;
+            border-radius: 14px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 3px 14px rgba(0, 0, 0, .06);
+            margin-bottom: 14px;
+            gap: 16px;
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1a0533;
+            margin-bottom: 4px;
+        }
+
+        .cart-item-service {
+            font-size: .82rem;
+            color: #888;
+        }
+
+        .cart-item-price {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #6B46C1;
+            white-space: nowrap;
+        }
+
+        .btn-remove {
+            background: #fff0f0;
+            border: none;
+            color: #e53e3e;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .9rem;
+            transition: .2s;
+        }
+
+        .btn-remove:hover {
+            background: #e53e3e;
+            color: white;
+        }
+
+        /* Summary card */
+        .summary-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 6px 24px rgba(107, 70, 193, .1);
+            border: 2px solid #ede9fe;
+            position: sticky;
+            top: 90px;
+            height: fit-content;
+        }
+
+        .summary-card h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a0533;
+            margin: 0 0 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: .95rem;
+            color: #555;
+            margin-bottom: 12px;
+        }
+
+        .summary-row.total {
+            font-weight: 700;
+            color: #1a0533;
+            font-size: 1.15rem;
+            border-top: 1px solid #eee;
+            padding-top: 14px;
+            margin-top: 8px;
+        }
+
+        .btn-checkout {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #6B46C1, #9333ea);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: .3s;
+        }
+
+        .btn-checkout:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(107, 70, 193, .4);
+        }
+
+        .btn-checkout:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-clear {
+            width: 100%;
+            padding: 11px;
+            background: transparent;
+            color: #e53e3e;
+            border: 1.5px solid #e53e3e;
+            border-radius: 12px;
+            font-size: .9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: .2s;
+        }
+
+        .btn-clear:hover {
+            background: #e53e3e;
+            color: white;
+        }
+
+        /* States */
+        .loading-state,
+        .empty-state,
+        .login-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            grid-column: 1/-1;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6B46C1;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #ddd;
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .btn-browse {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #6B46C1, #9333ea);
+            color: white;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer {
+            background: #1a0533;
+            color: #aaa;
+            text-align: center;
+            padding: 30px 5%;
+            margin-top: 60px;
+        }
+
+        footer a {
+            color: #9333ea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="global-nav">
+        <div class="nav-container">
+            <a href="/" class="logo-link">
+                <img src="/logo.webp" alt="VibeSphere Media Logo" class="logo-img">
+            </a>
+
+            <ul class="nav-links" id="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/about.html">About</a></li>
+                <li><a href="/services.html">Services</a></li>
+                <li><a href="/packages.html">Packages</a></li>
+                <li><a href="/contact.html">Contact</a></li>
+                <li><a href="/blog.html">Blog</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="/cart.html" class="cart-btn active" title="Your Cart">
+                    <i class="ri-shopping-cart-line"></i>
+                    <span class="cart-badge" id="cart-count">0</span>
+                </a>
+
+                <a href="/login.html" id="nav-login-btn" class="btn-login">Login</a>
+
+                <div id="user-profile" class="account-dropdown-wrapper" style="display: none;">
+                    <div class="account-trigger" id="account-trigger">
+                        <i class="ri-user-smile-line"></i> <span id="nav-username">Account</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                    <div class="dropdown-menu hidden" id="account-menu">
+                        <a href="/dashboard.html" class="dropdown-item">
+                            <i class="ri-dashboard-line"></i> Dashboard
+                        </a>
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <i class="ri-logout-box-r-line"></i> Logout
+                        </a>
+                    </div>
+                </div>
+
+                <div class="hamburger" id="hamburger-menu">
+                    <i class="ri-menu-3-line"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="main-wrap" style="max-width:1000px;margin:50px auto;padding:0 5%">
+        <h1>🛒 Your Cart</h1>
+        <div id="cart-content">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading your cart...</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 VibeSphere Media | <a href="/contact">Contact Us</a> | <a href="/refundpolicy">Refund Policy</a>
+        </p>
+    </footer>
+
+    <script src="/js/utils/auth.js"></script>
+    <script src="/js/utils/global-ui.js"></script>
+    <script>
+        async function loadCart() {
+            const content = document.getElementById('cart-content');
+
+            try {
+                // Wait for auth to initialize
+                if (typeof VibeAuth !== 'undefined' && !VibeAuth.isInitialized()) {
+                    await VibeAuth.init();
+                }
+
+                if (!VibeAuth.isLoggedIn()) {
+                    content.innerHTML = `
+                <div class="login-state">
+                    <i class="ri-lock-line" style="font-size:3rem;color:#6B46C1;display:block;margin-bottom:16px"></i>
+                    <p style="font-size:1.1rem;font-weight:600;color:#1a0533">Please login to view your cart</p>
+                    <p>Your cart is saved securely on our servers — just login to access it.</p>
+                    <a href="/login.html" class="btn-browse">Login Now</a>
+                </div>`;
+                    return;
+                }
+
+                const res = await fetch('/api/cart', { credentials: 'include' });
+                const data = await res.json();
+
+                if (!data.success || !data.cart?.items?.length) {
+                    content.innerHTML = `
+                <div class="empty-state">
+                    <i class="ri-shopping-cart-line"></i>
+                    <p style="font-size:1.1rem;font-weight:600;color:#1a0533">Your cart is empty!</p>
+                    <p>Explore our services and find the perfect package for your business.</p>
+                    <a href="/services.html" class="btn-browse">Browse Services</a>
+                </div>`;
+                    return;
+                }
+
+                renderCart(data.cart);
+            } catch (e) {
+                console.error("Cart Load Error:", e);
+                content.innerHTML = `<div class="empty-state"><p>Error loading cart. Please try again.</p></div>`;
+            }
+        }
+
+        function renderCart(cart) {
+            const items = cart.items;
+            const total = items.reduce((sum, item) => sum + (item.priceAtAdd || 0), 0);
+            const currency = items[0]?.currency || 'INR';
+            const symbol = currency === 'INR' ? '₹' : '$';
+
+            const itemsHtml = items.map(item => {
+                const pkg = item.packageId;
+                const name = pkg?.title || 'Package';
+                const price = item.priceAtAdd || 0;
+                return `
+            <div class="cart-item" id="item-${item._id}">
+                <div class="cart-item-info">
+                    <div class="cart-item-title">${name}</div>
+                    <div class="cart-item-service">${pkg?.serviceId?.title || 'VibeSphere Service'}</div>
+                </div>
+                <div class="cart-item-price">${symbol}${price.toLocaleString()}</div>
+                <button class="btn-remove" onclick="removeItem('${pkg?._id}')">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </div>`;
+            }).join('');
+
+            const summaryHtml = `
+        <div class="summary-card">
+            <h2>Order Summary</h2>
+            ${items.map(item => `
+                <div class="summary-row">
+                    <span>${item.packageId?.title || 'Package'}</span>
+                    <span>${symbol}${(item.priceAtAdd || 0).toLocaleString()}</span>
+                </div>`).join('')}
+            <div class="summary-row total">
+                <span>Total</span>
+                <span>${symbol}${total.toLocaleString()}</span>
+            </div>
+            <button class="btn-checkout" onclick="proceedToCheckout()">
+                Proceed to Checkout →
+            </button>
+            <button class="btn-clear" onclick="clearCart()">Clear Cart</button>
+        </div>`;
+
+            document.getElementById('cart-content').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:32px">
+            <div>${itemsHtml}</div>
+            ${summaryHtml}
+        </div>`;
+        }
+
+        async function removeItem(packageId) {
+            try {
+                const res = await fetch(`/api/cart/${packageId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (data.success) loadCart();
+            } catch (e) { alert('Error removing item.'); }
+        }
+
+        async function clearCart() {
+            if (!confirm('Clear all items from cart?')) return;
+            try {
+                await fetch('/api/cart', { method: 'DELETE', credentials: 'include' });
+                loadCart();
+            } catch (e) { alert('Error clearing cart.'); }
+        }
+
+        function proceedToCheckout() {
+            // Route to existing checkout page — passes cart info via sessionStorage
+            window.location.href = '/checkout';
+        }
+
+        loadCart();
+    </script>
+</body>
+
+</html>

@@ -1,28 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Authenticating... | VibeSphere</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; background: #f4f7fe; font-family: 'Poppins', sans-serif; margin: 0;
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f4f7fe;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
         }
-        .loader-box { 
-            text-align: center; background: white; padding: 40px; 
-            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
-            width: 90%; max-width: 400px;
+
+        .loader-box {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            width: 90%;
+            max-width: 400px;
         }
+
         .spinner {
-            border: 4px solid #f3f3f3; border-top: 4px solid #6c63ff; 
-            border-radius: 50%; width: 40px; height: 40px; 
-            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6c63ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <div class="loader-box">
@@ -53,6 +79,7 @@
                 const res = await fetch('/api/auth/verify-magic-link', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ email, token })
                 });
                 const data = await res.json();
@@ -60,16 +87,10 @@
                 if (data.success) {
                     statusText.innerHTML = "✅ Login Successful! Redirecting...";
                     statusText.style.color = "#10b981";
-                    
-                    // 🟢 TERA LOGIN LOGIC: Token aur user data browser memory mein save kar lo
-                    localStorage.setItem('clientToken', data.token); // Token save karo
-                    
-                    // 🚨 YAHI HAI WOH MISSING LINE JO DASHBOARD KO CHAHIYE THI!
-                    localStorage.setItem('clientUser', JSON.stringify(data.user)); 
-                    
+
                     // 1 second baad Client Dashboard par bhej do
                     setTimeout(() => {
-                        window.location.href = '/dashboard.html'; 
+                        window.location.href = '/dashboard.html';
                     }, 1500);
 
                 } else {
@@ -88,4 +109,5 @@
         window.onload = verifyMagicLink;
     </script>
 </body>
+
 </html>
