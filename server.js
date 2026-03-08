@@ -21,8 +21,13 @@ const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 //const qrcode = require('qrcode');
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*" }
+// 🟢 FIX: Live Server ke liye Socket CORS open kar diya
+const io = require('socket.io')(server, {
+    cors: {
+        origin: "*", // Yeh live server pe block hone se rokega
+        methods: ["GET", "POST"],
+        credentials: true
+    }
 });
 
 // 🟢 THE SOCKET.IO ENGINE (Live Dashboard Bouncer)
