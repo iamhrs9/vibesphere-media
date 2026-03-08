@@ -62,10 +62,16 @@ let chatHistory = []; // Memory Array
 
 function toggleChat() {
     const box = document.getElementById('chat-box');
+    const waBtn = document.querySelector('.float-wa');
+
     if (box.style.display === 'flex') {
+        // Closing chatbox → show WhatsApp widget
         box.style.display = 'none';
+        if (waBtn) waBtn.style.display = 'flex';
     } else {
+        // Opening chatbox → hide WhatsApp widget
         box.style.display = 'flex';
+        if (waBtn) waBtn.style.display = 'none';
     }
 }
 
