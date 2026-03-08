@@ -1100,14 +1100,19 @@ Rules:
 
 Respond with ONLY the tag (e.g. "🔥 Hot"). Nothing else.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: prompt }] }]
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const data = await response.json();
         let score = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
@@ -1772,118 +1777,216 @@ app.post('/api/chat', async (req, res) => {
 
 
     const systemPrompt = `
-INSTRUCTIONS: You are 'VibeSphere AI', the lead strategy consultant for VibeSphere Media.
+You are 'VibeSphere AI', the lead strategy consultant and high-closing sales expert for VibeSphere Media.
 
---- YOUR IDENTITY ---
-• Created by: VibeSphere Media Tech Team.
-• Founder (VibeSphere Media) & Payments Head: Mr. Mukesh Prajapat.
-• CEO & Head of Tech Department: Mr. Harsh Panwar.
-• Establishment: 2022.
-• Headquarters: Jaipur, Rajasthan, India.
-• Mission: Helping businesses grow through digital excellence.
-
---- YOUR GOAL ---
-Build Trust, Solve Queries, and Aggressively Sell Growth Packages (Instagram & Web).
-Your aim is not just to answer, but to **CLOSE THE DEAL** using psychological persuasion.
+--- YOUR IDENTITY & COMPANY KNOWLEDGE ---
+- Created by: VibeSphere Media Tech Team.
+- Leadership: Mr. Mukesh Prajapat (Founder & Payments Head) & Mr. Harsh Panwar (CEO & Head of Tech).
+- Establishment: 2022. Headquarters: Jaipur, Rajasthan, India.
+- Track Record: 1200+ happy clients, 4.9/5 average rating, 24/7 WhatsApp Support.
+- Mission: Helping businesses grow through digital excellence.
+- Language Protocol: Auto-Adapt. Reply in the exact language the user speaks (English -> English, Hindi -> Hindi, Hinglish -> Hinglish).
 
 --- 🚨 CRITICAL RULES (NON-NEGOTIABLE) ---
-1. NO INFO DUMPS: Keep messages short (1-3 sentences).
-2. STEP-BY-STEP: Ask only ONE question at a time.
+1. NO INFO DUMPS: Keep messages extremely short (1-3 sentences max).
+2. STEP-BY-STEP: Ask only ONE question at a time to keep the user engaged.
 3. IDENTIFY INTENT FIRST:
-   - "Reach badhani hai" → Ask: "Kis type ka page hai? (Personal/Business?)"
-   - "Website banwani hai" → Ask: "Kis cheez ka business hai aapka?"
-   - "Mera business nahi chal raha" → First Pitch MARKETING, then upsell WEBSITE.
+   - If "Reach badhani hai" -> Ask: "Kis type ka page hai? (Personal/Business?)"
+   - If "Website banwani hai" -> Ask: "Kis cheez ka business hai aapka?"
+   - If "Mera business nahi chal raha" -> First pitch Marketing, then upsell a Website.
+4. ALWAYS BE CLOSING: Your ultimate goal is to close the deal and get them to buy a package.
 
---- 🗣️ LANGUAGE PROTOCOL ---
-• Default: ENGLISH.
-• Auto-Adapt: Hindi → Hindi | Hinglish → Hinglish | English → English.
+--- 📈 INSTAGRAM GROWTH PACKAGES ---
+- SILVER: ₹399 (1k Followers | Beginner)
+- GOLD: ₹669 (2k Followers | Small Boost)
+- PLATINUM (🔥 Hot Seller): ₹1199 (5k Followers | 3 Posts | Serious Growth)
+- INFLUENCER: ₹1889 (7k Followers | Face of Week)
+- BUSINESS: ₹2699 (13k Followers | Full Branding)
+- SPECIAL: ₹4690/Month (26k Followers | Full Management)
 
---- 📦 PACKAGES & PRICING (INSTAGRAM GROWTH) ---
-1. 🥈 SILVER - ₹399 (1k Followers | Beginner)
-2. 🥇 GOLD - ₹669 (2k Followers | Small Boost)
-3. 💎 PLATINUM (🔥 Hot Seller) - ₹1199 (5k Followers | 3 Posts | Serious Growth)
-4. 🚀 INFLUENCER - ₹1889 (7k Followers | Face of Week)
-5. 🏢 BUSINESS - ₹2699 (13k Followers | Full Branding)
-6. 👑 SPECIAL - ₹4690/Month (26k Followers | Full Management)
+--- 💻 WEB DEVELOPMENT PACKAGES ---
+- PORTFOLIO / LANDING: ₹4,999 (1-5 Pages | Mobile Ready | Free Hosting for 1 Yr). Pitch: "Apna Digital Visiting Card banwayein."
+- BUSINESS / CORPORATE (🔥 Best Value): ₹14,999 (8-12 Pages | SEO Setup | Admin Panel | Pro Email). Pitch: "Google par rank karein aur trust jeetein."
+- E-COMMERCE STORE: ₹24,999 (Online Store | Payment Gateway | 50 Products). Pitch: "Dukaan band hone ke baad bhi maal bechein (24/7 Sales)."
 
---- 💻 PACKAGES & PRICING (WEB DEVELOPMENT) ---
-1. 🌐 PORTFOLIO / LANDING - ₹4,999 ($199)
-   - 1-5 Pages | Mobile Ready | Free Hosting (1 Yr).
-   - Pitch: "Apna Digital Visiting Card banwayein."
-2. 💼 BUSINESS / CORPORATE (🔥 Best Value) - ₹14,999 ($499)
-   - 8-12 Pages | SEO Setup | Admin Panel | Pro Email.
-   - Pitch: "Google par rank karein aur trust jeetein."
-3. 🛒 E-COMMERCE STORE - ₹24,999 ($899)
-   - Online Store | Payment Gateway | 50 Products.
-   - Pitch: "Dukaan band hone ke baad bhi maal bechein (24/7 Sales)."
+--- 🧠 PSYCHOLOGICAL SALES TACTICS (USE THESE AGGRESSIVELY) ---
+1. FOMO (Fear of Missing Out): Emphasize what they lose. Example: "Sir, bina website ke aap 50% customers loose kar rahe hain jo Google par search kar rahe hain."
+2. Authority & Trust: "Humari agency Jaipur based hai, 1200+ clients hain. Local freelancer bhag jayega, hum yahi hain."
+3. Urgency: "Sir, Web Dev team ke paas sirf 2 slots bache hain iss week ke liye. Aaj lock karenge toh free Domain mil jayega."
+4. Investment Frame: If they say it's expensive, reply: "Sir, ye kharcha nahi, Investment hai. Ek client bhi website se aaya toh pura paisa wapas!"
 
---- 🧠 PSYCHOLOGICAL SALES TACTICS (BE PERSUASIVE) ---
-1. **The Fear of Loss (FOMO):**
-   - Instead of "Buy a website", say: "Sir, bina website ke aap 50% customers loose kar rahe hain jo Google par search kar rahe hain."
-   - "Competitors aage nikal jayenge agar aapne online branding nahi ki."
-
-2. **Authority & Trust:**
-   - "Humari agency Jaipur based hai, 1200+ clients hain. Local freelancer bhag jayega, hum yahi hain."
-
-3. **Urgency (Artificial Scarcity):**
-   - "Sir, Web Dev team ke paas sirf 2 slots bache hain iss week ke liye. Aaj lock karenge toh free Domain mil jayega."
-   - "Price hike hone wala hai 1st se, abhi purane rate pe lock kar lijiye."
-
-4. **The "Investment" Frame:**
-   - If user says "Mehenga hai", reply: "Sir, ye kharcha nahi, Investment hai. Ek client bhi website se aaya toh pura paisa wapas!"
-
---- 📜 COMPANY POLICIES ---
-• Refund (Before Work): 100% Refund if cancelled within 24 Hours.
-• Refund (After Work): NO Refunds once work starts.
-• Process: Email help@vibespheremedia.in.
-
---- 🧪 SCENARIO SCRIPTS ---
-• Scenario: "Is this fake/scam?"
-  Reply: "Sir, VibeSphere Media ek Registered Indian Agency hai. Razorpay secure gateway use karte hain. Scammers ₹100-200 mangte hain, hum brand banate hain. ✅"
-
-• Scenario: "Who is owner?"
-  Reply: "VibeSphere Media is founded by Mr. Harsh Panwar (Tech Head) & Mr. Mukesh Prajapat. We are a team, not individuals."
-
-• Scenario: "Web Dev expensive hai"
-  Reply: "Sir, Market mein yahi kaam ₹25,000+ ka hai. Hum ₹14,999 mein 'Business Package' de rahe hain with SEO. Quality chahiye toh thoda invest karna padega. 🚀"
+--- 📜 POLICIES & SCENARIOS ---
+- Refund Policy: 100% Refund if cancelled within 24 Hours before work starts. NO Refunds once work starts. Support email: help@vibespheremedia.in.
+- Scenario "Is this fake?": Reply "Sir, VibeSphere Media ek Registered Indian Agency hai. Razorpay secure gateway use karte hain. Scammers ₹100-200 mangte hain, hum brand banate hain. ✅"
+- Scenario "Web Dev is expensive": Reply "Sir, Market mein yahi kaam ₹25,000+ ka hai. Hum ₹14,999 mein 'Business Package' de rahe hain with SEO. Quality chahiye toh thoda invest karna padega. 🚀"
 
 --- 🛒 CLOSING THE DEAL ---
-Always end with a Call to Action (CTA):
+Always end your response with a Call to Action (CTA) or a closing question:
 - "Kaunsa package final karein? Silver ya Gold? 😉"
 - "Link bhejun payment ka?"
 - "Start karein aaj se hi?"
 
     `;
 
-    try {
-        let contents = JSON.parse(JSON.stringify(userHistory));
 
-        if (contents.length === 0 && userMessage) {
-            contents = [{
-                role: "user",
-                parts: [{ text: `${systemPrompt}\n\nUser Question: ${userMessage}` }]
-            }];
-        } else if (contents.length > 0 && contents[0].role === 'user') {
-            if (!contents[0].parts[0].text.includes("INSTRUCTIONS:")) {
-                contents[0].parts[0].text = `${systemPrompt}\n\n${contents[0].parts[0].text}`;
+    // Build clean chat history (trim to last 10, ensure alternating roles)
+    let contents = [];
+    if (Array.isArray(userHistory)) {
+        const trimmedHistory = userHistory.length > 10 ? userHistory.slice(-10) : userHistory;
+        let lastRole = null;
+        trimmedHistory.forEach(msg => {
+            if (msg.role && msg.parts && msg.parts[0] && msg.parts[0].text) {
+                const role = msg.role === 'model' ? 'model' : 'user';
+                if (role !== lastRole) {
+                    contents.push({ role, parts: [{ text: msg.parts[0].text }] });
+                    lastRole = role;
+                }
             }
-        }
+        });
+    }
 
-        // ✅ Updated to Gemini 1.5 Flash (Faster & More Stable)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+    // ── Helper: build messages array (instruction-injected, no 'system' role) ──
+    // Converts Gemini-style history to OpenAI-style and injects system prompt
+    // into the very first user message to avoid 400 errors on strict models.
+    const buildMessages = () => {
+        const historyMessages = contents.map(c => ({
+            role: c.role === 'model' ? 'assistant' : 'user',
+            content: c.parts[0].text
+        }));
+
+        if (historyMessages.length === 0) {
+            return [{ role: 'user', content: `${systemPrompt}\n\n---\n\n${userMessage}` }];
+        }
+        const [firstMsg, ...restMsgs] = historyMessages;
+        return [
+            { role: 'user', content: `${systemPrompt}\n\n---\n\n${firstMsg.content}` },
+            ...restMsgs,
+            { role: 'user', content: userMessage }
+        ];
+    };
+
+    const messages = buildMessages();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let replyText = null;
+
+    // ════════════════════════════════════════
+    // 🥇 TIER 1: Groq API (Fastest)
+    // ════════════════════════════════════════
+    try {
+        const GROQ_KEY = process.env.GROQ_API_KEY;
+        if (!GROQ_KEY) throw new Error('No Groq key');
+
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: contents })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                messages,
+                temperature: 0.7,
+                max_tokens: 1024
+            }),
+            signal: controller.signal
         });
 
-        const data = await response.json();
-        const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "System busy.";
-        res.json({ reply: replyText });
+        const groqData = await groqRes.json();
 
-    } catch (error) {
-        res.status(500).json({ reply: "Server busy. Try later." });
+        if (!groqRes.ok || groqData.error) {
+            console.error('❌ Groq Error:', JSON.stringify(groqData.error || groqData, null, 2));
+            throw new Error('groq_failed');
+        }
+
+        replyText = groqData.choices?.[0]?.message?.content || null;
+        if (!replyText) throw new Error('groq_empty');
+
+        console.log('✅ VibeGenie replied via Groq');
+
+    } catch (groqErr) {
+        console.log(`🔄 Groq failed (${groqErr.message}). Trying OpenRouter...`);
+
+        // ════════════════════════════════════════
+        // 🥈 TIER 2: OpenRouter API
+        // ════════════════════════════════════════
+        try {
+            const OR_KEY = process.env.OPENROUTER_API_KEY;
+            if (!OR_KEY) throw new Error('No OpenRouter key');
+
+            const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OR_KEY}`,
+                    'HTTP-Referer': 'https://vibespheremedia.in',
+                    'X-Title': 'VibeSphere VibeGenie AI'
+                },
+                body: JSON.stringify({
+                    model: 'stepfun/step-3.5-flash:free',
+                    messages
+                }),
+                signal: controller.signal
+            });
+
+            const orData = await orRes.json();
+
+            if (!orRes.ok || orData.error) {
+                console.error('❌ OpenRouter Error:', JSON.stringify(orData.error || orData, null, 2));
+                throw new Error('openrouter_failed');
+            }
+
+            replyText = orData.choices?.[0]?.message?.content || null;
+            if (!replyText) throw new Error('openrouter_empty');
+
+            console.log('✅ VibeGenie replied via OpenRouter');
+
+        } catch (orErr) {
+            console.log(`🔄 OpenRouter failed (${orErr.message}). Trying Google Gemma...`);
+
+            // ════════════════════════════════════════
+            // 🥉 TIER 3: Google Gemma (Final Fallback)
+            // ════════════════════════════════════════
+            try {
+                const finalContents = [
+                    { role: 'user', parts: [{ text: systemPrompt }] },
+                    ...contents,
+                    { role: 'user', parts: [{ text: userMessage }] }
+                ];
+
+                const gemmaRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${API_KEY}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: finalContents }),
+                        signal: controller.signal
+                    }
+                );
+
+                const gemmaData = await gemmaRes.json();
+
+                if (gemmaData.error) {
+                    console.error('❌ Gemma Error:', JSON.stringify(gemmaData.error, null, 2));
+                    replyText = 'System busy. Please try again in a moment!';
+                } else {
+                    replyText = gemmaData.candidates?.[0]?.content?.parts?.[0]?.text || 'System busy.';
+                    console.log('✅ VibeGenie replied via Google Gemma');
+                }
+            } catch (gemmaErr) {
+                console.error('❌ All AI tiers failed:', gemmaErr.message);
+                replyText = 'System is temporarily busy. Please try again shortly!';
+            }
+        }
     }
+
+    clearTimeout(timeoutId);
+    res.json({ reply: replyText });
 });
+
+
 
 // ==========================================
 // 💳 PAYMENT & ADMIN ROUTES (UPDATED)
@@ -3381,6 +3484,8 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 }
+
+
 // connectToWhatsApp(); 
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
