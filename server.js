@@ -1786,7 +1786,8 @@ You are 'VibeSphere AI', the lead strategy consultant and high-closing sales exp
 - Track Record: 1200+ happy clients, 4.9/5 average rating, 24/7 WhatsApp Support.
 - Mission: Helping businesses grow through digital excellence.
 - Language Protocol: Auto-Adapt. Reply in the exact language the user speaks (English -> English, Hindi -> Hindi, Hinglish -> Hinglish).
-
+There is a website for our company: https://vibespheremedia.in/
+there whatsapp number is +91 8302485826
 --- 🚨 CRITICAL RULES (NON-NEGOTIABLE) ---
 1. NO INFO DUMPS: Keep messages extremely short (1-3 sentences max).
 2. STEP-BY-STEP: Ask only ONE question at a time to keep the user engaged.
@@ -1796,13 +1797,10 @@ You are 'VibeSphere AI', the lead strategy consultant and high-closing sales exp
    - If "Mera business nahi chal raha" -> First pitch Marketing, then upsell a Website.
 4. ALWAYS BE CLOSING: Your ultimate goal is to close the deal and get them to buy a package.
 
---- 📈 INSTAGRAM GROWTH PACKAGES ---
-- SILVER: ₹399 (1k Followers | Beginner)
-- GOLD: ₹669 (2k Followers | Small Boost)
-- PLATINUM (🔥 Hot Seller): ₹1199 (5k Followers | 3 Posts | Serious Growth)
-- INFLUENCER: ₹1889 (7k Followers | Face of Week)
-- BUSINESS: ₹2699 (13k Followers | Full Branding)
-- SPECIAL: ₹4690/Month (26k Followers | Full Management)
+--- 📈 INSTAGRAM & SOCIAL MEDIA GROWTH PACKAGES ---
+- ESSENTIAL: ₹1,499/Month (4-5 High-Quality Posts | 1-2 Basic Reels | Profile Setup). Pitch: "Sir, basic digital presence maintain karne ke liye ekdum perfect start hai."
+- GROWTH (🔥 Best Seller): ₹5,999/Month (15 Posts | 5-6 Pro Reels | 2-3 Story Updates/week). Pitch: "Daily reach aur solid engagement badhane ke liye hamara top package. Most clients yahi lete hain."
+- PRO: ₹9,999/Month (20 Posts | 8-10 Advanced Reels | Daily Story & DM Replies). Pitch: "Sir, market me dominate karna hai aur competitors ko peechhe chhodna hai toh ye lijiye. Full VIP Management!"
 
 --- 💻 WEB DEVELOPMENT PACKAGES ---
 - PORTFOLIO / LANDING: ₹4,999 (1-5 Pages | Mobile Ready | Free Hosting for 1 Yr). Pitch: "Apna Digital Visiting Card banwayein."
@@ -1867,96 +1865,91 @@ Always end your response with a Call to Action (CTA) or a closing question:
 
     const messages = buildMessages();
 
+    // 30s outer timeout (covers full request lifecycle)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     let replyText = null;
 
-    // ════════════════════════════════════════
-    // 🥇 TIER 1: Groq API (Fastest)
-    // ════════════════════════════════════════
-    try {
-        const GROQ_KEY = process.env.GROQ_API_KEY;
-        if (!GROQ_KEY) throw new Error('No Groq key');
+    // ════════════════════════════════════════════════════════
+    // 🔗 API PROVIDER CHAIN (tried in order, first win stops)
+    // ════════════════════════════════════════════════════════
+    const OR_KEY = process.env.OPENROUTER_API_KEY;
+    const GROQ_KEY = process.env.GROQ_API_KEY;
 
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_KEY}`
-            },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant',
-                messages,
-                temperature: 0.7,
-                max_tokens: 1024
-            }),
-            signal: controller.signal
-        });
-
-        const groqData = await groqRes.json();
-
-        if (!groqRes.ok || groqData.error) {
-            console.error('❌ Groq Error:', JSON.stringify(groqData.error || groqData, null, 2));
-            throw new Error('groq_failed');
-        }
-
-        replyText = groqData.choices?.[0]?.message?.content || null;
-        if (!replyText) throw new Error('groq_empty');
-
-        console.log('✅ VibeGenie replied via Groq');
-
-    } catch (groqErr) {
-        console.log(`🔄 Groq failed (${groqErr.message}). Trying OpenRouter...`);
-
-        // ════════════════════════════════════════
-        // 🥈 TIER 2: OpenRouter API
-        // ════════════════════════════════════════
-        try {
-            const OR_KEY = process.env.OPENROUTER_API_KEY;
-            if (!OR_KEY) throw new Error('No OpenRouter key');
-
-            const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OR_KEY}`,
-                    'HTTP-Referer': 'https://vibespheremedia.in',
-                    'X-Title': 'VibeSphere VibeGenie AI'
-                },
-                body: JSON.stringify({
-                    model: 'stepfun/step-3.5-flash:free',
-                    messages
-                }),
-                signal: controller.signal
-            });
-
-            const orData = await orRes.json();
-
-            if (!orRes.ok || orData.error) {
-                console.error('❌ OpenRouter Error:', JSON.stringify(orData.error || orData, null, 2));
-                throw new Error('openrouter_failed');
+    const providers = [
+        // 🥇 PRIMARY: OpenRouter — Arcee Trinity Large (Best reasoning for sales scripts)
+        {
+            name: 'OpenRouter [Arcee Trinity Large]',
+            call: async () => {
+                if (!OR_KEY) throw new Error('No OpenRouter key');
+                const ctrl = new AbortController();
+                const t = setTimeout(() => ctrl.abort(), 6000); // 6s strict timeout
+                try {
+                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OR_KEY}`,
+                            'HTTP-Referer': 'https://vibespheremedia.in',
+                            'X-Title': 'VibeSphere VibeGenie AI'
+                        },
+                        body: JSON.stringify({
+                            model: 'arcee-ai/trinity-large-preview:free',
+                            messages
+                        }),
+                        signal: ctrl.signal
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
+                    const text = data.choices?.[0]?.message?.content;
+                    if (!text) throw new Error('empty_response');
+                    return text;
+                } finally { clearTimeout(t); }
             }
+        },
 
-            replyText = orData.choices?.[0]?.message?.content || null;
-            if (!replyText) throw new Error('openrouter_empty');
+        // 🥈 SECONDARY: OpenRouter — Z-AI GLM 4.5 Air (Capable fallback)
+        {
+            name: 'OpenRouter [GLM 4.5 Air]',
+            call: async () => {
+                if (!OR_KEY) throw new Error('No OpenRouter key');
+                const ctrl = new AbortController();
+                const t = setTimeout(() => ctrl.abort(), 6000); // 6s strict timeout
+                try {
+                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OR_KEY}`,
+                            'HTTP-Referer': 'https://vibespheremedia.in',
+                            'X-Title': 'VibeSphere VibeGenie AI'
+                        },
+                        body: JSON.stringify({
+                            model: 'z-ai/glm-4.5-air:free',
+                            messages
+                        }),
+                        signal: ctrl.signal
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
+                    const text = data.choices?.[0]?.message?.content;
+                    if (!text) throw new Error('empty_response');
+                    return text;
+                } finally { clearTimeout(t); }
+            }
+        },
 
-            console.log('✅ VibeGenie replied via OpenRouter');
-
-        } catch (orErr) {
-            console.log(`🔄 OpenRouter failed (${orErr.message}). Trying Google Gemma...`);
-
-            // ════════════════════════════════════════
-            // 🥉 TIER 3: Google Gemma (Final Fallback)
-            // ════════════════════════════════════════
-            try {
+        // 🥉 TERTIARY: Google Gemma (Direct Gemini API — instruction injected)
+        {
+            name: 'Google Gemma [gemma-3-27b-it]',
+            call: async () => {
                 const finalContents = [
                     { role: 'user', parts: [{ text: systemPrompt }] },
                     ...contents,
                     { role: 'user', parts: [{ text: userMessage }] }
                 ];
-
-                const gemmaRes = await fetch(
+                const res = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${API_KEY}`,
                     {
                         method: 'POST',
@@ -1965,22 +1958,61 @@ Always end your response with a Call to Action (CTA) or a closing question:
                         signal: controller.signal
                     }
                 );
+                const data = await res.json();
+                if (data.error) throw new Error(JSON.stringify(data.error));
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error('empty_response');
+                return text;
+            }
+        },
 
-                const gemmaData = await gemmaRes.json();
-
-                if (gemmaData.error) {
-                    console.error('❌ Gemma Error:', JSON.stringify(gemmaData.error, null, 2));
-                    replyText = 'System busy. Please try again in a moment!';
-                } else {
-                    replyText = gemmaData.candidates?.[0]?.content?.parts?.[0]?.text || 'System busy.';
-                    console.log('✅ VibeGenie replied via Google Gemma');
-                }
-            } catch (gemmaErr) {
-                console.error('❌ All AI tiers failed:', gemmaErr.message);
-                replyText = 'System is temporarily busy. Please try again shortly!';
+        // 🛡️ FINAL BACKUP: Groq — Llama 3.1 8B (Ultra-fast last resort)
+        {
+            name: 'Groq [Llama 3.1 8B]',
+            call: async () => {
+                if (!GROQ_KEY) throw new Error('No Groq key');
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${GROQ_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-8b-instant',
+                        messages,
+                        temperature: 0.7,
+                        max_tokens: 1024
+                    }),
+                    signal: controller.signal
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error(JSON.stringify(data.error || data));
+                const text = data.choices?.[0]?.message?.content;
+                if (!text) throw new Error('empty_response');
+                return text;
             }
         }
+    ];
+
+
+    // Iterate through providers — stop at first success
+    for (const provider of providers) {
+        try {
+            console.log(`🔃 Trying ${provider.name}...`);
+            replyText = await provider.call();
+            console.log(`✅ VibeGenie replied via ${provider.name}`);
+            break;
+        } catch (err) {
+            console.error(`❌ ${provider.name} failed:`, err.message);
+            console.log(`🔄 Moving to next provider...`);
+        }
     }
+
+    if (!replyText) {
+        replyText = 'System is temporarily busy. Please try again shortly!';
+        console.error('❌ All AI providers failed.');
+    }
+
 
     clearTimeout(timeoutId);
     res.json({ reply: replyText });
