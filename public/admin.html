@@ -2836,9 +2836,13 @@
             // ==========================================
             async function scheduleMeeting() {
                 const topic = document.getElementById('meetTopic').value.trim();
-                const scheduledTime = document.getElementById('meetTime').value;
+                const localTime = document.getElementById('meetTime').value;
                 const password = document.getElementById('meetPass').value.trim();
-                if (!topic || !scheduledTime) return alert('Topic & Time required!');
+                if (!topic || !localTime) return alert('Topic & Time required!');
+
+                // 🟢 Timezone Fix: Convert local time to UTC (ISO)
+                const scheduledTime = new Date(localTime).toISOString();
+
                 try {
                     const res = await fetch('/api/admin/create-meeting', {
                         method: 'POST',
@@ -3000,8 +3004,12 @@
             }
 
             window.updateMeetingTime = async function () {
-                const newTime = document.getElementById('editMeetTime').value;
-                if (!newTime) return;
+                const localTime = document.getElementById('editMeetTime').value;
+                if (!localTime) return;
+
+                // 🟢 Timezone Fix: Convert local time to UTC (ISO)
+                const newTime = new Date(localTime).toISOString();
+
                 try {
                     const res = await fetch('/api/admin/update-meeting-time', {
                         method: 'PUT',

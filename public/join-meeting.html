@@ -5,44 +5,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Join Meeting | VibeSphere Media</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
     <script src="https://8x8.vc/external_api.js" crossorigin="anonymous"></script>
     <style>
-        body,
-        html {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100dvh;
-            background-color: #0f172a;
-            /* VibeSphere Dark Theme */
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
-            /* Prevent scrolling */
+        :root {
+            --primary: #7d5fff;
+            --primary-light: rgba(125, 95, 255, 0.1);
+            --bg: #f4f7fe;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --white: #ffffff;
+            --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
         }
 
-        #loading-overlay {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body,
+        html {
+            width: 100vw;
+            height: 100dvh;
+            background-color: var(--bg);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        /* Full-screen Jitsi Layout */
+        #jitsi-container {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0f172a;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #f8fafc;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
+            width: 100vw;
+            height: 100dvh;
+            z-index: 100;
+            display: none;
+            background: #000;
         }
 
+        /* Premium Card Layout */
+        .premium-card {
+            background: var(--white);
+            padding: 45px 40px;
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            width: 90%;
+            max-width: 440px;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 30px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        /* State Containers */
+        .state-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .state-container.active {
+            display: flex;
+        }
+
+        h2 {
+            font-size: 22px;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        p.description {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        /* Sleek Inputs (Matching Staff Login) */
+        .input-group {
+            width: 100%;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-light);
+        }
+
+        /* Premium Buttons */
+        .btn-premium {
+            width: 100%;
+            padding: 15px;
+            background: var(--text-main);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-premium:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(125, 95, 255, 0.25);
+        }
+
+        /* Custom Spinner */
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(108, 99, 255, 0.2);
-            border-top-color: #6c63ff;
-            /* VibeSphere Blue/Purple Theme */
+            width: 44px;
+            height: 44px;
+            border: 4px solid var(--primary-light);
+            border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-bottom: 20px;
@@ -54,65 +186,91 @@
             }
         }
 
-        #error-message {
-            display: none;
-            color: #ef4444;
-            font-weight: 500;
-            margin-top: 15px;
-            text-align: center;
+        /* Countdown Style */
+        #timer {
+            font-size: 52px;
+            font-weight: 700;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+            margin: 15px 0;
+            font-family: 'Outfit', sans-serif;
         }
 
-        #jitsi-container {
+        .footer-text {
+            position: absolute;
+            bottom: 30px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0.7;
+        }
+
+        .error-box {
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 15px;
             width: 100%;
-            height: 100%;
+            display: none;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Loading UI -->
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <h2 id="loading-status" style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">Checking
-            Meeting Status...</h2>
-        <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">Please wait while we verify your room</p>
-        <div id="error-message">Invalid Meeting Link. Redirecting to home...</div>
-    </div>
+    <div class="premium-card">
+        <div class="logo">VibeSphere<span>.</span></div>
 
-    <!-- 🔒 PASSWORD OVERLAY -->
-    <div id="password-overlay"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:9000; flex-direction:column; justify-content:center; align-items:center; color:#f8fafc;">
-        <div
-            style="background:#1e293b; padding:40px; border-radius:20px; width:90%; max-width:400px; text-align:center; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
-            <div style="font-size:40px; margin-bottom:20px;">🔒</div>
-            <h2 style="margin-bottom:10px;">Meeting Protected</h2>
-            <p style="color:#94a3b8; font-size:14px; margin-bottom:25px;">This room requires a password to enter.</p>
-            <input type="password" id="joinPass" placeholder="Enter Password"
-                style="width:100%; padding:15px; background:#0f172a; border:1px solid #334155; border-radius:10px; color:white; font-size:16px; margin-bottom:20px; outline:none; text-align:center;">
-            <button onclick="verifyJoinPassword()"
-                style="width:100%; padding:15px; background:#6c63ff; border:none; border-radius:10px; color:white; font-weight:bold; cursor:pointer; font-size:16px; transition:0.3s;">Join
-                Room</button>
-            <div id="passError" style="color:#ef4444; font-size:12px; margin-top:10px; display:none;">Incorrect
-                Password! ❌</div>
+        <!-- 1. Loading State -->
+        <div id="loading-state" class="state-container active">
+            <div class="spinner"></div>
+            <h2 id="loading-status">Checking Status</h2>
+            <p class="description">Please wait while we prepare your encrypted meeting space.</p>
         </div>
-    </div>
 
-    <!-- ⏳ COUNTDOWN OVERLAY -->
-    <div id="countdown-overlay"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; z-index:8000; flex-direction:column; justify-content:center; align-items:center; color:#f8fafc;">
-        <div style="text-align:center;">
-            <h2 id="countdown-topic" style="font-size:24px; margin-bottom:10px;">Weekly Team Sync</h2>
-            <p style="color:#94a3b8; margin-bottom:30px;">The meeting has not started yet.</p>
-            <div id="timer"
-                style="font-size:64px; font-weight:700; font-variant-numeric: tabular-nums; letter-spacing: 2px; color:#6c63ff;">
-                00:00:00</div>
-            <p id="countdown-sub" style="color:#64748b; font-size:14px; margin-top:15px;">Meeting starts in...</p>
+        <!-- 2. Password State -->
+        <div id="password-state" class="state-container">
+            <i class="ri-lock-fill" style="font-size: 40px; color: var(--primary); margin-bottom: 15px;"></i>
+            <h2>Password Required</h2>
+            <p class="description">This meeting is protected. Please enter the access code provided by the host.</p>
+
+            <div class="input-group">
+                <input type="password" id="joinPass" placeholder="Enter Meeting Password" autocomplete="off">
+            </div>
+
+            <button onclick="verifyJoinPassword()" class="btn-premium">
+                Join Meeting <i class="ri-arrow-right-line"></i>
+            </button>
+            <div id="passError" class="error-box">Incorrect password. Please try again. ❌</div>
         </div>
+
+        <!-- 3. Countdown State -->
+        <div id="countdown-state" class="state-container">
+            <i class="ri-calendar-event-line" style="font-size: 40px; color: var(--primary); margin-bottom: 15px;"></i>
+            <h2 id="countdown-topic">Meeting Title</h2>
+            <p class="description">The host hasn't started the session yet. Sit tight!</p>
+
+            <div id="timer">00:00:00</div>
+            <p style="color: var(--text-muted); font-size: 13px; font-weight: 500;">STARTS IN</p>
+        </div>
+
+        <!-- Error State (Overlayed) -->
+        <div id="error-box-global" class="error-box" style="margin-top: 0;"></div>
     </div>
 
-    <!-- Jitsi Container -->
+    <!-- Fullscreen Jitsi -->
     <div id="jitsi-container"></div>
+
+    <div class="footer-text">
+        <i class="ri-vidicon-line"></i> VibeSphere Media Meeting Software
+    </div>
 
     <script>
         let roomNameParam = null;
@@ -124,7 +282,7 @@
             roomNameParam = urlParams.get('room');
 
             if (!roomNameParam) {
-                showError("Invalid or Missing Meeting Link.");
+                showError("Invalid link. Missing room ID.");
                 return;
             }
 
@@ -134,34 +292,40 @@
                 const data = await res.json();
 
                 if (!data.success) {
-                    showError("Meeting not found or cancelled.");
+                    showError("Meeting not found or has been cancelled.");
                     return;
                 }
 
                 meetingDetails = data;
 
                 if (data.status === 'Ended' || data.status === 'Cancelled') {
-                    showError("This meeting has already ended or been cancelled.");
+                    showError("This meeting has already concluded.");
                     return;
                 }
 
-                // 2. Password Check
+                // 2. Route to correct state
                 if (data.hasPassword) {
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    document.getElementById('password-overlay').style.display = 'flex';
+                    switchState('password-state');
                 } else {
                     checkAndStartMeeting();
                 }
 
             } catch (err) {
-                showError("Connection error. Please try again.");
+                showError("Network error. Checking connection...");
             }
         });
+
+        function switchState(stateId) {
+            document.querySelectorAll('.state-container').forEach(s => s.classList.remove('active'));
+            document.getElementById(stateId).classList.add('active');
+        }
 
         async function verifyJoinPassword() {
             const password = document.getElementById('joinPass').value;
             const err = document.getElementById('passError');
             err.style.display = 'none';
+
+            if (!password) return;
 
             try {
                 const res = await fetch('/api/meeting/verify-password', {
@@ -172,15 +336,11 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    document.getElementById('password-overlay').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('password-overlay').style.display = 'none';
-                        checkAndStartMeeting();
-                    }, 500);
+                    checkAndStartMeeting();
                 } else {
                     err.style.display = 'block';
                 }
-            } catch (e) { alert("Security error"); }
+            } catch (e) { showError("Security validation failed."); }
         }
 
         function checkAndStartMeeting() {
@@ -195,9 +355,8 @@
         }
 
         function showCountdown() {
-            document.getElementById('loading-overlay').style.display = 'none';
+            switchState('countdown-state');
             document.getElementById('countdown-topic').innerText = meetingDetails.topic;
-            document.getElementById('countdown-overlay').style.display = 'flex';
 
             const target = new Date(meetingDetails.scheduledTime).getTime();
 
@@ -207,11 +366,7 @@
 
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
-                    document.getElementById('countdown-overlay').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('countdown-overlay').style.display = 'none';
-                        startJitsi();
-                    }, 500);
+                    startJitsi();
                     return;
                 }
 
@@ -225,8 +380,10 @@
         }
 
         function startJitsi() {
-            document.getElementById('loading-overlay').style.display = 'flex';
-            document.getElementById('loading-status').innerText = "Initializing Jitsi Meeting...";
+            // Hide everything else
+            document.querySelector('.premium-card').style.display = 'none';
+            document.querySelector('.footer-text').style.display = 'none';
+            document.getElementById('jitsi-container').style.display = 'block';
 
             const cleanRoomId = roomNameParam.trim();
             const fullRoomName = `vpaas-magic-cookie-a79c97228cc74f76934669ab12f092f0/${cleanRoomId}`;
@@ -238,46 +395,34 @@
                     width: '100%',
                     height: '100%',
                     userInfo: { displayName: 'Guest Participant' },
-                    configOverwrite: { startWithAudioMuted: true, prejoinPageEnabled: true },
+                    configOverwrite: {
+                        startWithAudioMuted: true,
+                        prejoinPageEnabled: true,
+                        disableDeepLinking: true
+                    },
                     interfaceConfigOverwrite: {
                         TOOLBAR_BUTTONS: ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'participants-pane', 'tileview', 'hangup'],
                         SHOW_JITSI_WATERMARK: false
                     }
                 });
 
-                api.addEventListener('videoConferenceJoined', () => {
-                    document.getElementById('loading-overlay').style.opacity = '0';
-                    setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 500);
-                });
-
                 api.addEventListener('videoConferenceLeft', () => {
                     window.location.href = 'https://vibespheremedia.in';
                 });
 
-                // Fallback fade
-                setTimeout(() => {
-                    if (document.getElementById('loading-overlay').style.display !== 'none') {
-                        document.getElementById('loading-overlay').style.opacity = '0';
-                        setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 500);
-                    }
-                }, 5000);
-
             } catch (err) {
-                showError("Jitsi Load Error");
+                showError("Video engine failed to initialize.");
             }
         }
 
         function showError(msg) {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            const errorElement = document.getElementById('error-message');
-            const spinner = document.querySelector('.spinner');
+            const errBox = document.getElementById('error-box-global');
+            switchState('loading-state');
+            document.getElementById('loading-status').innerText = "Wait...";
+            document.querySelector('.spinner').style.display = 'none';
 
-            loadingOverlay.style.display = 'flex';
-            loadingOverlay.style.opacity = '1';
-            spinner.style.display = 'none';
-            document.getElementById('loading-status').style.display = 'none';
-            errorElement.innerText = msg + " Redirecting...";
-            errorElement.style.display = "block";
+            errBox.innerText = msg;
+            errBox.style.display = "block";
 
             setTimeout(() => { window.location.href = 'https://vibespheremedia.in'; }, 4000);
         }
