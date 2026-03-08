@@ -258,7 +258,12 @@
             <p class="description">The host hasn't started the session yet. Sit tight!</p>
 
             <div id="timer">00:00:00</div>
-            <p style="color: var(--text-muted); font-size: 13px; font-weight: 500;">STARTS IN</p>
+            <p id="timer-label" style="color: var(--text-muted); font-size: 13px; font-weight: 500;">STARTS IN</p>
+
+            <button id="join-btn" onclick="startJitsi()" class="btn-premium"
+                style="display: none; width: 100%; margin-top: 20px;">
+                Join Meeting Now <i class="ri-video-chat-line"></i>
+            </button>
         </div>
 
         <!-- Error State (Overlayed) -->
@@ -366,7 +371,9 @@
 
                 if (diff <= 0) {
                     clearInterval(countdownInterval);
-                    startJitsi();
+                    document.getElementById('timer').innerText = "READY";
+                    document.getElementById('timer-label').style.display = 'none';
+                    document.getElementById('join-btn').style.display = 'flex';
                     return;
                 }
 
@@ -385,8 +392,7 @@
             document.querySelector('.footer-text').style.display = 'none';
             document.getElementById('jitsi-container').style.display = 'block';
 
-            const cleanRoomId = roomNameParam.trim();
-            const fullRoomName = `vpaas-magic-cookie-a79c97228cc74f76934669ab12f092f0/${cleanRoomId}`;
+            const fullRoomName = meetingDetails.roomName; // DB already has full prefix
 
             try {
                 const api = new JitsiMeetExternalAPI('8x8.vc', {

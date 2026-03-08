@@ -2611,8 +2611,9 @@ app.post('/api/admin/create-meeting', checkAuth, async (req, res) => {
         const JAAS_APP_ID = process.env.JAAS_APP_ID;
         if (!JAAS_APP_ID || JAAS_APP_ID === 'YOUR_JAAS_APP_ID_HERE') return res.status(500).json({ success: false, message: 'JaaS App ID not configured in .env' });
 
-        // Generate JaaS-formatted room name
-        const roomName = `vpaas-magic-cookie-${JAAS_APP_ID}/VibeSphere-Meeting-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        // Generate JaaS-formatted room name correctly (Lowercase for XMPP compatibility)
+        const appId = JAAS_APP_ID.replace('vpaas-magic-cookie-', '');
+        const roomName = `vpaas-magic-cookie-${appId}/vibesphere-meeting-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toLowerCase();
 
         const meeting = new Meeting({
             topic,
@@ -3392,6 +3393,37 @@ app.use((req, res, next) => {
     }
 });
 
+
 server.listen(PORT, () => {
     console.log(`🚀 Live Server Running on http://localhost:${PORT}`);
+
+    // 🟢 Migration: Fix double-prefixed meetings (Background)
+    (async () => {
+        try {
+            const Meeting = mongoose.model('Meeting');
+            // Find meetings with double prefix OR uppercase letters in the room part
+            const meetings = await Meeting.find({
+                $or: [
+                    { roomName: /vpaas-magic-cookie-vpaas-magic-cookie-/ },
+                    { roomName: /[A-Z]/ } // Anything with uppercase
+                ]
+            });
+            if (meetings.length > 0) {
+                console.log(`🛠️ Fixing ${meetings.length} legacy broken meeting links...`);
+                for (const m of meetings) {
+                    // Fix double prefix AND ensure lowercase
+                    let fixed = m.roomName.replace('vpaas-magic-cookie-vpaas-magic-cookie-', 'vpaas-magic-cookie-');
+                    fixed = fixed.toLowerCase();
+
+                    if (m.roomName !== fixed) {
+                        m.roomName = fixed;
+                        await m.save();
+                    }
+                }
+                console.log("✅ Room names migration complete.");
+            }
+        } catch (e) {
+            console.error('Migration error:', e.message);
+        }
+    })();
 });
