@@ -82,6 +82,189 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(245, 158, 11, 0.25);
         }
+
+        .attendance-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .attendance-action-btn {
+            border: none;
+            border-radius: 22px;
+            padding: 8px 14px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .attendance-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .attendance-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .attendance-summary-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+        }
+
+        .attendance-summary-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .attendance-summary-card .value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-top: 6px;
+        }
+
+        .attendance-filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .attendance-status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .doc-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .doc-status-unverified {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .doc-status-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .doc-status-approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .doc-status-denied {
+            background: #ffe4e6;
+            color: #be123c;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .doc-btn {
+            border: none;
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .doc-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .doc-btn-primary {
+            background: #4f46e5;
+            color: #fff;
+        }
+
+        .doc-btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .doc-btn-pending {
+            background: #fde68a;
+            color: #92400e;
+        }
+
+        .doc-btn-approved {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        .btn-spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .doc-actions {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .doc-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 
@@ -96,6 +279,9 @@
             <ul class="sidebar-menu">
                 <li id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="ri-dashboard-line"></i>
                     Dashboard</li>
+                <li id="nav-attendance" onclick="switchTab('attendance')"><i class="ri-timer-line"></i> Attendance
+                </li>
+                <li id="nav-payslip" onclick="switchTab('payslip')"><i class="ri-file-list-3-line"></i> Payslip</li>
                 <li id="nav-tasks" onclick="switchTab('tasks')"><i class="ri-list-check"></i> My Tasks</li>
                 <li id="nav-payouts" onclick="switchTab('payouts')"><i class="ri-history-line"></i> Payout History</li>
                 <li id="nav-notices" onclick="switchTab('notices')"><i class="ri-notification-3-line"></i> Notice Board
@@ -122,12 +308,9 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <button id="dutyBtn" onclick="toggleDutyStatus()"
-                        style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <span class="status-dot"
-                            style="width: 10px; height: 10px; background: white; border-radius: 50%; display: inline-block;"></span>
-                        <span id="dutyText">Offline</span>
-                    </button>
+                    <div id="attendanceControls" class="attendance-toolbar">
+                        <span class="attendance-chip">Loading attendance...</span>
+                    </div>
 
                     <div class="header-profile" style="position: relative;">
                         <img id="headerProfileImg" class="profile-circle" onclick="toggleProfileMenu()"
@@ -282,6 +465,87 @@
                                 </tr>
                             </thead>
                             <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            <div id="view-attendance" class="tab-content" style="display: none;">
+                <section class="task-section">
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <h2>🕒 Attendance Dashboard</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-outline" onclick="fetchMyAttendanceHistory()" style="padding:8px 12px;">Refresh</button>
+                            <button class="btn-outline" onclick="openApprovalRequestsModal()" style="padding:8px 12px;">My Approval Requests</button>
+                        </div>
+                    </div>
+
+                    <div class="attendance-summary-grid">
+                        <div class="attendance-summary-card">
+                            <div class="label">Present Days</div>
+                            <div id="attPresentDays" class="value">0</div>
+                        </div>
+                        <div class="attendance-summary-card">
+                            <div class="label">Absent Days</div>
+                            <div id="attAbsentDays" class="value">0</div>
+                        </div>
+                        <div class="attendance-summary-card">
+                            <div class="label">Total Work Hours</div>
+                            <div id="attTotalHours" class="value">0h 0m</div>
+                        </div>
+                        <div class="attendance-summary-card">
+                            <div class="label">Total Break Time</div>
+                            <div id="attTotalBreak" class="value">0h 0m</div>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:20px;background:#ffffff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <h3 style="margin:0;color:#0f172a;font-size:16px;">Attendance History</h3>
+                            <p style="margin:6px 0 0 0;color:#64748b;font-size:13px;">Minimal view: open month-wise history only when needed.</p>
+                        </div>
+                        <button class="btn-modern btn-purple" style="width:auto;padding:10px 16px;" onclick="openAttendanceHistoryModal()">View Attendance History</button>
+                    </div>
+                </section>
+            </div>
+            <div id="view-payslip" class="tab-content" style="display: none;">
+                <section class="task-section">
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <h2>🧾 Payslip Center</h2>
+                        <button class="btn-outline" onclick="openApprovalRequestsModal()" style="padding:8px 12px;">My Approval Requests</button>
+                    </div>
+
+                    <div style="max-width:560px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                        <div style="text-align:left;">
+                            <label class="modern-label">Month</label>
+                            <select id="payslipMonthFilter" class="modern-input"></select>
+                        </div>
+                        <div style="text-align:left;">
+                            <label class="modern-label">Year</label>
+                            <select id="payslipYearFilter" class="modern-input"></select>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+                        <button class="btn-modern btn-purple" type="button" onclick="handleQuickDownload('Payslip')">📥 Download Payslip PDF</button>
+                    </div>
+
+                    <div class="section-header" style="margin-top:20px;">
+                        <h2>📜 Payslip History</h2>
+                    </div>
+                    <div class="task-table-wrapper">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Present</th>
+                                    <th>Absent</th>
+                                    <th>Document Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payslipHistoryBody">
+                                <tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No payslip history available.</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -475,6 +739,17 @@
                             🟢</span>
                     </div>
 
+                    <div id="staffPinnedBanner"
+                        style="display:none;background:#eff6ff;padding:10px 16px;border-bottom:1px solid #dbeafe;align-items:center;justify-content:space-between;gap:12px;">
+                        <div style="min-width:0;display:flex;flex-direction:column;gap:4px;">
+                            <strong style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#2563eb;">Pinned Message</strong>
+                            <span id="staffPinnedBannerText"
+                                style="font-size:13px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No pinned message</span>
+                        </div>
+                        <button onclick="scrollToPinnedStaffMessage()"
+                            style="background:#ffffff;border:1px solid #dbeafe;color:#2563eb;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700;">Pin</button>
+                    </div>
+
                     <div id="chatMessages"
                         style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
                     </div>
@@ -654,6 +929,80 @@
                 </div>
             </div>
 
+            <div id="downloadChoiceModal" class="modal-overlay" style="display:none;">
+                <div class="modal-content" style="max-width:480px;">
+                    <h3 style="margin:0 0 10px 0;color:#0f172a;">How do you want to download this document?</h3>
+                    <p id="downloadChoiceText" style="margin:0 0 18px 0;color:#475569;font-size:14px;">Choose a format for this month.</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+                        <button id="btnChoiceDraft" class="doc-btn doc-btn-secondary" style="justify-content:center;padding:10px;">📄 Unverified (No Signature)</button>
+                        <button id="btnChoiceVerified" class="doc-btn doc-btn-primary" style="justify-content:center;padding:10px;">✅ Verified (Official)</button>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                        <button class="btn-outline" onclick="closeDownloadChoiceModal()" style="padding:8px 12px;">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sendApprovalModal" class="modal-overlay" style="display:none;">
+                <div class="modal-content" style="max-width:460px;">
+                    <h3 style="margin:0 0 10px 0;color:#0f172a;">Do you want to send this document to the Admin for verification?</h3>
+                    <p id="sendApprovalText" style="margin:0 0 18px 0;color:#475569;font-size:14px;">Approval will be required for official PDF.</p>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+                        <button id="btnSendApprovalYes" class="doc-btn doc-btn-primary">Yes, Send Request</button>
+                        <button class="doc-btn doc-btn-secondary" onclick="closeSendApprovalModal()">No, Go Back</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="approvalRequestsModal" class="modal-overlay" style="display:none;">
+                <div class="modal-content" style="max-width:860px;width:94%;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                        <h3 style="margin:0;color:#0f172a;">My Approval Requests</h3>
+                        <button class="btn-outline" onclick="closeApprovalRequestsModal()" style="padding:8px 12px;">Close</button>
+                    </div>
+                    <div class="task-table-wrapper">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Document Month</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvalRequestsBody">
+                                <tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px;">Loading requests...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="attendanceHistoryModal" class="modal-overlay" style="display:none;">
+                <div class="modal-content" style="max-width:900px;width:94%;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                        <h3 style="margin:0;color:#0f172a;">Attendance History</h3>
+                        <button class="btn-outline" onclick="closeAttendanceHistoryModal()" style="padding:8px 12px;">Close</button>
+                    </div>
+                    <div class="task-table-wrapper">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Present</th>
+                                    <th>Absent</th>
+                                    <th>Total Hours</th>
+                                    <th>Document Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceMonthHistoryBody">
+                                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">Loading attendance history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
     <script src="/js/NotificationManager.js"></script>
@@ -663,6 +1012,7 @@
         // 1. SECURITY & PROFILE SETUP
         // ==========================================
         let staffData = null;
+        let staffPinnedMessage = null;
 
         async function checkAuthAndLoadData() {
             try {
@@ -737,6 +1087,20 @@
 
             const navElement = document.getElementById('nav-' + tabId);
             if (navElement) navElement.classList.add('active');
+
+            if (tabId === 'attendance' || tabId === 'payslip') fetchMyAttendanceHistory();
+        }
+
+        function formatDuration(ms) {
+            const totalMins = Math.max(0, Math.floor((ms || 0) / 60000));
+            const h = Math.floor(totalMins / 60);
+            const m = totalMins % 60;
+            return `${h}h ${m}m`;
+        }
+
+        function formatTime(value) {
+            if (!value) return '—';
+            return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
         function toggleProfileMenu() {
@@ -749,6 +1113,14 @@
                 const menu = document.getElementById('profile-menu');
                 if (menu && menu.style.display === 'block') menu.style.display = 'none';
             }
+
+            const closableModalIds = ['downloadChoiceModal', 'sendApprovalModal', 'approvalRequestsModal', 'attendanceHistoryModal'];
+            closableModalIds.forEach((id) => {
+                const modal = document.getElementById(id);
+                if (modal && event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
         }
 
         function openIDCard() { document.getElementById('idCardModal').style.display = 'flex'; }
@@ -1128,44 +1500,656 @@
         };
 
         // ==========================================
-        // 5. DUTY STATUS & SETTINGS
+        // 5. ATTENDANCE CHECK-IN WORKFLOW
         // ==========================================
-        window.isWorkingOnline = staffData ? (staffData.isOnline || false) : false;
+        let todayAttendance = null;
 
-        window.initializeDutyStatus = function () {
-            const btn = document.getElementById('dutyBtn');
-            const text = document.getElementById('dutyText');
-            if (!btn || !text) return;
+        function getDutyState() {
+            if (!todayAttendance || !todayAttendance.checkInTime) return 'not-started';
+            if (todayAttendance.checkOutTime) return 'completed';
 
-            if (window.isWorkingOnline) {
-                btn.style.background = '#10b981';
-                text.innerText = 'Online (Working)';
+            const breaks = todayAttendance.breaks || [];
+            const lastBreak = breaks.length ? breaks[breaks.length - 1] : null;
+            if (lastBreak && lastBreak.startTime && !lastBreak.endTime) return 'on-break';
+            return 'working';
+        }
+
+        function getStatusChipHtml(label, bg, color) {
+            return `<span class="attendance-chip" style="background:${bg};color:${color};">${label}</span>`;
+        }
+
+        function renderAttendanceControls() {
+            const box = document.getElementById('attendanceControls');
+            if (!box) return;
+
+            const state = getDutyState();
+            const liveWorkMs = todayAttendance?.totalWorkingMsLive ?? todayAttendance?.totalWorkingMs ?? 0;
+            let content = '';
+
+            if (state === 'not-started') {
+                content = `
+                    <button class="attendance-action-btn" style="background:#10b981;" onclick="performAttendanceAction('check-in')">
+                        <i class="ri-login-box-line"></i> Check-In
+                    </button>
+                    ${getStatusChipHtml('Offline', '#fee2e2', '#b91c1c')}
+                `;
+            } else if (state === 'on-break') {
+                content = `
+                    <button class="attendance-action-btn" style="background:#0ea5e9;" onclick="performAttendanceAction('resume-work')">
+                        <i class="ri-play-circle-line"></i> Resume
+                    </button>
+                    <button class="attendance-action-btn" style="background:#ef4444;" onclick="performAttendanceAction('check-out')">
+                        <i class="ri-logout-box-r-line"></i> Check-Out
+                    </button>
+                    ${getStatusChipHtml('On Break', '#fef3c7', '#b45309')}
+                `;
+            } else if (state === 'working') {
+                content = `
+                    <button class="attendance-action-btn" style="background:#f59e0b;" onclick="performAttendanceAction('take-break')">
+                        <i class="ri-pause-circle-line"></i> Break
+                    </button>
+                    <button class="attendance-action-btn" style="background:#ef4444;" onclick="performAttendanceAction('check-out')">
+                        <i class="ri-logout-box-r-line"></i> Check-Out
+                    </button>
+                    ${getStatusChipHtml('Online', '#dcfce7', '#15803d')}
+                `;
             } else {
-                btn.style.background = '#ef4444';
-                text.innerText = 'Offline';
+                content = `
+                    <button class="attendance-action-btn" style="background:#64748b;cursor:not-allowed;" disabled>
+                        <i class="ri-check-double-line"></i> Shift Closed
+                    </button>
+                    ${getStatusChipHtml(`Worked ${formatDuration(liveWorkMs)}`, '#e2e8f0', '#334155')}
+                `;
+            }
+
+            box.innerHTML = content;
+        }
+
+        async function fetchTodayAttendance() {
+            try {
+                const res = await fetch('/api/staff/today-attendance', { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) {
+                    todayAttendance = data.attendance || null;
+                    if (staffData) staffData.isOnline = !!data.isOnline;
+                }
+            } catch (e) {
+                console.error('Today attendance fetch error:', e);
+            }
+        }
+
+        window.initializeDutyStatus = async function () {
+            await fetchTodayAttendance();
+            renderAttendanceControls();
+        };
+
+        window.performAttendanceAction = async function (action) {
+            try {
+                const res = await fetch(`/api/staff/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: staffData.email }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    alert(data.message || 'Action failed.');
+                    return;
+                }
+
+                todayAttendance = data.attendance || todayAttendance;
+                if (staffData) staffData.isOnline = !!data.isOnline;
+                renderAttendanceControls();
+                if (document.getElementById('view-attendance').style.display !== 'none') {
+                    fetchMyAttendanceHistory();
+                }
+            } catch (e) {
+                alert('Attendance action failed.');
             }
         };
 
+        // Backward compatibility for old button bindings.
         window.toggleDutyStatus = async function () {
-            window.isWorkingOnline = !window.isWorkingOnline;
-            window.initializeDutyStatus();
+            const state = getDutyState();
+            if (state === 'not-started') return performAttendanceAction('check-in');
+            if (state === 'working' || state === 'on-break') return performAttendanceAction('check-out');
+            alert('Today shift already completed.');
+        };
 
+        const MONTH_NAMES = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        let cachedAttendanceRows = [];
+        let cachedApprovalRows = [];
+        let approvalMap = {};
+        let pendingDocumentContext = null;
+
+        function buildApprovalKey(documentType, month, year) {
+            return `${documentType}-${year}-${String(month).padStart(2, '0')}`;
+        }
+
+        function normalizeApprovalStatus(status) {
+            const normalized = String(status || '').trim();
+            if (normalized === 'Approved') return 'Approved';
+            if (normalized === 'Pending_Approval') return 'Pending_Approval';
+            if (normalized === 'Denied') return 'Denied';
+            return 'Unverified';
+        }
+
+        function getApprovalStatusBadge(status) {
+            const normalized = normalizeApprovalStatus(status);
+            if (normalized === 'Approved') return '<span class="doc-status-badge doc-status-approved">🟢 Verified ✓</span>';
+            if (normalized === 'Pending_Approval') return '<span class="doc-status-badge doc-status-pending">🟡 Pending Approval</span>';
+            if (normalized === 'Denied') return '<span class="doc-status-badge doc-status-denied">❌ Denied</span>';
+            return '<span class="doc-status-badge doc-status-unverified">🔴 Draft / Unverified</span>';
+        }
+
+        function getDocumentLabel(documentType) {
+            return documentType === 'AttendanceReport' ? 'Attendance Report' : 'Payslip';
+        }
+
+        function getMonthYearLabel(month, year) {
+            const monthIndex = Number(month) - 1;
+            return `${MONTH_NAMES[monthIndex] || 'Month'} ${year}`;
+        }
+
+        function getDocStatus(documentType, month, year) {
+            const key = buildApprovalKey(documentType, month, year);
+            return normalizeApprovalStatus(approvalMap[key]);
+        }
+
+        function rebuildApprovalMap(rows) {
+            approvalMap = {};
+            (rows || []).forEach((row) => {
+                const key = buildApprovalKey(row.documentType, row.month, row.year);
+                approvalMap[key] = normalizeApprovalStatus(row.approvalStatus);
+            });
+        }
+
+        function setLoadingButtonState(btn, loading, text) {
+            if (!btn) return;
+            if (loading) {
+                if (!btn.dataset.originalText) {
+                    btn.dataset.originalText = btn.innerHTML;
+                }
+                btn.disabled = true;
+                btn.innerHTML = `<span class="btn-spinner"></span> ${text || 'Processing...'}`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+                delete btn.dataset.originalText;
+            }
+        }
+
+        function buildMonthlyAttendanceHistory(attendanceRows) {
+            const grouped = {};
+            (attendanceRows || []).forEach((rec) => {
+                if (!rec?.dateString) return;
+                const year = Number(rec.dateString.slice(0, 4));
+                const month = Number(rec.dateString.slice(5, 7));
+                const key = `${year}-${String(month).padStart(2, '0')}`;
+                if (!grouped[key]) {
+                    grouped[key] = { month, year, present: 0, absent: 0, totalWorkMs: 0 };
+                }
+                if (rec.status === 'Present') grouped[key].present += 1;
+                if (rec.status === 'Absent') grouped[key].absent += 1;
+                grouped[key].totalWorkMs += Number(rec.totalWorkingMsLive ?? rec.totalWorkingMs ?? 0);
+            });
+
+            return Object.values(grouped).sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            });
+        }
+
+        function mergeMonthsFromApprovals(monthRows) {
+            const map = new Map();
+            (monthRows || []).forEach((row) => {
+                map.set(`${row.year}-${String(row.month).padStart(2, '0')}`, row);
+            });
+
+            (cachedApprovalRows || []).forEach((row) => {
+                if (row.documentType !== 'Payslip') return;
+                const key = `${row.year}-${String(row.month).padStart(2, '0')}`;
+                if (!map.has(key)) {
+                    map.set(key, { month: row.month, year: row.year, present: 0, absent: 0, totalWorkMs: 0 });
+                }
+            });
+
+            return Array.from(map.values()).sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            });
+        }
+
+        function getDocumentActionsHtml(documentType, month, year, status) {
+            const normalized = normalizeApprovalStatus(status);
+            if (normalized === 'Approved') {
+                return `
+                    <div class="doc-actions">
+                        <button class="doc-btn doc-btn-approved" onclick="downloadDocumentFile('${documentType}', ${month}, ${year})">📥 Download Official PDF</button>
+                    </div>
+                `;
+            }
+
+            if (normalized === 'Pending_Approval') {
+                return `
+                    <div class="doc-actions">
+                        <button class="doc-btn doc-btn-secondary" onclick="downloadDocumentFile('${documentType}', ${month}, ${year})">📄 Download Draft</button>
+                        <button class="doc-btn doc-btn-pending" disabled>⏳ Approval Pending...</button>
+                    </div>
+                `;
+            }
+
+            const ctaText = normalized === 'Denied' ? '📤 Resend for Approval' : '📤 Send for Approval';
+            return `
+                <div class="doc-actions">
+                    <button class="doc-btn doc-btn-secondary" onclick="downloadDocumentFile('${documentType}', ${month}, ${year})">📄 Download Draft</button>
+                    <button class="doc-btn doc-btn-primary" onclick="sendForApproval('${documentType}', ${month}, ${year}, this)">${ctaText}</button>
+                </div>
+            `;
+        }
+
+        function seedAttendanceFilters() {
+            const monthSel = document.getElementById('attendanceMonthFilter');
+            const yearSel = document.getElementById('attendanceYearFilter');
+            if (!monthSel || !yearSel) return;
+
+            const months = [
+                'All Months', 'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+
+            monthSel.innerHTML = months.map((m, i) => {
+                const value = i === 0 ? '' : String(i).padStart(2, '0');
+                return `<option value="${value}">${m}</option>`;
+            }).join('');
+
+            const y = new Date().getFullYear();
+            yearSel.innerHTML = `
+                <option value="">All Years</option>
+                <option value="${y + 1}">${y + 1}</option>
+                <option value="${y}" selected>${y}</option>
+                <option value="${y - 1}">${y - 1}</option>
+                <option value="${y - 2}">${y - 2}</option>
+            `;
+            monthSel.value = String(new Date().getMonth() + 1).padStart(2, '0');
+        }
+
+        function seedPayslipFilters() {
+            const monthSel = document.getElementById('payslipMonthFilter');
+            const yearSel = document.getElementById('payslipYearFilter');
+            if (!monthSel || !yearSel) return;
+
+            monthSel.innerHTML = `
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            `;
+
+            const y = new Date().getFullYear();
+            yearSel.innerHTML = `
+                <option value="${y + 1}">${y + 1}</option>
+                <option value="${y}" selected>${y}</option>
+                <option value="${y - 1}">${y - 1}</option>
+                <option value="${y - 2}">${y - 2}</option>
+            `;
+
+            monthSel.value = String(new Date().getMonth() + 1).padStart(2, '0');
+        }
+
+        function renderAttendanceMonthHistoryModal(monthRows) {
+            const body = document.getElementById('attendanceMonthHistoryBody');
+            if (!body) return;
+
+            if (!monthRows.length) {
+                body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">No monthly attendance report data.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = monthRows.map((row) => {
+                const status = getDocStatus('AttendanceReport', row.month, row.year);
+                return `
+                    <tr>
+                        <td>${getMonthYearLabel(row.month, row.year)}</td>
+                        <td>${row.present}</td>
+                        <td>${row.absent}</td>
+                        <td>${formatDuration(row.totalWorkMs)}</td>
+                        <td>${getApprovalStatusBadge(status)}</td>
+                        <td>${getDocumentActionsHtml('AttendanceReport', row.month, row.year, status)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderPayslipHistory(monthRows) {
+            const body = document.getElementById('payslipHistoryBody');
+            if (!body) return;
+
+            if (!monthRows.length) {
+                body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No payslip history available.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = monthRows.map((row) => {
+                const status = getDocStatus('Payslip', row.month, row.year);
+                return `
+                    <tr>
+                        <td>${getMonthYearLabel(row.month, row.year)}</td>
+                        <td>${row.present}</td>
+                        <td>${row.absent}</td>
+                        <td>${getApprovalStatusBadge(status)}</td>
+                        <td>${getDocumentActionsHtml('Payslip', row.month, row.year, status)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function fetchMyDocumentApprovals() {
             try {
-                const response = await fetch('/api/staff/toggle-status', {
+                const res = await fetch('/api/staff/my-document-approvals', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) {
+                    cachedApprovalRows = [];
+                    rebuildApprovalMap([]);
+                    return;
+                }
+                cachedApprovalRows = data.approvals || [];
+                rebuildApprovalMap(cachedApprovalRows);
+            } catch (e) {
+                cachedApprovalRows = [];
+                rebuildApprovalMap([]);
+            }
+        }
+
+        async function refreshDocumentHistories() {
+            const monthRows = buildMonthlyAttendanceHistory(cachedAttendanceRows);
+            renderAttendanceMonthHistoryModal(monthRows);
+            renderPayslipHistory(mergeMonthsFromApprovals(monthRows));
+        }
+
+        function renderAttendanceHistory(attendance) {
+            const body = document.getElementById('attendanceHistoryBody');
+
+            if (!attendance || !attendance.length) {
+                if (body) {
+                    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px;">No attendance records found.</td></tr>';
+                }
+                document.getElementById('attPresentDays').innerText = '0';
+                document.getElementById('attAbsentDays').innerText = '0';
+                document.getElementById('attTotalHours').innerText = '0h 0m';
+                document.getElementById('attTotalBreak').innerText = '0h 0m';
+                return;
+            }
+
+            let presentDays = 0;
+            let absentDays = 0;
+            let totalWorkMs = 0;
+            let totalBreakMs = 0;
+
+            const attendanceRowsHtml = attendance.map((rec) => {
+                const workMs = rec.totalWorkingMsLive ?? rec.totalWorkingMs ?? 0;
+                const breakMs = rec.totalBreakMsLive ?? 0;
+                totalWorkMs += workMs;
+                totalBreakMs += breakMs;
+                if (rec.status === 'Present') presentDays += 1;
+                if (rec.status === 'Absent') absentDays += 1;
+
+                const statusStyle = rec.status === 'Present'
+                    ? { bg: '#dcfce7', color: '#15803d' }
+                    : rec.status === 'Absent'
+                        ? { bg: '#fee2e2', color: '#b91c1c' }
+                        : { bg: '#fef3c7', color: '#b45309' };
+
+                const breakCount = (rec.breaks || []).length;
+                return `
+                    <tr>
+                        <td>${rec.dateString || '—'}</td>
+                        <td>${formatTime(rec.checkInTime)}</td>
+                        <td>${formatTime(rec.checkOutTime)}</td>
+                        <td>${breakCount}</td>
+                        <td>${formatDuration(breakMs)}</td>
+                        <td>${formatDuration(workMs)}</td>
+                        <td><span class="attendance-status-pill" style="background:${statusStyle.bg};color:${statusStyle.color};">${rec.status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (body) body.innerHTML = attendanceRowsHtml;
+
+            document.getElementById('attPresentDays').innerText = presentDays;
+            document.getElementById('attAbsentDays').innerText = absentDays;
+            document.getElementById('attTotalHours').innerText = formatDuration(totalWorkMs);
+            document.getElementById('attTotalBreak').innerText = formatDuration(totalBreakMs);
+        }
+
+        async function fetchMyAttendanceHistory() {
+            const month = document.getElementById('attendanceMonthFilter')?.value || '';
+            const year = document.getElementById('attendanceYearFilter')?.value || '';
+            const params = new URLSearchParams();
+            if (month && year) {
+                params.set('month', month);
+                params.set('year', year);
+            }
+
+            const url = params.toString() ? `/api/staff/my-attendance?${params.toString()}` : '/api/staff/my-attendance';
+            try {
+                const [attendanceRes] = await Promise.all([
+                    fetch(url, { credentials: 'include' }),
+                    fetchMyDocumentApprovals()
+                ]);
+                const data = await attendanceRes.json();
+                if (!data.success) {
+                    cachedAttendanceRows = [];
+                    renderAttendanceHistory([]);
+                    refreshDocumentHistories();
+                    return;
+                }
+                cachedAttendanceRows = data.attendance || [];
+                renderAttendanceHistory(cachedAttendanceRows);
+                refreshDocumentHistories();
+            } catch (e) {
+                cachedAttendanceRows = [];
+                renderAttendanceHistory([]);
+                refreshDocumentHistories();
+            }
+        }
+
+        function getActiveMonthYear(documentType) {
+            if (documentType === 'Payslip') {
+                const month = Number(document.getElementById('payslipMonthFilter')?.value || 0);
+                const year = Number(document.getElementById('payslipYearFilter')?.value || 0);
+                return { month, year };
+            }
+
+            const now = new Date();
+            const month = Number(document.getElementById('attendanceMonthFilter')?.value || (now.getMonth() + 1));
+            const year = Number(document.getElementById('attendanceYearFilter')?.value || now.getFullYear());
+            return { month, year };
+        }
+
+        window.downloadDocumentFile = function (documentType, month, year) {
+            const params = new URLSearchParams();
+            params.set('month', String(month).padStart(2, '0'));
+            params.set('year', String(year));
+
+            const endpoint = documentType === 'AttendanceReport'
+                ? '/api/staff/download-attendance-report'
+                : '/api/staff/download-payslip';
+            window.open(`${endpoint}?${params.toString()}`, '_blank');
+        };
+
+        function openDownloadChoiceModal(documentType, month, year) {
+            pendingDocumentContext = { documentType, month, year };
+            const modal = document.getElementById('downloadChoiceModal');
+            const info = document.getElementById('downloadChoiceText');
+            if (info) {
+                info.innerText = `${getDocumentLabel(documentType)} • ${getMonthYearLabel(month, year)}`;
+            }
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeDownloadChoiceModal() {
+            const modal = document.getElementById('downloadChoiceModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function openSendApprovalModal(documentType, month, year) {
+            pendingDocumentContext = { documentType, month, year };
+            const modal = document.getElementById('sendApprovalModal');
+            const info = document.getElementById('sendApprovalText');
+            if (info) {
+                info.innerText = `${getDocumentLabel(documentType)} • ${getMonthYearLabel(month, year)}`;
+            }
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeSendApprovalModal() {
+            const modal = document.getElementById('sendApprovalModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        window.closeDownloadChoiceModal = closeDownloadChoiceModal;
+        window.closeSendApprovalModal = closeSendApprovalModal;
+
+        window.sendForApproval = async function (documentType, month, year, btn) {
+            setLoadingButtonState(btn, true, 'Sending...');
+            try {
+                const res = await fetch('/api/staff/request-document-approval', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: staffData.email, isOnline: window.isWorkingOnline }), credentials: 'include'
+                    credentials: 'include',
+                    body: JSON.stringify({ documentType, month, year })
                 });
-                const data = await response.json();
+                const data = await res.json();
+                if (!data.success) {
+                    alert(data.message || 'Could not send request for approval.');
+                    return;
+                }
 
-                if (data.success) {
-                    staffData.isOnline = window.isWorkingOnline;
-                } else throw new Error("Backend failed");
+                const key = buildApprovalKey(documentType, month, year);
+                approvalMap[key] = 'Pending_Approval';
+                await fetchMyDocumentApprovals();
+                refreshDocumentHistories();
+                alert('Request sent to Admin for approval.');
             } catch (e) {
-                alert("⚠️ Status update nahi hua. Internet check karo.");
-                window.isWorkingOnline = !window.isWorkingOnline;
-                window.initializeDutyStatus();
+                alert('Could not send request for approval. Please try again.');
+            } finally {
+                setLoadingButtonState(btn, false);
             }
+        };
+
+        async function handleDocumentDownloadFlow(documentType, month, year) {
+            const status = getDocStatus(documentType, month, year);
+
+            if (status === 'Pending_Approval') {
+                alert('You have already sent this for approval. Please wait for the Admin to verify.');
+                return;
+            }
+
+            if (status === 'Approved') {
+                window.downloadDocumentFile(documentType, month, year);
+                return;
+            }
+
+            openDownloadChoiceModal(documentType, month, year);
+        }
+
+        window.handleDocumentDownloadFlow = handleDocumentDownloadFlow;
+
+        window.handleQuickDownload = function (documentType) {
+            const { month, year } = getActiveMonthYear(documentType);
+            if (!month || !year) {
+                alert('Please select month and year first.');
+                return;
+            }
+            handleDocumentDownloadFlow(documentType, month, year);
+        };
+
+        function renderApprovalRequestsTable() {
+            const body = document.getElementById('approvalRequestsBody');
+            if (!body) return;
+
+            if (!cachedApprovalRows.length) {
+                body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px;">No approval requests found.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = cachedApprovalRows.map((row) => `
+                <tr>
+                    <td>${getMonthYearLabel(row.month, row.year)}</td>
+                    <td>${getDocumentLabel(row.documentType)}</td>
+                    <td>${getApprovalStatusBadge(row.approvalStatus)}</td>
+                </tr>
+            `).join('');
+        }
+
+        window.openApprovalRequestsModal = async function () {
+            const modal = document.getElementById('approvalRequestsModal');
+            if (modal) modal.style.display = 'flex';
+            await fetchMyDocumentApprovals();
+            renderApprovalRequestsTable();
+        };
+
+        window.closeApprovalRequestsModal = function () {
+            const modal = document.getElementById('approvalRequestsModal');
+            if (modal) modal.style.display = 'none';
+        };
+
+        window.openAttendanceHistoryModal = async function () {
+            const modal = document.getElementById('attendanceHistoryModal');
+            if (modal) modal.style.display = 'flex';
+            await fetchMyAttendanceHistory();
+        };
+
+        window.closeAttendanceHistoryModal = function () {
+            const modal = document.getElementById('attendanceHistoryModal');
+            if (modal) modal.style.display = 'none';
+        };
+
+        document.getElementById('btnChoiceDraft')?.addEventListener('click', () => {
+            if (!pendingDocumentContext) return;
+            const { documentType, month, year } = pendingDocumentContext;
+            closeDownloadChoiceModal();
+            window.downloadDocumentFile(documentType, month, year);
+        });
+
+        document.getElementById('btnChoiceVerified')?.addEventListener('click', () => {
+            if (!pendingDocumentContext) return;
+            const { documentType, month, year } = pendingDocumentContext;
+            closeDownloadChoiceModal();
+            openSendApprovalModal(documentType, month, year);
+        });
+
+        document.getElementById('btnSendApprovalYes')?.addEventListener('click', async function () {
+            if (!pendingDocumentContext) return;
+            const { documentType, month, year } = pendingDocumentContext;
+            setLoadingButtonState(this, true, 'Sending...');
+            try {
+                await window.sendForApproval(documentType, month, year, this);
+                closeSendApprovalModal();
+            } finally {
+                setLoadingButtonState(this, false);
+            }
+        });
+
+        window.downloadAttendanceReportPdf = function () {
+            window.handleQuickDownload('AttendanceReport');
+        };
+
+        window.downloadPayslipPdf = function () {
+            window.handleQuickDownload('Payslip');
         };
 
         async function updatePassword() {
@@ -1323,6 +2307,14 @@
             }
         });
 
+        socket.on('document_approval_updated', async (data) => {
+            if (window.notificationManager) {
+                const label = data.documentType === 'AttendanceReport' ? 'Attendance Report' : 'Payslip';
+                window.notificationManager.notify('Document Status Updated', `${label} (${data.month}/${data.year}) is now ${data.approvalStatus}.`);
+            }
+            await fetchMyAttendanceHistory();
+        });
+
         // 🟢 Meeting Updated (Rescheduled)
         socket.on('meeting_updated', (data) => {
             if (typeof fetchStaffMeetings === 'function') fetchStaffMeetings();
@@ -1345,6 +2337,8 @@
                 const hisRes = await fetch('/api/chat/history', { credentials: 'include' });
                 const hisJson = await hisRes.json();
                 if (hisJson.success) {
+                    staffPinnedMessage = hisJson.pinnedMessage || null;
+                    renderStaffPinnedBanner();
                     document.getElementById('chatMessages').innerHTML = '';
                     hisJson.messages.forEach(msg => appendMessageUI(msg));
                     scrollToBottom();
@@ -1363,6 +2357,31 @@
                 badge.innerHTML = 'Live 🟢'; badge.style.background = '#d1fae5'; badge.style.color = '#10b981';
                 input.placeholder = "Type a message..."; input.disabled = false;
             }
+        }
+
+        function getStaffChatPreviewText(msg) {
+            if (msg?.message) return String(msg.message).slice(0, 90);
+            if (msg?.fileName) return msg.fileName;
+            if (msg?.fileType === 'audio') return 'Voice note';
+            return 'Attachment';
+        }
+
+        function renderStaffPinnedBanner() {
+            const banner = document.getElementById('staffPinnedBanner');
+            const text = document.getElementById('staffPinnedBannerText');
+            if (!banner || !text) return;
+            if (!staffPinnedMessage) {
+                banner.style.display = 'none';
+                text.innerText = 'No pinned message';
+                return;
+            }
+            banner.style.display = 'flex';
+            text.innerText = `${staffPinnedMessage.senderName || staffPinnedMessage.senderEmail || 'Admin'}: ${getStaffChatPreviewText(staffPinnedMessage)}`;
+        }
+
+        function scrollToPinnedStaffMessage() {
+            if (!staffPinnedMessage?._id) return;
+            document.getElementById(`msg-${staffPinnedMessage._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function appendMessageUI(msg) {
@@ -1401,8 +2420,9 @@
         <div style="display: flex; gap: 10px; align-self: ${alignSelf}; max-width: 80%; flex-direction: ${isMe ? 'row-reverse' : 'row'};" id="msg-${msg._id}">
             ${!isMe ? `<img src="${photo}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">` : ''}
             <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
-                ${!isMe ? `<span style="font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: bold;">${isAdmin ? '👑 ADMIN' : msg.senderName}</span>` : ''}
+                ${!isMe ? `<span style="font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: bold;">${isAdmin ? `<span style="display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">Admin</span>` : msg.senderName}</span>` : ''}
                 <div style="background: ${bubbleColor}; color: ${textColor}; padding: 10px 15px; border-radius: ${borderRadius}; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 14px;">
+                    ${msg.replyTo && (msg.replyTo.senderName || msg.replyTo.previewText) ? `<div style="margin-bottom:8px;padding:8px 10px;border-radius:10px;background:${isMe || isAdmin ? 'rgba(255,255,255,0.14)' : '#f8fafc'};border-left:3px solid ${isMe || isAdmin ? 'rgba(255,255,255,0.35)' : '#cbd5e1'};font-size:12px;"><strong style="display:block;margin-bottom:4px;">Replying to ${msg.replyTo.senderName || 'Message'}</strong><span>${msg.replyTo.previewText || ''}</span></div>` : ''}
                     ${mediaHtml}
                     ${msg.message || ''}
                 </div>
@@ -1586,7 +2606,15 @@
                 });
             }
         });
-        socket.on('message_deleted', (id) => { const m = document.getElementById(`msg-${id}`); if (m) m.remove(); });
+        socket.on('message_deleted', (id) => {
+            const m = document.getElementById(`msg-${id}`);
+            if (m) m.remove();
+            if (staffPinnedMessage?._id === id) {
+                staffPinnedMessage = null;
+                renderStaffPinnedBanner();
+            }
+        });
+        socket.on('message_pinned', (msg) => { staffPinnedMessage = msg || null; renderStaffPinnedBanner(); });
         socket.on('chat_status_changed', (data) => { updateChatStatusUI(data.isChatBlocked); });
         socket.on('chat_error', (err) => { alert("🚨 " + err); });
         // 🟢 1. Apne Room (Email) mein join karo taaki personal lead ke alerts mil sakein
@@ -1624,6 +2652,9 @@
         });
         // Init on load
         if (staffData) { initChat(); }
+
+        seedAttendanceFilters();
+        seedPayslipFilters();
 
         async function fetchStaffStats() {
             try {

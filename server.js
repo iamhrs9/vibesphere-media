@@ -23,6 +23,16 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+let puppeteerLib = null;
+try {
+    puppeteerLib = require('puppeteer');
+} catch (e) {
+    try {
+        puppeteerLib = require('puppeteer-core');
+    } catch (innerError) {
+        puppeteerLib = null;
+    }
+}
 
 // ==========================================
 // ☁️ CLOUD UPLOAD CONFIG (ImgBB + Cloudinary)
@@ -118,7 +128,12 @@ io.on('connection', (socket) => {
                 fileUrl: data.fileUrl || '',
                 fileType: data.fileType || '',
                 fileName: data.fileName || '',
-                profilePhoto: data.profilePhoto || ''
+                profilePhoto: data.profilePhoto || '',
+                replyTo: data.replyTo ? {
+                    messageId: data.replyTo.messageId || null,
+                    senderName: data.replyTo.senderName || '',
+                    previewText: data.replyTo.previewText || ''
+                } : undefined
             });
             await newMessage.save();
 
@@ -177,6 +192,799 @@ async function checkAuth(req, res, next) {
     } catch (err) {
         res.status(401).json({ error: "Invalid or expired session" });
     }
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatINR(value) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 2
+    }).format(Number(value || 0));
+}
+
+function formatHoursMinutesFromMs(ms) {
+    const safeMs = Math.max(0, Number(ms || 0));
+    const totalMinutes = Math.floor(safeMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+}
+
+function resolveMonthYear(monthInput, yearInput) {
+    const nowIST = getISTNow();
+    const month = Math.min(12, Math.max(1, Number(monthInput) || (nowIST.getMonth() + 1)));
+    const year = Number(yearInput) || nowIST.getFullYear();
+    return { month, year };
+}
+
+function buildMonthRegex(month, year) {
+    const prefix = `${year}-${String(month).padStart(2, '0')}`;
+    return new RegExp(`^${prefix}`);
+}
+
+function getMonthLabel(month, year) {
+    return new Date(year, month - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+async function launchHtmlPdfBrowser() {
+    if (!puppeteerLib) {
+        throw new Error('Puppeteer not installed. Add "puppeteer" (or "puppeteer-core") to dependencies.');
+    }
+
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+        || process.env.CHROME_BIN
+        || process.env.GOOGLE_CHROME_BIN;
+
+    const launchOptions = {
+        headless: process.env.PUPPETEER_HEADLESS === 'false' ? false : true,
+        ignoreHTTPSErrors: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-zygote',
+            '--single-process'
+        ]
+    };
+
+    if (executablePath) {
+        launchOptions.executablePath = executablePath;
+    }
+
+    return puppeteerLib.launch(launchOptions);
+}
+
+async function renderHtmlToPdfBuffer(html, pdfOptions = {}) {
+    let browser;
+    try {
+        browser = await launchHtmlPdfBrowser();
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 1 });
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.emulateMediaType('screen');
+
+        return await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '16mm', right: '14mm', bottom: '16mm', left: '14mm' },
+            ...pdfOptions
+        });
+    } finally {
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (closeErr) {
+                console.error('Failed to close Puppeteer browser:', closeErr.message);
+            }
+        }
+    }
+}
+
+function parseTokenFromRequest(req) {
+    const token = req.cookies?.token;
+    if (!token) return null;
+    try {
+        return jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+    } catch (e) {
+        return null;
+    }
+}
+
+function calculateMonthAttendanceSummary(attendanceList) {
+    let presentDays = 0;
+    let absentDays = 0;
+    let leaveDays = 0;
+    let totalWorkingMs = 0;
+    let totalBreakMs = 0;
+
+    for (const rec of attendanceList) {
+        const status = rec.status || 'Present';
+        if (status === 'Absent') absentDays += 1;
+        else if (status === 'Leave') leaveDays += 1;
+        else presentDays += 1;
+
+        const metrics = calculateAttendanceMetrics(rec, new Date());
+        totalWorkingMs += rec.checkOutTime ? Number(rec.totalWorkingMs || 0) : metrics.netWorkingMs;
+        totalBreakMs += metrics.totalBreakMs;
+    }
+
+    return { presentDays, absentDays, leaveDays, totalWorkingMs, totalBreakMs };
+}
+
+async function getMonthlyAttendanceRecords(staffEmail, month, year) {
+    const monthRegex = buildMonthRegex(month, year);
+    return Attendance.find({
+        staffEmail,
+        dateString: { $regex: monthRegex }
+    }).sort({ dateString: 1 }).lean();
+}
+
+function toAttendanceReportRows(records) {
+    return records.map((rec) => {
+        const metrics = calculateAttendanceMetrics(rec, new Date());
+        const netMs = rec.checkOutTime ? Number(rec.totalWorkingMs || 0) : metrics.netWorkingMs;
+
+        return {
+            date: rec.dateString || '-',
+            checkIn: rec.checkInTime ? new Date(rec.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-',
+            checkOut: rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-',
+            breakTime: formatHoursMinutesFromMs(metrics.totalBreakMs),
+            workTime: formatHoursMinutesFromMs(netMs),
+            status: rec.status || 'Present'
+        };
+    });
+}
+
+const DOC_TYPE_MAP = {
+    attendance: 'AttendanceReport',
+    attendancereport: 'AttendanceReport',
+    payslip: 'Payslip'
+};
+
+const BRAND_LOGO_PATH = path.join(__dirname, 'logo.png');
+const BRAND_SIGNATURE_PATH = path.join(__dirname, 'signature.png');
+
+function normalizeDocumentType(input) {
+    const key = String(input || '').toLowerCase().replace(/[^a-z]/g, '');
+    return DOC_TYPE_MAP[key] || null;
+}
+
+function monthRegexString(month, year) {
+    return `^${year}-${String(month).padStart(2, '0')}`;
+}
+
+function escapeRegex(value = '') {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parsePositiveInt(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function getDocumentApprovalStatus(staffEmail, documentType, month, year) {
+    const doc = await DocumentApproval.findOne({ staffEmail, documentType, month, year }).lean();
+    return doc?.approvalStatus || 'Unverified';
+}
+
+async function createAttendanceReportPdf(staff, month, year, approvalStatusOverride) {
+    const records = await getMonthlyAttendanceRecords(staff.email, month, year);
+    const summary = calculateMonthAttendanceSummary(records);
+    const rows = toAttendanceReportRows(records);
+    const monthLabel = getMonthLabel(month, year);
+    const approvalStatus = approvalStatusOverride ?? await getDocumentApprovalStatus(staff.email, 'AttendanceReport', month, year);
+    const generatedAt = new Date().toLocaleString('en-IN');
+    const html = buildAttendanceReportHtml({ staff, monthLabel, summary, rows, generatedAt, approvalStatus });
+    const pdfBuffer = await renderHtmlToPdfBuffer(html);
+
+    return {
+        pdfBuffer,
+        fileName: `Attendance_Report_${staff.empId || 'STAFF'}_${year}-${String(month).padStart(2, '0')}.pdf`
+    };
+}
+
+async function createPayslipPdf(staff, month, year, options = {}) {
+    const records = await getMonthlyAttendanceRecords(staff.email, month, year);
+    const summary = calculateMonthAttendanceSummary(records);
+
+    const configuredSalary = Number(options.salary) || Number(staff.salaryCtc) || 0;
+    if (configuredSalary <= 0) {
+        throw new Error(options.missingSalaryMessage || 'Monthly salary is missing. Please set salaryCtc for this staff profile.');
+    }
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const perDaySalary = configuredSalary / daysInMonth;
+    const lopDeduction = perDaySalary * summary.absentDays;
+    const professionalTax = Number(options.professionalTax) || 0;
+    const otherDeductions = Number(options.otherDeductions) || 0;
+
+    const earnings = [
+        { label: 'Basic Pay', amount: configuredSalary * 0.5 },
+        { label: 'House Rent Allowance', amount: configuredSalary * 0.2 },
+        { label: 'Special Allowance', amount: configuredSalary * 0.3 }
+    ];
+
+    const deductions = [
+        { label: 'Loss Of Pay (Absent Days)', amount: lopDeduction },
+        { label: 'Professional Tax', amount: professionalTax },
+        { label: 'Other Deductions', amount: otherDeductions }
+    ];
+
+    const totalDeductions = deductions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const netPay = Math.max(0, configuredSalary - totalDeductions);
+    const salaryData = {
+        earnings,
+        deductions,
+        grossSalary: configuredSalary,
+        netPay
+    };
+
+    const monthLabel = getMonthLabel(month, year);
+    const approvalStatus = options.approvalStatus ?? await getDocumentApprovalStatus(staff.email, 'Payslip', month, year);
+    const generatedAt = new Date().toLocaleString('en-IN');
+    const html = buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt, approvalStatus });
+    const pdfBuffer = await renderHtmlToPdfBuffer(html);
+
+    return {
+        pdfBuffer,
+        fileName: `Payslip_${staff.empId || 'STAFF'}_${year}-${String(month).padStart(2, '0')}.pdf`
+    };
+}
+
+function safeDrawImage(doc, imagePath, x, y, options = {}) {
+    try {
+        if (fs.existsSync(imagePath)) {
+            doc.image(imagePath, x, y, options);
+            return true;
+        }
+    } catch (e) {
+        console.error(`Image draw failed (${imagePath}):`, e.message);
+    }
+    return false;
+}
+
+function drawDocumentHeader(doc, title, monthLabel, staff) {
+    doc.rect(0, 0, 595, 120).fill('#f8fafc');
+    const hasLogo = safeDrawImage(doc, BRAND_LOGO_PATH, 40, 26, { width: 140 });
+
+    if (!hasLogo) {
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(20).text('VibeSphere Media', 40, 40);
+    }
+
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(20).text(title, 320, 28, { width: 235, align: 'right' });
+    doc.fillColor('#475569').font('Helvetica').fontSize(10)
+        .text(`Period: ${monthLabel}`, 320, 58, { width: 235, align: 'right' })
+        .text(`Generated: ${new Date().toLocaleString('en-IN')}`, 320, 72, { width: 235, align: 'right' });
+
+    doc.moveTo(40, 118).lineTo(555, 118).lineWidth(1).strokeColor('#e2e8f0').stroke();
+
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11)
+        .text(`Name: ${staff.name || '-'}`, 40, 132)
+        .text(`Employee ID: ${staff.empId || '-'}`, 40, 148)
+        .text(`Email: ${staff.email || '-'}`, 40, 164);
+}
+
+function drawApprovalSignatureBlock(doc, approvalStatus) {
+    const y = 730;
+    const approved = approvalStatus === 'Approved';
+
+    if (approved) {
+        doc.roundedRect(40, y - 22, 115, 22, 6).fill('#dcfce7');
+        doc.fillColor('#166534').font('Helvetica-Bold').fontSize(10).text('VERIFIED ✓', 52, y - 16);
+    } else {
+        doc.roundedRect(40, y - 22, 130, 22, 6).fill('#fee2e2');
+        doc.fillColor('#b91c1c').font('Helvetica-Bold').fontSize(10).text('NOT VERIFIED', 52, y - 16);
+    }
+
+    if (approved) {
+        const drawn = safeDrawImage(doc, BRAND_SIGNATURE_PATH, 400, y - 45, { width: 130 });
+        if (!drawn) {
+            doc.fillColor('#166534').font('Helvetica-Bold').fontSize(11).text('Harsh Panwar', 410, y - 12);
+        }
+    }
+
+    doc.strokeColor('#94a3b8').moveTo(380, y).lineTo(540, y).lineWidth(1).stroke();
+    doc.fillColor('#334155').font('Helvetica').fontSize(9)
+        .text('Authorized Signatory', 380, y + 5, { width: 160, align: 'center' })
+        .text('VibeSphere Media', 380, y + 18, { width: 160, align: 'center' });
+}
+
+function streamAttendanceReportPdf(res, payload) {
+    const { staff, monthLabel, summary, rows, fileName, approvalStatus } = payload;
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    doc.pipe(res);
+
+    drawDocumentHeader(doc, 'Attendance Report', monthLabel, staff);
+
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11);
+    doc.text(`Present Days: ${summary.presentDays}`, 40, 194);
+    doc.text(`Absent Days: ${summary.absentDays}`, 180, 194);
+    doc.text(`Leave Days: ${summary.leaveDays}`, 320, 194);
+    doc.text(`Net Work: ${formatHoursMinutesFromMs(summary.totalWorkingMs)}`, 430, 194, { width: 125, align: 'right' });
+
+    const startY = 225;
+    const cols = [40, 125, 195, 265, 335, 410, 485];
+    doc.rect(40, startY, 515, 22).fill('#0f172a');
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9)
+        .text('Date', cols[0] + 6, startY + 7)
+        .text('Check-In', cols[1] + 6, startY + 7)
+        .text('Check-Out', cols[2] + 6, startY + 7)
+        .text('Break', cols[3] + 6, startY + 7)
+        .text('Net Work', cols[4] + 6, startY + 7)
+        .text('Status', cols[5] + 6, startY + 7);
+
+    let y = startY + 22;
+    const lines = rows.length ? rows : [{ date: '-', checkIn: '-', checkOut: '-', breakTime: '-', workTime: '-', status: 'No Data' }];
+    lines.forEach((row, idx) => {
+        if (y > 680) return;
+        if (idx % 2 === 0) doc.rect(40, y, 515, 21).fill('#f8fafc');
+        doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
+            .text(row.date, cols[0] + 6, y + 6)
+            .text(row.checkIn, cols[1] + 6, y + 6)
+            .text(row.checkOut, cols[2] + 6, y + 6)
+            .text(row.breakTime, cols[3] + 6, y + 6)
+            .text(row.workTime, cols[4] + 6, y + 6)
+            .text(row.status, cols[5] + 6, y + 6);
+        y += 21;
+    });
+
+    drawApprovalSignatureBlock(doc, approvalStatus);
+    doc.end();
+}
+
+function streamPayslipPdf(res, payload) {
+    const { staff, monthLabel, summary, salaryData, fileName, approvalStatus } = payload;
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    doc.pipe(res);
+
+    drawDocumentHeader(doc, 'Employee Payslip', monthLabel, staff);
+
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11)
+        .text(`Present: ${summary.presentDays}`, 40, 194)
+        .text(`Absent: ${summary.absentDays}`, 160, 194)
+        .text(`Leave: ${summary.leaveDays}`, 260, 194)
+        .text(`Net Work: ${formatHoursMinutesFromMs(summary.totalWorkingMs)}`, 380, 194, { width: 175, align: 'right' });
+
+    doc.rect(40, 225, 245, 22).fill('#0f172a');
+    doc.rect(310, 225, 245, 22).fill('#0f172a');
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(10)
+        .text('Earnings', 48, 232)
+        .text('Amount', 215, 232)
+        .text('Deductions', 318, 232)
+        .text('Amount', 485, 232);
+
+    let yLeft = 247;
+    salaryData.earnings.forEach((item, idx) => {
+        if (idx % 2 === 0) doc.rect(40, yLeft, 245, 22).fill('#f8fafc');
+        doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
+            .text(item.label, 48, yLeft + 7)
+            .text(formatINR(item.amount), 190, yLeft + 7, { width: 85, align: 'right' });
+        yLeft += 22;
+    });
+
+    let yRight = 247;
+    salaryData.deductions.forEach((item, idx) => {
+        if (idx % 2 === 0) doc.rect(310, yRight, 245, 22).fill('#f8fafc');
+        doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
+            .text(item.label, 318, yRight + 7)
+            .text(formatINR(item.amount), 460, yRight + 7, { width: 85, align: 'right' });
+        yRight += 22;
+    });
+
+    doc.roundedRect(40, 360, 245, 58, 8).fill('#eef2ff');
+    doc.roundedRect(310, 360, 245, 58, 8).fill('#dcfce7');
+    doc.fillColor('#3730a3').font('Helvetica-Bold').fontSize(10).text('Gross Salary', 52, 376)
+        .fontSize(16).text(formatINR(salaryData.grossSalary), 52, 392);
+    doc.fillColor('#166534').font('Helvetica-Bold').fontSize(10).text('Net Salary Payable', 322, 376)
+        .fontSize(16).text(formatINR(salaryData.netPay), 322, 392);
+
+    drawApprovalSignatureBlock(doc, approvalStatus);
+    doc.end();
+}
+
+function buildPdfShellStyles() {
+    return `
+        <style>
+            :root {
+                --ink: #0f172a;
+                --muted: #475569;
+                --line: #dbe3ee;
+                --sheet: #ffffff;
+                --brand: #0f766e;
+                --brand-soft: #ecfeff;
+                --accent: #0369a1;
+                --danger: #b91c1c;
+                --ok: #166534;
+            }
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                font-family: "Segoe UI", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+                color: var(--ink);
+                background: radial-gradient(circle at top right, #d1fae5, #f8fafc 35%, #f1f5f9);
+            }
+            .page {
+                background: var(--sheet);
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                overflow: hidden;
+                position: relative;
+            }
+            .watermark {
+                position: absolute;
+                right: -20px;
+                top: 42%;
+                transform: rotate(-90deg);
+                font-size: 36px;
+                letter-spacing: 6px;
+                color: rgba(15, 23, 42, 0.06);
+                font-weight: 700;
+            }
+            .head {
+                padding: 20px 24px;
+                background: linear-gradient(120deg, #0f172a, #0f766e);
+                color: #fff;
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            .company {
+                max-width: 62%;
+            }
+            .company h1 {
+                margin: 0;
+                font-size: 22px;
+                letter-spacing: 0.3px;
+            }
+            .company p, .meta p {
+                margin: 4px 0;
+                font-size: 12px;
+                opacity: 0.95;
+                line-height: 1.45;
+            }
+            .meta {
+                text-align: right;
+            }
+            .title {
+                padding: 16px 24px 10px;
+            }
+            .title h2 {
+                margin: 0;
+                color: var(--ink);
+                font-size: 20px;
+                letter-spacing: 0.2px;
+            }
+            .title .subtitle {
+                margin-top: 5px;
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 10px;
+                padding: 0 24px 14px;
+            }
+            .card {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #fff;
+                padding: 10px 12px;
+            }
+            .card .label {
+                color: var(--muted);
+                font-size: 11px;
+                margin-bottom: 5px;
+            }
+            .card .value {
+                font-size: 16px;
+                font-weight: 700;
+            }
+            .section {
+                padding: 0 24px 16px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 11px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            thead th {
+                text-align: left;
+                padding: 10px;
+                font-weight: 700;
+                color: #fff;
+                background: linear-gradient(120deg, #0f172a, #155e75);
+            }
+            tbody td {
+                padding: 8px 10px;
+                border-top: 1px solid #edf2f7;
+            }
+            tbody tr:nth-child(even) { background: #f8fafc; }
+            .pill {
+                display: inline-block;
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-weight: 700;
+                font-size: 10px;
+            }
+            .p-present { background: #dcfce7; color: var(--ok); }
+            .p-absent { background: #fee2e2; color: var(--danger); }
+            .p-leave { background: #e0e7ff; color: #3730a3; }
+            .foot {
+                margin: 10px 24px 20px;
+                border-top: 1px dashed var(--line);
+                padding-top: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                gap: 10px;
+            }
+            .foot .note {
+                color: var(--muted);
+                font-size: 11px;
+                line-height: 1.45;
+                max-width: 68%;
+            }
+            .sign {
+                text-align: right;
+                min-width: 180px;
+            }
+            .sign .line {
+                margin-top: 28px;
+                border-top: 1px solid #94a3b8;
+                width: 180px;
+                margin-left: auto;
+                padding-top: 5px;
+                font-size: 10px;
+                color: #334155;
+            }
+        </style>
+    `;
+}
+
+function getHtmlImageSrc(localFileName, envUrlKey) {
+    try {
+        const localPath = path.join(__dirname, localFileName);
+        if (fs.existsSync(localPath)) {
+            const base64 = fs.readFileSync(localPath).toString('base64');
+            return `data:image/png;base64,${base64}`;
+        }
+    } catch (e) {
+        console.error(`Asset read failed for ${localFileName}:`, e.message);
+    }
+    return process.env[envUrlKey] || '';
+}
+
+function buildAttendanceReportHtml({ staff, monthLabel, summary, rows, generatedAt, approvalStatus }) {
+    const logoSrc = getHtmlImageSrc('logo.png', 'VIBESPHERE_LOGO_URL');
+    const signatureSrc = getHtmlImageSrc('signature.png', 'CEO_SIGNATURE_URL');
+    const isApproved = approvalStatus === 'Approved';
+
+    const rowHtml = rows.length ? rows.map((row) => {
+        const statusKey = (row.status || 'Present').toLowerCase();
+        const statusClass = statusKey === 'absent' ? 'p-absent' : (statusKey === 'leave' ? 'p-leave' : 'p-present');
+        return `
+            <tr>
+                <td>${escapeHtml(row.date)}</td>
+                <td>${escapeHtml(row.checkIn)}</td>
+                <td>${escapeHtml(row.checkOut)}</td>
+                <td>${escapeHtml(row.breakTime)}</td>
+                <td>${escapeHtml(row.workTime)}</td>
+                <td><span class="pill ${statusClass}">${escapeHtml(row.status)}</span></td>
+            </tr>
+        `;
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">No attendance records found for this period.</td></tr>';
+
+    return `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            ${buildPdfShellStyles()}
+        </head>
+        <body>
+            <div class="page">
+                <div class="watermark">VIBESPHERE</div>
+                <div class="head">
+                    <div class="company">
+                        ${logoSrc
+            ? `<img src="${logoSrc}" alt="VibeSphere Media" style="width:165px;max-width:100%;height:auto;display:block;margin-bottom:8px;" />`
+            : `<h1>VibeSphere Media</h1>`}
+                        <p>Digital Growth, Web and Automation Studio</p>
+                        <p>support@vibespheremedia.in | www.vibespheremedia.in</p>
+                    </div>
+                    <div class="meta">
+                        <p><strong>Document:</strong> Attendance Report</p>
+                        <p><strong>Period:</strong> ${escapeHtml(monthLabel)}</p>
+                        <p><strong>Generated:</strong> ${escapeHtml(generatedAt)}</p>
+                    </div>
+                </div>
+
+                <div class="title">
+                    <h2>${escapeHtml(staff.name || 'Staff Member')} (${escapeHtml(staff.empId || 'NA')})</h2>
+                    <div class="subtitle">${escapeHtml(staff.email || '')}</div>
+                </div>
+
+                <div class="grid">
+                    <div class="card"><div class="label">Present Days</div><div class="value">${summary.presentDays}</div></div>
+                    <div class="card"><div class="label">Absent Days</div><div class="value">${summary.absentDays}</div></div>
+                    <div class="card"><div class="label">Leave Days</div><div class="value">${summary.leaveDays}</div></div>
+                    <div class="card"><div class="label">Net Working Time</div><div class="value">${escapeHtml(formatHoursMinutesFromMs(summary.totalWorkingMs))}</div></div>
+                </div>
+
+                <div class="section">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:16%">Date</th>
+                                <th style="width:16%">Check-In</th>
+                                <th style="width:16%">Check-Out</th>
+                                <th style="width:16%">Break Time</th>
+                                <th style="width:16%">Net Hours</th>
+                                <th style="width:20%">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="foot">
+                    <div class="note">This is a system-generated attendance summary prepared from daily check-in/check-out logs and approved attendance states.</div>
+                    <div class="sign">
+                        ${isApproved
+            ? `<span style="color: green; font-weight: bold; font-size: 13px;">VERIFIED ✓</span>`
+            : `<h3 style="color: red; margin: 0; font-size: 16px;">NOT VERIFIED</h3>`}
+                        ${isApproved && signatureSrc
+            ? `<div style="margin-top:8px;"><img src="${signatureSrc}" alt="Signature" style="width:140px;height:auto;" /></div>`
+            : ''}
+                        ${isApproved ? `<div style="font-size:12px;color:#0f172a;font-weight:700;margin-top:6px;">Harsh Panwar</div>` : ''}
+                        <div class="line">Authorized Signatory | VibeSphere Media</div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+function buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt, approvalStatus }) {
+    const logoSrc = getHtmlImageSrc('logo.png', 'VIBESPHERE_LOGO_URL');
+    const signatureSrc = getHtmlImageSrc('signature.png', 'CEO_SIGNATURE_URL');
+    const isApproved = approvalStatus === 'Approved';
+
+    const earningsRows = salaryData.earnings.map((item) => `
+        <tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td style="text-align:right;">${escapeHtml(formatINR(item.amount))}</td>
+        </tr>
+    `).join('');
+
+    const deductionRows = salaryData.deductions.map((item) => `
+        <tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td style="text-align:right;">${escapeHtml(formatINR(item.amount))}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            ${buildPdfShellStyles()}
+            <style>
+                .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 12px; }
+                .mono { font-variant-numeric: tabular-nums; }
+                .totals {
+                    padding: 0 24px 8px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+                .total-card {
+                    border: 1px solid var(--line);
+                    border-radius: 10px;
+                    background: #fff;
+                    padding: 12px;
+                }
+                .total-card .k { font-size: 11px; color: var(--muted); }
+                .total-card .v { margin-top: 4px; font-size: 20px; font-weight: 800; }
+                .net { background: linear-gradient(120deg, #ecfeff, #f0fdfa); border-color: #99f6e4; }
+            </style>
+        </head>
+        <body>
+            <div class="page">
+                <div class="watermark">PAYSLIP</div>
+                <div class="head">
+                    <div class="company">
+                        ${logoSrc
+            ? `<img src="${logoSrc}" alt="VibeSphere Media" style="width:165px;max-width:100%;height:auto;display:block;margin-bottom:8px;" />`
+            : `<h1>VibeSphere Media</h1>`}
+                        <p>Payroll and Compensation Department</p>
+                        <p>support@vibespheremedia.in | www.vibespheremedia.in</p>
+                    </div>
+                    <div class="meta">
+                        <p><strong>Document:</strong> Employee Payslip</p>
+                        <p><strong>Salary Month:</strong> ${escapeHtml(monthLabel)}</p>
+                        <p><strong>Generated:</strong> ${escapeHtml(generatedAt)}</p>
+                    </div>
+                </div>
+
+                <div class="title">
+                    <h2>${escapeHtml(staff.name || 'Staff Member')} (${escapeHtml(staff.empId || 'NA')})</h2>
+                    <div class="subtitle">${escapeHtml(staff.email || '')} | Role: ${escapeHtml(staff.role || 'Staff')}</div>
+                </div>
+
+                <div class="grid">
+                    <div class="card"><div class="label">Present</div><div class="value">${summary.presentDays}</div></div>
+                    <div class="card"><div class="label">Absent</div><div class="value">${summary.absentDays}</div></div>
+                    <div class="card"><div class="label">Leave</div><div class="value">${summary.leaveDays}</div></div>
+                    <div class="card"><div class="label">Net Worked</div><div class="value">${escapeHtml(formatHoursMinutesFromMs(summary.totalWorkingMs))}</div></div>
+                </div>
+
+                <div class="split">
+                    <table class="mono">
+                        <thead><tr><th>Earnings</th><th style="text-align:right;">Amount</th></tr></thead>
+                        <tbody>${earningsRows}</tbody>
+                    </table>
+                    <table class="mono">
+                        <thead><tr><th>Deductions</th><th style="text-align:right;">Amount</th></tr></thead>
+                        <tbody>${deductionRows}</tbody>
+                    </table>
+                </div>
+
+                <div class="totals">
+                    <div class="total-card">
+                        <div class="k">Gross Salary</div>
+                        <div class="v mono">${escapeHtml(formatINR(salaryData.grossSalary))}</div>
+                    </div>
+                    <div class="total-card net">
+                        <div class="k">Net Salary Payable</div>
+                        <div class="v mono">${escapeHtml(formatINR(salaryData.netPay))}</div>
+                    </div>
+                </div>
+
+                <div class="foot">
+                    <div class="note">This is a computer-generated payslip and does not require a physical signature. For payroll queries, contact HR within 3 business days.</div>
+                    <div class="sign">
+                        ${isApproved
+            ? `<span style="color: green; font-weight: bold; font-size: 13px;">VERIFIED ✓</span>`
+            : `<h3 style="color: red; margin: 0; font-size: 16px;">NOT VERIFIED</h3>`}
+                        ${isApproved && signatureSrc
+            ? `<div style="margin-top:8px;"><img src="${signatureSrc}" alt="Signature" style="width:140px;height:auto;" /></div>`
+            : ''}
+                        ${isApproved ? `<div style="font-size:12px;color:#0f172a;font-weight:700;margin-top:6px;">Harsh Panwar</div>` : ''}
+                        <div class="line">Authorized Signatory | VibeSphere Media</div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
 }
 
 // ==========================================
@@ -385,10 +1193,12 @@ const User = mongoose.model('User', userSchema);
 const payoutSchema = new mongoose.Schema({
     staffEmail: String,
     staffName: String,
+    staffEmpId: String,
     amount: Number,
     paymentMethod: String, // 'UPI' ya 'Bank'
     paymentDetails: Object, // Isme UPI ID ya Bank Details save hongi
     status: { type: String, default: 'Pending' },
+    financeTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'FinancialTransaction', default: null },
     date: { type: Date, default: Date.now }
 });
 const Payout = mongoose.model('Payout', payoutSchema);
@@ -421,6 +1231,7 @@ app.post('/api/staff/request-payout', async (req, res) => {
         const newPayout = new Payout({
             staffEmail: staff.email,
             staffName: staff.name,
+            staffEmpId: staff.empId || '',
             amount: amount,
             paymentMethod: paymentMethod,
             paymentDetails: paymentDetails
@@ -1080,6 +1891,143 @@ const leaveSchema = new mongoose.Schema({
 const Leave = mongoose.model('Leave', leaveSchema);
 
 // ==========================================
+// 🕒 ATTENDANCE SCHEMA
+// ==========================================
+const attendanceSchema = new mongoose.Schema({
+    staffEmail: { type: String, required: true },
+    staffName: { type: String, default: '' },
+    empId: { type: String, default: '' },
+    dateString: { type: String, required: true }, // YYYY-MM-DD (IST)
+    checkInTime: { type: Date, default: null },
+    checkOutTime: { type: Date, default: null },
+    breaks: [{
+        startTime: { type: Date, required: true },
+        endTime: { type: Date, default: null }
+    }],
+    totalWorkingMs: { type: Number, default: 0 },
+    approvalStatus: { type: String, enum: ['Unverified', 'Pending_Approval', 'Approved', 'Denied'], default: 'Unverified' },
+    status: { type: String, default: 'Present' }, // Present | Absent | Leave
+    date: { type: Date, default: Date.now }
+});
+attendanceSchema.index({ staffEmail: 1, dateString: 1 }, { unique: true });
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+const documentApprovalSchema = new mongoose.Schema({
+    staffEmail: { type: String, required: true },
+    documentType: { type: String, enum: ['AttendanceReport', 'Payslip'], required: true },
+    month: { type: Number, required: true },
+    year: { type: Number, required: true },
+    approvalStatus: { type: String, enum: ['Unverified', 'Pending_Approval', 'Approved', 'Denied'], default: 'Unverified' },
+    requestedAt: { type: Date, default: null },
+    approvedAt: { type: Date, default: null },
+    approvedBy: { type: String, default: '' },
+    date: { type: Date, default: Date.now }
+});
+documentApprovalSchema.index({ staffEmail: 1, documentType: 1, month: 1, year: 1 }, { unique: true });
+const DocumentApproval = mongoose.model('DocumentApproval', documentApprovalSchema);
+
+function getISTNow() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+}
+
+function formatDateYYYYMMDD(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function getISTDateString(offsetDays = 0) {
+    const d = getISTNow();
+    d.setDate(d.getDate() + offsetDays);
+    return formatDateYYYYMMDD(d);
+}
+
+function getOpenBreak(record) {
+    if (!record || !Array.isArray(record.breaks) || !record.breaks.length) return null;
+    const last = record.breaks[record.breaks.length - 1];
+    if (last && last.startTime && !last.endTime) return last;
+    return null;
+}
+
+function calculateAttendanceMetrics(record, nowDate = new Date()) {
+    if (!record || !record.checkInTime) {
+        return { totalSpanMs: 0, totalBreakMs: 0, netWorkingMs: 0 };
+    }
+
+    const end = record.checkOutTime ? new Date(record.checkOutTime) : nowDate;
+    const start = new Date(record.checkInTime);
+    const totalSpanMs = Math.max(0, end.getTime() - start.getTime());
+
+    let totalBreakMs = 0;
+    if (Array.isArray(record.breaks)) {
+        record.breaks.forEach((b) => {
+            if (!b || !b.startTime) return;
+            const breakStart = new Date(b.startTime);
+            const breakEnd = b.endTime ? new Date(b.endTime) : end;
+            totalBreakMs += Math.max(0, breakEnd.getTime() - breakStart.getTime());
+        });
+    }
+
+    const netWorkingMs = Math.max(0, totalSpanMs - totalBreakMs);
+    return { totalSpanMs, totalBreakMs, netWorkingMs };
+}
+
+async function markAbsentForDate(dateString) {
+    try {
+        const allStaff = await Staff.find().select('email name empId').lean();
+        if (!allStaff.length) return;
+
+        const existing = await Attendance.find({ dateString }).select('staffEmail').lean();
+        const existingSet = new Set(existing.map(r => r.staffEmail));
+
+        const absentDocs = [];
+        for (const staff of allStaff) {
+            if (existingSet.has(staff.email)) continue;
+            absentDocs.push({
+                staffEmail: staff.email,
+                staffName: staff.name || '',
+                empId: staff.empId || '',
+                dateString,
+                status: 'Absent',
+                checkInTime: null,
+                checkOutTime: null,
+                breaks: [],
+                totalWorkingMs: 0
+            });
+        }
+
+        if (absentDocs.length) {
+            await Attendance.insertMany(absentDocs, { ordered: false });
+        }
+
+        console.log(`🕒 Attendance Absent Job done for ${dateString} | inserted: ${absentDocs.length}`);
+    } catch (e) {
+        console.error('❌ Attendance Absent Job Error:', e.message);
+    }
+}
+
+function scheduleDailyAbsentJob() {
+    const runJob = async () => {
+        // At 00:05 IST, mark absent for previous IST day.
+        const targetDateString = getISTDateString(-1);
+        await markAbsentForDate(targetDateString);
+    };
+
+    const nowIST = getISTNow();
+    const nextRun = new Date(nowIST);
+    nextRun.setHours(24, 5, 0, 0);
+    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
+
+    setTimeout(async () => {
+        await runJob();
+        setInterval(runJob, 24 * 60 * 60 * 1000);
+    }, initialDelay);
+
+    console.log('🗓️ Daily Absent Job scheduled (00:05 IST).');
+}
+
+// ==========================================
 // 🎧 HELPDESK TICKETING SCHEMA
 // ==========================================
 const ticketSchema = new mongoose.Schema({
@@ -1104,9 +2052,29 @@ const expenseSchema = new mongoose.Schema({
     title: String,
     amount: Number,
     category: { type: String, default: 'General' }, // Ads, Server, Salaries, Tools, General
+    transactionType: { type: String, default: 'EXPENSE' },
+    financeTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'FinancialTransaction', default: null },
     date: { type: Date, default: Date.now }
 });
 const Expense = mongoose.model('Expense', expenseSchema);
+
+const financialTransactionSchema = new mongoose.Schema({
+    title: String,
+    amount: { type: Number, default: 0 },
+    type: { type: String, enum: ['SALARY', 'EXPENSE', 'INCOME'], required: true, index: true },
+    kind: { type: String, enum: ['credit', 'debit'], default: 'debit' },
+    category: { type: String, default: '' },
+    source: { type: String, default: '' },
+    meta: { type: String, default: '' },
+    notes: { type: String, default: '' },
+    staffName: { type: String, default: '' },
+    staffEmail: { type: String, default: '' },
+    staffEmpId: { type: String, default: '' },
+    payoutRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payout', default: null, index: true },
+    expenseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Expense', default: null },
+    date: { type: Date, default: Date.now }
+});
+const FinancialTransaction = mongoose.model('FinancialTransaction', financialTransactionSchema);
 
 // ==========================================
 // 📚 RESOURCE HUB SCHEMA (Knowledge Base)
@@ -1273,6 +2241,8 @@ const staffSchema = new mongoose.Schema({
     totalEarnings: { type: Number, default: 0 },
     pendingPayout: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 50000 }, // 🟢 NAYA: Default 50k target set kiya hai
+    salaryCtc: { type: Number, default: 0 },
+    joiningDate: { type: Date, default: null },
     // 🟢 NAYA: Duty Status Tracker
     isOnline: { type: Boolean, default: false },
     isMuted: { type: Boolean, default: false },
@@ -1281,6 +2251,7 @@ const staffSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const Staff = mongoose.model('Staff', staffSchema);
+scheduleDailyAbsentJob();
 // 2. Task/Lead Schema (Calling Data Ke Liye)
 const taskSchema = new mongoose.Schema({
     clientName: String,
@@ -1307,6 +2278,13 @@ const chatSchema = new mongoose.Schema({
     fileUrl: String,      // ☁️ Cloud URL (ImgBB for images, Cloudinary for PDFs)
     fileType: String,     // 'image' or 'pdf'
     fileName: String,     // Original filename (for PDF downloads)
+    replyTo: {
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat', default: null },
+        senderName: { type: String, default: '' },
+        previewText: { type: String, default: '' }
+    },
+    isPinned: { type: Boolean, default: false },
+    pinnedAt: { type: Date, default: null },
     date: { type: Date, default: Date.now }
 });
 const Chat = mongoose.model('Chat', chatSchema);
@@ -1390,22 +2368,633 @@ app.get('/api/staff/me', (req, res) => {
 // 🟢 STAFF DUTY STATUS API (Online/Offline)
 app.post('/api/staff/toggle-status', async (req, res) => {
     try {
-        const { email, isOnline } = req.body;
+        const email = (req.body.email || '').toLowerCase().trim();
+        const isOnline = !!req.body.isOnline;
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
 
-        // Staff ka status update karo aur time note kar lo
-        const staff = await Staff.findOneAndUpdate(
-            { email: email },
-            { isOnline: isOnline, lastActive: Date.now() },
-            { new: true } // Return updated document
-        );
+        const staff = await Staff.findOne({ email });
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
 
-        if (staff) {
-            res.json({ success: true, isOnline: staff.isOnline });
-        } else {
-            res.json({ success: false, message: "Staff not found" });
+        const dateString = getISTDateString(0);
+        const now = new Date();
+        let attendance = await Attendance.findOne({ staffEmail: email, dateString });
+
+        if (isOnline) {
+            if (!attendance) {
+                attendance = new Attendance({
+                    staffEmail: email,
+                    staffName: staff.name,
+                    empId: staff.empId || '',
+                    dateString,
+                    checkInTime: now,
+                    status: 'Present',
+                    breaks: []
+                });
+            }
+
+            if (!attendance.checkOutTime) {
+                if (!attendance.checkInTime) attendance.checkInTime = now;
+                const openBreak = getOpenBreak(attendance);
+                if (openBreak) openBreak.endTime = now;
+                attendance.status = 'Present';
+                const metrics = calculateAttendanceMetrics(attendance, now);
+                attendance.totalWorkingMs = metrics.netWorkingMs;
+                await attendance.save();
+            }
+        } else if (attendance && attendance.checkInTime && !attendance.checkOutTime) {
+            // Legacy offline action is treated as "take break", not checkout.
+            if (!getOpenBreak(attendance)) {
+                attendance.breaks.push({ startTime: now, endTime: null });
+                const metrics = calculateAttendanceMetrics(attendance, now);
+                attendance.totalWorkingMs = metrics.netWorkingMs;
+                await attendance.save();
+            }
         }
+
+        staff.isOnline = isOnline;
+        staff.lastActive = Date.now();
+        await staff.save();
+
+        res.json({ success: true, isOnline: staff.isOnline, attendance });
     } catch (e) {
         res.status(500).json({ success: false, error: "Server Error" });
+    }
+});
+
+// ==========================================
+// 🕒 NEW ATTENDANCE APIs (Check-In Workflow)
+// ==========================================
+app.post('/api/staff/check-in', async (req, res) => {
+    try {
+        const email = (req.body.email || '').toLowerCase().trim();
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+        const staff = await Staff.findOne({ email });
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found.' });
+
+        const dateString = getISTDateString(0);
+        let attendance = await Attendance.findOne({ staffEmail: email, dateString });
+        const now = new Date();
+
+        if (!attendance) {
+            attendance = new Attendance({
+                staffEmail: email,
+                staffName: staff.name,
+                empId: staff.empId || '',
+                dateString,
+                checkInTime: now,
+                status: 'Present',
+                breaks: []
+            });
+        } else {
+            if (attendance.checkOutTime) {
+                return res.status(400).json({ success: false, message: 'Shift already ended for today.' });
+            }
+            if (!attendance.checkInTime) attendance.checkInTime = now;
+            attendance.status = 'Present';
+        }
+
+        const openBreak = getOpenBreak(attendance);
+        if (openBreak) openBreak.endTime = now;
+
+        const metrics = calculateAttendanceMetrics(attendance, now);
+        attendance.totalWorkingMs = metrics.netWorkingMs;
+        await attendance.save();
+
+        staff.isOnline = true;
+        staff.lastActive = Date.now();
+        await staff.save();
+
+        res.json({ success: true, message: 'Checked in successfully.', attendance, isOnline: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Check-in failed.' });
+    }
+});
+
+app.post('/api/staff/take-break', async (req, res) => {
+    try {
+        const email = (req.body.email || '').toLowerCase().trim();
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+        const dateString = getISTDateString(0);
+        const attendance = await Attendance.findOne({ staffEmail: email, dateString });
+        if (!attendance || !attendance.checkInTime) {
+            return res.status(400).json({ success: false, message: 'Check in first.' });
+        }
+        if (attendance.checkOutTime) {
+            return res.status(400).json({ success: false, message: 'Shift already ended.' });
+        }
+        if (getOpenBreak(attendance)) {
+            return res.status(400).json({ success: false, message: 'Already on break.' });
+        }
+
+        attendance.breaks.push({ startTime: new Date(), endTime: null });
+        const metrics = calculateAttendanceMetrics(attendance, new Date());
+        attendance.totalWorkingMs = metrics.netWorkingMs;
+        await attendance.save();
+
+        await Staff.findOneAndUpdate({ email }, { isOnline: false, lastActive: Date.now() });
+        res.json({ success: true, message: 'Break started.', attendance, isOnline: false });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Could not start break.' });
+    }
+});
+
+app.post('/api/staff/resume-work', async (req, res) => {
+    try {
+        const email = (req.body.email || '').toLowerCase().trim();
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+        const dateString = getISTDateString(0);
+        const attendance = await Attendance.findOne({ staffEmail: email, dateString });
+        if (!attendance || !attendance.checkInTime) {
+            return res.status(400).json({ success: false, message: 'Check in first.' });
+        }
+        if (attendance.checkOutTime) {
+            return res.status(400).json({ success: false, message: 'Shift already ended.' });
+        }
+
+        const openBreak = getOpenBreak(attendance);
+        if (!openBreak) {
+            return res.status(400).json({ success: false, message: 'No active break found.' });
+        }
+
+        openBreak.endTime = new Date();
+        const metrics = calculateAttendanceMetrics(attendance, new Date());
+        attendance.totalWorkingMs = metrics.netWorkingMs;
+        await attendance.save();
+
+        await Staff.findOneAndUpdate({ email }, { isOnline: true, lastActive: Date.now() });
+        res.json({ success: true, message: 'Work resumed.', attendance, isOnline: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Could not resume work.' });
+    }
+});
+
+app.post('/api/staff/check-out', async (req, res) => {
+    try {
+        const email = (req.body.email || '').toLowerCase().trim();
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+        const dateString = getISTDateString(0);
+        const attendance = await Attendance.findOne({ staffEmail: email, dateString });
+        if (!attendance || !attendance.checkInTime) {
+            return res.status(400).json({ success: false, message: 'Check in first.' });
+        }
+        if (attendance.checkOutTime) {
+            return res.status(400).json({ success: false, message: 'Shift already ended.' });
+        }
+
+        const now = new Date();
+        const openBreak = getOpenBreak(attendance);
+        if (openBreak) openBreak.endTime = now;
+
+        attendance.checkOutTime = now;
+        const metrics = calculateAttendanceMetrics(attendance, now);
+        attendance.totalWorkingMs = metrics.netWorkingMs;
+        await attendance.save();
+
+        await Staff.findOneAndUpdate({ email }, { isOnline: false, lastActive: Date.now() });
+        res.json({ success: true, message: 'Checked out successfully.', attendance, isOnline: false });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Check-out failed.' });
+    }
+});
+
+app.get('/api/staff/today-attendance', async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ success: false, message: 'No active session.' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        if (decoded.role !== 'Staff') return res.status(401).json({ success: false, message: 'Role mismatch.' });
+
+        const dateString = getISTDateString(0);
+        const attendance = await Attendance.findOne({ staffEmail: decoded.email, dateString });
+        const staff = await Staff.findOne({ email: decoded.email }).select('isOnline').lean();
+
+        if (!attendance) {
+            return res.json({ success: true, attendance: null, isOnline: !!staff?.isOnline });
+        }
+
+        const metrics = calculateAttendanceMetrics(attendance, new Date());
+        const payload = attendance.toObject();
+        payload.totalWorkingMsLive = metrics.netWorkingMs;
+        payload.totalBreakMsLive = metrics.totalBreakMs;
+
+        res.json({ success: true, attendance: payload, isOnline: !!staff?.isOnline });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to fetch today attendance.' });
+    }
+});
+
+app.get('/api/staff/my-attendance', async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ success: false, message: 'No active session.' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        if (decoded.role !== 'Staff') return res.status(401).json({ success: false, message: 'Role mismatch.' });
+
+        const month = Number(req.query.month || 0);
+        const year = Number(req.query.year || 0);
+        const query = { staffEmail: decoded.email };
+
+        if (month && year) {
+            const prefix = `${year}-${String(month).padStart(2, '0')}`;
+            query.dateString = { $regex: new RegExp(`^${prefix}`) };
+        }
+
+        const attendance = await Attendance.find(query).sort({ dateString: -1 }).lean();
+        const enriched = attendance.map((rec) => {
+            const metrics = calculateAttendanceMetrics(rec, new Date());
+            return {
+                ...rec,
+                totalWorkingMsLive: rec.checkOutTime ? (rec.totalWorkingMs || 0) : metrics.netWorkingMs,
+                totalBreakMsLive: metrics.totalBreakMs
+            };
+        });
+
+        res.json({ success: true, attendance: enriched });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to fetch attendance history.' });
+    }
+});
+
+app.get('/api/staff/download-attendance-report', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const staff = await Staff.findOne({ email: decoded.email }).lean();
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+
+        const { month, year } = resolveMonthYear(req.query.month, req.query.year);
+        const { pdfBuffer, fileName } = await createAttendanceReportPdf(staff, month, year);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('Staff attendance report PDF error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to generate attendance report PDF.' });
+    }
+});
+
+app.get('/api/staff/download-payslip', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const staff = await Staff.findOne({ email: decoded.email }).lean();
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+
+        const { month, year } = resolveMonthYear(req.query.month, req.query.year);
+        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year, {
+            salary: req.query.salary,
+            professionalTax: req.query.professionalTax,
+            otherDeductions: req.query.otherDeductions,
+            missingSalaryMessage: 'Monthly salary is missing. Please set salaryCtc for this staff profile.'
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('Staff payslip PDF error:', e.message);
+        if (e.message.includes('Monthly salary is missing')) {
+            return res.status(400).json({ success: false, message: e.message });
+        }
+        res.status(500).json({ success: false, message: 'Failed to generate payslip PDF.' });
+    }
+});
+
+app.post('/api/staff/request-document-approval', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const documentType = normalizeDocumentType(req.body.documentType);
+        if (!documentType) {
+            return res.status(400).json({ success: false, message: 'Invalid documentType. Use AttendanceReport or Payslip.' });
+        }
+
+        const { month, year } = resolveMonthYear(req.body.month, req.body.year);
+        await DocumentApproval.findOneAndUpdate(
+            { staffEmail: decoded.email, documentType, month, year },
+            {
+                $set: {
+                    approvalStatus: 'Pending_Approval',
+                    requestedAt: new Date(),
+                    approvedAt: null,
+                    approvedBy: ''
+                }
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        if (documentType === 'AttendanceReport') {
+            await Attendance.updateMany(
+                { staffEmail: decoded.email, dateString: { $regex: new RegExp(monthRegexString(month, year)) } },
+                { $set: { approvalStatus: 'Pending_Approval' } }
+            );
+        }
+
+        io.to('Admin').emit('document_approval_requested', {
+            staffEmail: decoded.email,
+            documentType,
+            month,
+            year,
+            approvalStatus: 'Pending_Approval'
+        });
+
+        res.json({ success: true, message: `${documentType} request submitted for admin approval.`, documentType, month, year, approvalStatus: 'Pending_Approval' });
+    } catch (e) {
+        console.error('Request document approval error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to submit document approval request.' });
+    }
+});
+
+app.post('/api/admin/approve-document', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const documentType = normalizeDocumentType(req.body.documentType);
+        if (!documentType) {
+            return res.status(400).json({ success: false, message: 'Invalid documentType. Use AttendanceReport or Payslip.' });
+        }
+
+        const { month, year } = resolveMonthYear(req.body.month, req.body.year);
+
+        let staffEmail = (req.body.staffEmail || '').toLowerCase().trim();
+        if (!staffEmail && req.body.staffId) {
+            const staffFromId = await Staff.findById(req.body.staffId).select('email').lean();
+            staffEmail = staffFromId?.email || '';
+        }
+
+        if (!staffEmail) {
+            return res.status(400).json({ success: false, message: 'staffEmail or staffId is required.' });
+        }
+
+        await DocumentApproval.findOneAndUpdate(
+            { staffEmail, documentType, month, year },
+            {
+                $set: {
+                    approvalStatus: 'Approved',
+                    approvedAt: new Date(),
+                    approvedBy: 'Admin'
+                }
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        if (documentType === 'AttendanceReport') {
+            await Attendance.updateMany(
+                { staffEmail, dateString: { $regex: new RegExp(monthRegexString(month, year)) } },
+                { $set: { approvalStatus: 'Approved' } }
+            );
+        }
+
+        io.to(staffEmail).emit('document_approval_updated', {
+            documentType,
+            month,
+            year,
+            approvalStatus: 'Approved'
+        });
+
+        res.json({ success: true, message: `${documentType} marked as Approved.`, staffEmail, documentType, month, year, approvalStatus: 'Approved' });
+    } catch (e) {
+        console.error('Approve document error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to approve document.' });
+    }
+});
+
+app.post('/api/admin/deny-document', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const documentType = normalizeDocumentType(req.body.documentType);
+        if (!documentType) {
+            return res.status(400).json({ success: false, message: 'Invalid documentType. Use AttendanceReport or Payslip.' });
+        }
+
+        const { month, year } = resolveMonthYear(req.body.month, req.body.year);
+
+        let staffEmail = (req.body.staffEmail || '').toLowerCase().trim();
+        if (!staffEmail && req.body.staffId) {
+            const staffFromId = await Staff.findById(req.body.staffId).select('email').lean();
+            staffEmail = staffFromId?.email || '';
+        }
+
+        if (!staffEmail) {
+            return res.status(400).json({ success: false, message: 'staffEmail or staffId is required.' });
+        }
+
+        await DocumentApproval.findOneAndUpdate(
+            { staffEmail, documentType, month, year },
+            {
+                $set: {
+                    approvalStatus: 'Denied',
+                    approvedAt: new Date(),
+                    approvedBy: 'Admin'
+                }
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        if (documentType === 'AttendanceReport') {
+            await Attendance.updateMany(
+                { staffEmail, dateString: { $regex: new RegExp(monthRegexString(month, year)) } },
+                { $set: { approvalStatus: 'Denied' } }
+            );
+        }
+
+        io.to(staffEmail).emit('document_approval_updated', {
+            documentType,
+            month,
+            year,
+            approvalStatus: 'Denied'
+        });
+
+        res.json({ success: true, message: `${documentType} marked as Denied.`, staffEmail, documentType, month, year, approvalStatus: 'Denied' });
+    } catch (e) {
+        console.error('Deny document error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to deny document.' });
+    }
+});
+
+app.get('/api/staff/my-document-approvals', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const approvals = await DocumentApproval.find({ staffEmail: decoded.email })
+            .sort({ year: -1, month: -1, requestedAt: -1 })
+            .lean();
+
+        res.json({ success: true, approvals });
+    } catch (e) {
+        console.error('My document approvals error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch document approvals.' });
+    }
+});
+
+app.get('/api/admin/document-approvals', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const statusFilter = String(req.query.status || 'Pending_Approval');
+        const query = statusFilter && statusFilter !== 'all' ? { approvalStatus: statusFilter } : {};
+
+        const approvals = await DocumentApproval.find(query)
+            .sort({ requestedAt: 1, year: 1, month: 1 })
+            .lean();
+
+        const staffEmails = [...new Set(approvals.map((item) => item.staffEmail).filter(Boolean))];
+        const staffRows = staffEmails.length
+            ? await Staff.find({ email: { $in: staffEmails } }).select('email name empId profilePhoto').lean()
+            : [];
+        const staffMap = new Map(staffRows.map((row) => [row.email, row]));
+
+        const enriched = approvals.map((item) => {
+            const staff = staffMap.get(item.staffEmail) || {};
+            return {
+                ...item,
+                staffName: staff.name || item.staffEmail,
+                staffEmpId: staff.empId || '',
+                staffId: staff._id || null,
+                staffProfilePhoto: staff.profilePhoto || ''
+            };
+        });
+
+        res.json({ success: true, approvals: enriched });
+    } catch (e) {
+        console.error('Admin document approvals list error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch document approvals list.' });
+    }
+});
+
+app.get('/api/admin/preview-document/:docType/:recordId', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const requestedDocType = normalizeDocumentType(req.params.docType);
+        if (!requestedDocType) {
+            return res.status(400).json({ success: false, message: 'Invalid document type.' });
+        }
+
+        const approval = await DocumentApproval.findById(req.params.recordId).lean();
+        if (!approval) {
+            return res.status(404).json({ success: false, message: 'Document approval request not found.' });
+        }
+
+        if (approval.documentType !== requestedDocType) {
+            return res.status(400).json({ success: false, message: 'Document type mismatch for this approval record.' });
+        }
+
+        const staff = await Staff.findOne({ email: approval.staffEmail }).lean();
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+        }
+
+        const previewStatus = approval.approvalStatus === 'Approved'
+            ? 'Pending_Approval'
+            : (approval.approvalStatus || 'Unverified');
+
+        const generator = requestedDocType === 'AttendanceReport' ? createAttendanceReportPdf : createPayslipPdf;
+        const generatorOptions = requestedDocType === 'AttendanceReport'
+            ? previewStatus
+            : {
+                salary: req.query.salary,
+                professionalTax: req.query.professionalTax,
+                otherDeductions: req.query.otherDeductions,
+                approvalStatus: previewStatus,
+                missingSalaryMessage: 'Monthly salary is missing. Add salaryCtc for this staff profile or pass ?salary=...'
+            };
+        const { pdfBuffer } = requestedDocType === 'AttendanceReport'
+            ? await generator(staff, approval.month, approval.year, generatorOptions)
+            : await generator(staff, approval.month, approval.year, generatorOptions);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="preview.pdf"');
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('Admin preview document PDF error:', e.message);
+        if (e.message.includes('Monthly salary is missing')) {
+            return res.status(400).json({ success: false, message: e.message });
+        }
+        res.status(500).json({ success: false, message: 'Failed to generate preview document PDF.' });
+    }
+});
+
+app.get('/api/admin/staff/:staffId/download-attendance-report', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const staff = await Staff.findById(req.params.staffId).lean();
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+
+        const { month, year } = resolveMonthYear(req.query.month, req.query.year);
+        const { pdfBuffer, fileName } = await createAttendanceReportPdf(staff, month, year);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('Admin attendance report PDF error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to generate attendance report PDF.' });
+    }
+});
+
+app.get('/api/admin/staff/:staffId/download-payslip', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const staff = await Staff.findById(req.params.staffId).lean();
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+
+        const { month, year } = resolveMonthYear(req.query.month, req.query.year);
+        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year, {
+            salary: req.query.salary,
+            professionalTax: req.query.professionalTax,
+            otherDeductions: req.query.otherDeductions,
+            missingSalaryMessage: 'Monthly salary is missing. Add salaryCtc for this staff profile or pass ?salary=...'
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('Admin payslip PDF error:', e.message);
+        if (e.message.includes('Monthly salary is missing')) {
+            return res.status(400).json({ success: false, message: e.message });
+        }
+        res.status(500).json({ success: false, message: 'Failed to generate payslip PDF.' });
     }
 });
 // API 2: Get Staff Tasks (Dashbaord Load Hote Hi Chalegi)
@@ -1458,6 +3047,7 @@ app.post('/api/staff/request-payout', async (req, res) => {
         const newPayout = new Payout({
             staffEmail: staff.email,
             staffName: staff.name,
+            staffEmpId: staff.empId || '',
             amount: staff.pendingPayout // Jitna pending hai sabka request laga diya
         });
         await newPayout.save();
@@ -1488,6 +3078,33 @@ app.post('/api/admin/approve-payout', checkAuth, async (req, res) => {
             return res.json({ success: false, message: "Invalid Request or Already Paid" });
         }
 
+        const staff = await Staff.findOne({ email: payout.staffEmail }).select('name email empId').lean();
+        let financeTransaction = null;
+
+        if (payout.financeTransactionId) {
+            financeTransaction = await FinancialTransaction.findById(payout.financeTransactionId);
+        }
+        if (!financeTransaction) {
+            financeTransaction = await FinancialTransaction.findOne({ payoutRequestId: payout._id, type: 'SALARY' });
+        }
+        if (!financeTransaction) {
+            financeTransaction = await FinancialTransaction.create({
+                title: `Salary payout - ${payout.staffName || staff?.name || payout.staffEmail || 'Staff'}`,
+                amount: Number(payout.amount || 0),
+                type: 'SALARY',
+                kind: 'debit',
+                category: 'Payout Approval',
+                source: 'PAYOUT_APPROVAL',
+                meta: 'Approved payout request',
+                notes: `Auto-generated on payout approval for request ${payout._id}`,
+                staffName: payout.staffName || staff?.name || '',
+                staffEmail: payout.staffEmail || staff?.email || '',
+                staffEmpId: payout.staffEmpId || staff?.empId || '',
+                payoutRequestId: payout._id,
+                date: new Date()
+            });
+        }
+
         // 🟢 MAGIC: Staff ke pending payout se amount kaat lo (Total Earnings wahi rahegi)
         await Staff.findOneAndUpdate(
             { email: payout.staffEmail },
@@ -1496,6 +3113,8 @@ app.post('/api/admin/approve-payout', checkAuth, async (req, res) => {
 
         // Request ko Paid mark kar do
         payout.status = 'Paid';
+        payout.financeTransactionId = financeTransaction._id;
+        payout.staffEmpId = payout.staffEmpId || staff?.empId || '';
         await payout.save();
 
         // 🟢 REAL-TIME: Notify Staff
@@ -1563,7 +3182,8 @@ app.get('/api/chat/settings', async (req, res) => {
 app.get('/api/chat/history', async (req, res) => {
     try {
         const messages = await Chat.find().sort({ date: 1 }).limit(100);
-        res.json({ success: true, messages });
+        const pinnedMessage = await Chat.findOne({ isPinned: true }).sort({ pinnedAt: -1, date: -1 });
+        res.json({ success: true, messages, pinnedMessage });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
@@ -1632,10 +3252,29 @@ app.post('/api/admin/mute-staff', checkAuth, async (req, res) => {
 // 5. Admin: Delete Message
 app.delete('/api/admin/delete-message/:id', checkAuth, async (req, res) => {
     try {
-        await Chat.findByIdAndDelete(req.params.id);
+        const deleted = await Chat.findByIdAndDelete(req.params.id);
         io.emit('message_deleted', req.params.id); // Live sabke screen se message hatao
+        if (deleted?.isPinned) {
+            io.emit('message_pinned', null);
+        }
         res.json({ success: true, message: "Message Deleted 🗑️" });
     } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.post('/api/admin/pin-message/:id', checkAuth, async (req, res) => {
+    try {
+        await Chat.updateMany({ isPinned: true }, { $set: { isPinned: false, pinnedAt: null } });
+        const message = await Chat.findByIdAndUpdate(
+            req.params.id,
+            { $set: { isPinned: true, pinnedAt: new Date() } },
+            { new: true }
+        );
+        if (!message) return res.status(404).json({ success: false, message: 'Message not found.' });
+        io.emit('message_pinned', message);
+        res.json({ success: true, message: 'Message pinned successfully.', pinnedMessage: message });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to pin message.' });
+    }
 });
 // 🟢 NAYA: Update Custom Staff Target API
 app.post('/api/admin/update-target', checkAuth, async (req, res) => {
@@ -2921,6 +4560,410 @@ app.post('/api/auth/google', async (req, res) => {
 // 👮‍♂️ ADMIN: STAFF MANAGEMENT APIs
 // ==========================================
 
+app.get('/api/admin/dashboard-summary', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const todayDateString = getISTDateString(0);
+        const [totalStaff, presentToday, onlineNow, pendingApprovals, pendingLeaves] = await Promise.all([
+            Staff.countDocuments({}),
+            Attendance.countDocuments({ dateString: todayDateString, status: 'Present' }),
+            Staff.countDocuments({ isOnline: true }),
+            DocumentApproval.countDocuments({ approvalStatus: 'Pending_Approval' }),
+            Leave.countDocuments({ status: 'Pending' })
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                totalStaff,
+                presentToday,
+                onlineNow,
+                pendingApprovals,
+                pendingLeaves
+            }
+        });
+    } catch (e) {
+        console.error('Admin dashboard summary error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary.' });
+    }
+});
+
+app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const search = String(req.query.search || '').trim();
+        const status = String(req.query.status || 'all').toLowerCase();
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = Math.min(parsePositiveInt(req.query.limit, 8), 50);
+        const query = {};
+
+        if (status === 'active') query.isOnline = true;
+        if (status === 'inactive') query.isOnline = false;
+        if (search) {
+            const regex = new RegExp(escapeRegex(search), 'i');
+            query.$or = [{ name: regex }, { email: regex }, { empId: regex }];
+        }
+
+        const projection = 'name email role empId isOnline isMuted monthlyTarget salaryCtc joiningDate profilePhoto';
+
+        const approvedLeaves = await Leave.find({ status: 'Approved' })
+            .select('staffEmail dateFrom dateTo')
+            .lean();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const leaveByEmail = new Map();
+        approvedLeaves.forEach((leave) => {
+            const from = leave.dateFrom ? new Date(leave.dateFrom) : null;
+            const to = leave.dateTo ? new Date(leave.dateTo) : null;
+            if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return;
+            from.setHours(0, 0, 0, 0);
+            to.setHours(0, 0, 0, 0);
+            if (today >= from && today <= to) {
+                leaveByEmail.set(leave.staffEmail, {
+                    isOnLeave: true,
+                    dateFrom: leave.dateFrom,
+                    dateTo: leave.dateTo
+                });
+            }
+        });
+
+        const enrichStaff = (staffList) => staffList.map((staff) => {
+            const leaveInfo = leaveByEmail.get(staff.email) || {};
+            return {
+                ...staff,
+                isOnLeave: Boolean(leaveInfo.isOnLeave),
+                leaveDateFrom: leaveInfo.dateFrom || '',
+                leaveDateTo: leaveInfo.dateTo || ''
+            };
+        });
+
+        if (String(req.query.all || '') === '1') {
+            const staff = await Staff.find(query).select(projection).sort({ name: 1 }).lean();
+            return res.json({ success: true, staff: enrichStaff(staff) });
+        }
+
+        const total = await Staff.countDocuments(query);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        const safePage = Math.min(page, totalPages);
+        const staff = await Staff.find(query)
+            .select(projection)
+            .sort({ name: 1 })
+            .skip((safePage - 1) * limit)
+            .limit(limit)
+            .lean();
+
+        res.json({
+            success: true,
+            staff: enrichStaff(staff),
+            pagination: {
+                page: safePage,
+                limit,
+                total,
+                totalPages
+            }
+        });
+    } catch (e) {
+        console.error('Admin staff directory error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch staff directory.' });
+    }
+});
+
+function parseFinanceMoney(value) {
+    const numeric = parseFloat(String(value || '').replace(/[^0-9.]/g, ''));
+    return Number.isFinite(numeric) ? numeric : 0;
+}
+
+async function buildFinanceDashboardPayload({ year, month }) {
+    const now = new Date();
+    const selectedYear = parsePositiveInt(year, now.getFullYear());
+    const selectedMonthRaw = String(month || 'all').toLowerCase();
+    const selectedMonth = selectedMonthRaw === 'all' ? 0 : parsePositiveInt(selectedMonthRaw, 0);
+
+    const [orders, staffRows, paidPayouts, expenses, financeTransactions] = await Promise.all([
+        Order.find().lean(),
+        Staff.find({}, 'pendingPayout').lean(),
+        Payout.find({ status: 'Paid' }).lean(),
+        Expense.find().lean(),
+        FinancialTransaction.find().sort({ date: -1 }).lean()
+    ]);
+
+    const financeTransactionByPayoutId = new Set(
+        financeTransactions
+            .filter((transaction) => transaction.payoutRequestId)
+            .map((transaction) => String(transaction.payoutRequestId))
+    );
+    const financeTransactionByExpenseId = new Set(
+        financeTransactions
+            .filter((transaction) => transaction.expenseId)
+            .map((transaction) => String(transaction.expenseId))
+    );
+    const ledgerTransactions = [...financeTransactions];
+
+    paidPayouts.forEach((payout) => {
+        const payoutId = String(payout._id);
+        if (payout.financeTransactionId || financeTransactionByPayoutId.has(payoutId)) return;
+        ledgerTransactions.push({
+            _id: `legacy-payout-${payoutId}`,
+            title: `Salary payout - ${payout.staffName || payout.staffEmail || 'Staff'}`,
+            amount: Number(payout.amount || 0),
+            type: 'SALARY',
+            kind: 'debit',
+            category: 'Payout Approval',
+            source: 'LEGACY_PAYOUT',
+            meta: 'Approved payout request',
+            notes: `Legacy salary payout from request ${payoutId}`,
+            staffName: payout.staffName || '',
+            staffEmail: payout.staffEmail || '',
+            staffEmpId: payout.staffEmpId || '',
+            payoutRequestId: payout._id,
+            date: payout.date
+        });
+    });
+
+    expenses.forEach((expense) => {
+        const expenseId = String(expense._id);
+        if (expense.financeTransactionId || financeTransactionByExpenseId.has(expenseId)) return;
+        ledgerTransactions.push({
+            _id: `legacy-expense-${expenseId}`,
+            title: expense.title || 'Expense',
+            amount: Number(expense.amount || 0),
+            type: 'EXPENSE',
+            kind: 'debit',
+            category: expense.category || 'General',
+            source: 'LEGACY_EXPENSE',
+            meta: expense.category || 'General',
+            notes: `Legacy expense entry for ${expense.title || 'Expense'}`,
+            expenseId: expense._id,
+            date: expense.date
+        });
+    });
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [];
+    const monthMap = new Map();
+    const monthIndexes = selectedMonth ? [selectedMonth - 1] : Array.from({ length: 12 }, (_, index) => index);
+
+    monthIndexes.forEach((monthIndex) => {
+        const key = `${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}`;
+        const bucket = {
+            key,
+            label: `${monthNames[monthIndex]} ${String(selectedYear).slice(-2)}`,
+            revenue: 0,
+            expenses: 0,
+            salaryPayouts: 0
+        };
+        months.push(bucket);
+        monthMap.set(key, bucket);
+    });
+
+    const totalRevenue = orders.reduce((sum, order) => sum + parseFinanceMoney(order.price), 0);
+    const totalSalaryPaid = ledgerTransactions
+        .filter((transaction) => transaction.type === 'SALARY')
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+    const totalExpenses = ledgerTransactions
+        .filter((transaction) => transaction.type === 'EXPENSE')
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+    const pendingSalary = staffRows.reduce((sum, staff) => sum + (Number(staff.pendingPayout) || 0), 0);
+
+    orders.forEach((order) => {
+        const date = order.date ? new Date(order.date) : null;
+        if (!date || Number.isNaN(date.getTime())) return;
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const bucket = monthMap.get(key);
+        if (bucket) bucket.revenue += parseFinanceMoney(order.price);
+    });
+
+    ledgerTransactions.forEach((transaction) => {
+        const date = transaction.date ? new Date(transaction.date) : null;
+        if (!date || Number.isNaN(date.getTime())) return;
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const bucket = monthMap.get(key);
+        if (!bucket) return;
+        const amount = Number(transaction.amount || 0);
+        if (transaction.type === 'SALARY') {
+            bucket.salaryPayouts += amount;
+        } else if (transaction.type === 'EXPENSE') {
+            bucket.expenses += amount;
+        }
+    });
+
+    const transactions = [
+        ...orders.map((order) => ({
+            id: `order-${order._id}`,
+            kind: 'credit',
+            type: 'INCOME',
+            expenseId: '',
+            title: order.package || order.orderId || 'Order Revenue',
+            subtitle: `${order.customerName || 'Client'}${order.orderId ? ` • ${order.orderId}` : ''}`,
+            amount: parseFinanceMoney(order.price),
+            date: order.date ? new Date(order.date) : null,
+            meta: order.status || 'Pending'
+        })),
+        ...ledgerTransactions.map((transaction) => ({
+            id: `finance-${transaction._id}`,
+            kind: transaction.kind || 'debit',
+            type: transaction.type,
+            expenseId: transaction.expenseId ? String(transaction.expenseId) : '',
+            title: transaction.title || (transaction.type === 'SALARY' ? 'Salary Payout' : 'Expense'),
+            subtitle: transaction.staffName
+                ? `${transaction.staffName}${transaction.staffEmpId ? ` • ${transaction.staffEmpId}` : ''}`
+                : (transaction.category || transaction.notes || ''),
+            amount: Number(transaction.amount || 0),
+            date: transaction.date ? new Date(transaction.date) : null,
+            meta: transaction.type === 'SALARY'
+                ? `Salary • ${transaction.meta || 'Payout Approved'}`
+                : (transaction.category || transaction.meta || 'Expense')
+        }))
+    ]
+        .filter((item) => item.date && !Number.isNaN(item.date.getTime()))
+        .sort((a, b) => b.date - a.date)
+        .slice(0, 25)
+        .map((item) => ({
+            ...item,
+            date: item.date.toISOString()
+        }));
+
+    return {
+        selectedYear,
+        selectedMonth: selectedMonth || 'all',
+        summary: {
+            totalRevenue,
+            totalSalaryPaid,
+            totalExpenses,
+            pendingSalary,
+            netProfit: totalRevenue - totalExpenses - totalSalaryPaid
+        },
+        chart: months,
+        transactions
+    };
+}
+
+app.get('/api/admin/finance-overview', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+        const payload = await buildFinanceDashboardPayload({ year: req.query.year, month: req.query.month });
+
+        res.json({
+            success: true,
+            summary: {
+                totalRevenue: payload.summary.totalRevenue,
+                totalExpenses: payload.summary.totalExpenses,
+                totalSalariesPaid: payload.summary.totalSalaryPaid,
+                totalSalaryPaid: payload.summary.totalSalaryPaid,
+                pendingDues: payload.summary.pendingSalary,
+                totalExpectedPayouts: payload.summary.pendingSalary,
+                pendingStaffSalary: payload.summary.pendingSalary,
+                pendingSalary: payload.summary.pendingSalary,
+                netProfit: payload.summary.netProfit
+            },
+            chart: payload.chart,
+            filters: {
+                year: payload.selectedYear,
+                month: payload.selectedMonth
+            },
+            transactions: payload.transactions
+        });
+    } catch (e) {
+        console.error('Admin finance overview error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch finance overview.' });
+    }
+});
+
+app.get('/api/finance/stats', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const payload = await buildFinanceDashboardPayload({ year: req.query.year, month: req.query.month });
+        res.json({
+            success: true,
+            totalRevenue: payload.summary.totalRevenue,
+            totalSalaryPaid: payload.summary.totalSalaryPaid,
+            totalExpenses: payload.summary.totalExpenses,
+            pendingSalary: payload.summary.pendingSalary,
+            netProfit: payload.summary.netProfit,
+            chart: payload.chart,
+            transactions: payload.transactions,
+            filters: {
+                year: payload.selectedYear,
+                month: payload.selectedMonth
+            }
+        });
+    } catch (e) {
+        console.error('Finance stats error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch finance stats.' });
+    }
+});
+
+app.get('/api/admin/attendance-log', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const search = String(req.query.search || '').trim();
+        const status = String(req.query.status || 'all').trim();
+        const month = parsePositiveInt(req.query.month, 0);
+        const year = parsePositiveInt(req.query.year, 0);
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = Math.min(parsePositiveInt(req.query.limit, 10), 50);
+        const query = {};
+
+        if (month && year) {
+            query.dateString = { $regex: new RegExp(monthRegexString(month, year)) };
+        }
+        if (status && status.toLowerCase() !== 'all') {
+            query.status = status;
+        }
+        if (search) {
+            const regex = new RegExp(escapeRegex(search), 'i');
+            query.$or = [{ staffName: regex }, { staffEmail: regex }, { empId: regex }];
+        }
+
+        const total = await Attendance.countDocuments(query);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        const safePage = Math.min(page, totalPages);
+        const rows = await Attendance.find(query)
+            .sort({ dateString: -1, date: -1, checkInTime: -1 })
+            .skip((safePage - 1) * limit)
+            .limit(limit)
+            .lean();
+
+        const attendance = rows.map((rec) => {
+            const metrics = calculateAttendanceMetrics(rec, new Date());
+            return {
+                ...rec,
+                totalWorkingMsLive: rec.checkOutTime ? Number(rec.totalWorkingMs || 0) : metrics.netWorkingMs,
+                totalBreakMsLive: metrics.totalBreakMs
+            };
+        });
+
+        res.json({
+            success: true,
+            attendance,
+            pagination: {
+                page: safePage,
+                limit,
+                total,
+                totalPages
+            }
+        });
+    } catch (e) {
+        console.error('Admin attendance log error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch attendance log.' });
+    }
+});
+
 // 1. Get all staff list
 app.get('/api/admin/staff', checkAuth, async (req, res) => {
     try {
@@ -2932,7 +4975,7 @@ app.get('/api/admin/staff', checkAuth, async (req, res) => {
 // 2. Add new staff
 app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, joiningDate, salaryCtc } = req.body;
 
         const existingStaff = await Staff.findOne({ email });
         if (existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
@@ -2947,7 +4990,18 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newStaff = new Staff({ empId: newEmpId, name, email, password: hashedPassword, role });
+        const parsedSalary = Number(salaryCtc) || 0;
+        const parsedJoiningDate = joiningDate ? new Date(joiningDate) : null;
+
+        const newStaff = new Staff({
+            empId: newEmpId,
+            name,
+            email,
+            password: hashedPassword,
+            role,
+            salaryCtc: parsedSalary,
+            joiningDate: parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime()) ? parsedJoiningDate : null
+        });
         await newStaff.save();
         res.json({ success: true, message: `Staff Added! ID is ${newEmpId}` });
     } catch (e) { res.status(500).json({ success: false, error: "Server error!" }); }
@@ -3112,7 +5166,26 @@ app.post('/api/admin/add-expense', checkAuth, async (req, res) => {
     try {
         const { title, amount, category } = req.body;
         if (!title || !amount) return res.status(400).json({ success: false, message: 'Title and amount required' });
-        const expense = new Expense({ title, amount: Number(amount), category: category || 'General' });
+        const expense = new Expense({
+            title,
+            amount: Number(amount),
+            category: category || 'General',
+            transactionType: 'EXPENSE'
+        });
+        await expense.save();
+        const financeTransaction = await FinancialTransaction.create({
+            title,
+            amount: Number(amount),
+            type: 'EXPENSE',
+            kind: 'debit',
+            category: category || 'General',
+            source: 'MANUAL_EXPENSE',
+            meta: category || 'General',
+            notes: `Manual expense entry for ${title}`,
+            expenseId: expense._id,
+            date: expense.date
+        });
+        expense.financeTransactionId = financeTransaction._id;
         await expense.save();
         res.json({ success: true, message: 'Expense added! 💰' });
     } catch (e) { res.status(500).json({ success: false, error: 'Failed to add expense' }); }
@@ -3127,6 +5200,11 @@ app.get('/api/admin/expenses', checkAuth, async (req, res) => {
 
 app.delete('/api/admin/delete-expense/:id', checkAuth, async (req, res) => {
     try {
+        const expense = await Expense.findById(req.params.id);
+        if (expense?.financeTransactionId) {
+            await FinancialTransaction.findByIdAndDelete(expense.financeTransactionId);
+        }
+        await FinancialTransaction.deleteMany({ expenseId: req.params.id, type: 'EXPENSE' });
         await Expense.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: 'Expense deleted! 🗑️' });
     } catch (e) { res.status(500).json({ success: false, error: 'Failed to delete expense' }); }
@@ -3134,22 +5212,16 @@ app.delete('/api/admin/delete-expense/:id', checkAuth, async (req, res) => {
 
 app.get('/api/admin/finance-summary', checkAuth, async (req, res) => {
     try {
-        // Total Revenue from Orders
-        const orders = await Order.find();
-        let totalRevenue = 0;
-        orders.forEach(o => {
-            const price = parseFloat(String(o.price).replace(/[^0-9.]/g, ''));
-            if (!isNaN(price)) totalRevenue += price;
+        const payload = await buildFinanceDashboardPayload({ year: req.query.year, month: req.query.month });
+
+        res.json({
+            success: true,
+            totalRevenue: payload.summary.totalRevenue,
+            totalExpenses: payload.summary.totalExpenses,
+            totalSalaryPaid: payload.summary.totalSalaryPaid,
+            pendingSalary: payload.summary.pendingSalary,
+            netProfit: payload.summary.netProfit
         });
-
-        // Total Expenses
-        const expenses = await Expense.find();
-        let totalExpenses = 0;
-        expenses.forEach(e => { totalExpenses += (e.amount || 0); });
-
-        const netProfit = totalRevenue - totalExpenses;
-
-        res.json({ success: true, totalRevenue, totalExpenses, netProfit });
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
