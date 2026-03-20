@@ -1,0 +1,409 @@
+/* ==========================================
+   🎨 GLOBAL STYLES & VARIABLES
+   ========================================== */
+* {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f4f6f9;
+    color: #333;
+}
+
+/* Input Tap Target Minimums */
+input,
+select,
+textarea,
+button {
+    min-height: 44px;
+    font-size: 16px;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    background: #f0f2f8;
+}
+
+:root {
+    --bg: #f4f7fb;
+    --bg-soft: #eef3f8;
+    --panel: rgba(255, 255, 255, 0.92);
+    --panel-strong: #ffffff;
+    --line: #e2e8f0;
+    --line-strong: #d4dce7;
+    --text: #0f172a;
+    --muted: #64748b;
+    --muted-soft: #94a3b8;
+    --primary: #1d4ed8;
+    --primary-soft: #dbeafe;
+    --success: #15803d;
+    --success-soft: #dcfce7;
+    --warning: #b45309;
+    --warning-soft: #fef3c7;
+    --danger: #b91c1c;
+    --danger-soft: #fee2e2;
+    --shadow-sm: 0 18px 45px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 24px 60px rgba(15, 23, 42, 0.1);
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+}
+
+* {
+    font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+body {
+    background:
+        radial-gradient(circle at top right, rgba(29, 78, 216, 0.08), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(15, 118, 110, 0.08), transparent 28%),
+        var(--bg);
+    color: var(--text);
+}
+
+/* ==========================================
+   📋 TABLES
+   ========================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    margin-top: 15px;
+}
+
+th,
+td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background: #6c63ff;
+    color: white;
+}
+
+tr:hover {
+    background: #f9f9f9;
+}
+
+.table-responsive {
+    overflow: auto;
+}
+
+table {
+    margin-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+th,
+td {
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    vertical-align: middle;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+tbody tr:nth-child(even) {
+    background: rgba(248, 250, 252, 0.82);
+}
+
+tr:hover {
+    background: rgba(239, 246, 255, 0.9);
+}
+
+.pagination-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.pagination-meta {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.pagination-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.pagination-btn {
+    min-height: auto;
+    border: 1px solid var(--line-strong);
+    background: #fff;
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================
+   🔘 BUTTONS
+   ========================================== */
+.delete-btn {
+    background: #ff4757;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.delete-btn:hover {
+    background: #ff6b81;
+}
+
+.btn-publish {
+    background: #6c63ff;
+    color: white;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-publish:hover {
+    background: #5a52d5;
+    transform: translateY(-2px);
+}
+
+.btn-cancel {
+    background: #64748b;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none;
+    margin-left: 10px;
+}
+
+.btn-publish {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22);
+    letter-spacing: -0.01em;
+}
+
+.btn-publish:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 34px rgba(37, 99, 235, 0.26);
+}
+
+.btn-soft {
+    background: #eff6ff;
+    color: var(--primary);
+    border: 1px solid #bfdbfe;
+    box-shadow: none;
+}
+
+.btn-soft:hover {
+    background: #dbeafe;
+}
+
+/* ==========================================
+   🔤 INPUTS & FORMS
+   ========================================== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #6c63ff;
+}
+
+/* TinyMCE Fix */
+.tox-tinymce {
+    border-radius: 8px !important;
+    border: 1px solid #ddd !important;
+}
+
+.toolbar-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+
+.toolbar-field input,
+.toolbar-field select {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong);
+    background: #f8fafc;
+    padding: 11px 12px;
+    min-height: auto;
+    font-size: 0.92rem;
+}
+
+/* ==========================================
+   🏷️ STATUS PILLS & LOADERS
+   ========================================== */
+.status-dot-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.status-dot-pill.active {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.status-dot-pill.inactive {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.skeleton-line,
+.skeleton-pill {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.6s infinite;
+    border-radius: 999px;
+}
+
+.skeleton-line {
+    height: 12px;
+    width: 100%;
+}
+
+.skeleton-pill {
+    height: 34px;
+    width: 84px;
+}
+
+/* ==========================================
+   🍞 TOAST NOTIFICATIONS
+   ========================================== */
+.toast-stack {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 4000;
+    width: min(360px, calc(100vw - 32px));
+}
+
+.admin-toast {
+    border-radius: 16px;
+    padding: 14px 16px;
+    color: #fff;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: toast-in 0.24s ease;
+}
+
+.admin-toast.info { background: linear-gradient(135deg, #334155, #1e293b); }
+.admin-toast.success { background: linear-gradient(135deg, #15803d, #166534); }
+.admin-toast.warning { background: linear-gradient(135deg, #d97706, #b45309); }
+.admin-toast.error { background: linear-gradient(135deg, #dc2626, #991b1b); }
+
+.admin-toast .title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+.admin-toast .message {
+    font-size: 0.88rem;
+    line-height: 1.45;
+    opacity: 0.94;
+}
+
+/* ==========================================
+   ✨ KEYFRAMES
+   ========================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}

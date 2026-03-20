@@ -598,22 +598,54 @@
             </div>
             <div id="view-tasks" class="tab-content" style="display: none;">
                 <section class="task-section">
-                    <div class="section-header">
-                        <h2>All Assigned Leads (History)</h2>
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <div>
+                            <h2>My Tasks</h2>
+                            <p style="margin:6px 0 0;color:#64748b;font-size:13px;">Your regular lead follow-ups and assigned bounty projects now live together without overwriting each other.</p>
+                        </div>
+                        <button class="btn-outline" onclick="fetchMyTasks(); fetchMyBountyTasks();" style="padding:8px 12px;">Refresh</button>
                     </div>
                     <div class="task-table-wrapper">
                         <table class="task-table">
                             <thead>
                                 <tr>
-                                    <th>Client Name</th>
-                                    <th>Contact Number</th>
-                                    <th>Service Pitch</th>
+                                    <th>Client</th>
+                                    <th>Contact</th>
+                                    <th>Service</th>
+                                    <th>AI Score</th>
                                     <th>Status</th>
-                                    <th>Notes / Reason</th>
+                                    <th>My Notes</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody></tbody>
+                            <tbody id="myTasksTableBody">
+                                <tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px;">Loading lead tasks...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="height:20px;"></div>
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <div>
+                            <h2>Bounty Projects</h2>
+                            <p style="margin:6px 0 0;color:#64748b;font-size:13px;">Submit work links, respond to revision notes, and track payout approvals.</p>
+                        </div>
+                        <button class="btn-outline" onclick="fetchMyBountyTasks()" style="padding:8px 12px;">Refresh Bounties</button>
+                    </div>
+                    <div class="task-table-wrapper">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Bounty</th>
+                                    <th>Status</th>
+                                    <th>Submission</th>
+                                    <th>Admin Feedback</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="myBountyTasksBody">
+                                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">Loading bounty projects...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -1003,6 +1035,26 @@
                 </div>
             </div>
 
+            <div id="submitTaskModal" class="modal-overlay" style="display:none;">
+                <div class="modal-content" style="max-width:560px;width:94%;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+                        <div>
+                            <h3 style="margin:0;color:#0f172a;">Submit Task Work</h3>
+                            <p id="submitTaskModalTitle" style="margin:6px 0 0;color:#64748b;font-size:13px;">Paste your work URL below.</p>
+                        </div>
+                        <button class="btn-outline" onclick="closeSubmitTaskModal()" style="padding:8px 12px;">Close</button>
+                    </div>
+                    <div>
+                        <label class="modern-label">Work URL</label>
+                        <input type="url" id="submitTaskUrl" class="modern-input" placeholder="https://drive.google.com/...">
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+                        <button class="btn-outline" onclick="closeSubmitTaskModal()" style="width:auto;padding:10px 16px;">Cancel</button>
+                        <button class="btn-modern btn-purple" id="submitTaskWorkBtn" type="button" onclick="submitBountyTaskWork()" style="width:auto;padding:10px 16px;">Submit Work</button>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
     <script src="/js/NotificationManager.js"></script>
@@ -1045,6 +1097,7 @@
                     document.querySelector('.dashboard-container').style.display = 'flex';
 
                     fetchMyTasks();
+                    fetchMyBountyTasks();
                     fetchNotices();
                     fetchStaffStats();
                     fetchLeaderboard();
@@ -1089,6 +1142,10 @@
             if (navElement) navElement.classList.add('active');
 
             if (tabId === 'attendance' || tabId === 'payslip') fetchMyAttendanceHistory();
+            if (tabId === 'tasks') {
+                fetchMyTasks();
+                fetchMyBountyTasks();
+            }
         }
 
         function formatDuration(ms) {
@@ -1103,6 +1160,15 @@
             return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function toggleProfileMenu() {
             const menu = document.getElementById('profile-menu');
             menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
@@ -1114,7 +1180,7 @@
                 if (menu && menu.style.display === 'block') menu.style.display = 'none';
             }
 
-            const closableModalIds = ['downloadChoiceModal', 'sendApprovalModal', 'approvalRequestsModal', 'attendanceHistoryModal'];
+            const closableModalIds = ['downloadChoiceModal', 'sendApprovalModal', 'approvalRequestsModal', 'attendanceHistoryModal', 'submitTaskModal'];
             closableModalIds.forEach((id) => {
                 const modal = document.getElementById(id);
                 if (modal && event.target === modal) {
@@ -1170,7 +1236,7 @@
 
         function renderDashboard(tasks) {
             const dashTbody = document.querySelector('#view-dashboard .task-table tbody');
-            const tasksTbody = document.querySelector('#view-tasks .task-table tbody');
+            const tasksTbody = document.getElementById('myTasksTableBody');
 
             if (dashTbody) dashTbody.innerHTML = '';
             if (tasksTbody) tasksTbody.innerHTML = '';
@@ -1184,7 +1250,6 @@
                 No leads assigned yet! Relax 🎉
             </td></tr>`;
                 if (dashTbody) dashTbody.innerHTML = emptyMsg;
-                if (tasksTbody) tasksTbody.innerHTML = emptyMsg;
             } else {
                 tasks.forEach(task => {
                     if (task.status === 'interested' || task.status === 'rejected') completed++;
@@ -1215,14 +1280,6 @@
                         tr1.innerHTML = trHTML;
                         dashTbody.appendChild(tr1);
                     }
-
-                    if (tasksTbody) {
-                        const tr2 = document.createElement('tr');
-                        tr2.id = `tasks-task-row-${task._id}`;
-                        tr2.style.transition = 'opacity 0.5s ease';
-                        tr2.innerHTML = trHTML;
-                        tasksTbody.appendChild(tr2);
-                    }
                 });
 
                 if (dashTbody && dashTbody.innerHTML === '') {
@@ -1239,7 +1296,167 @@
                 statCards[1].innerText = completed;
                 statCards[2].innerText = pending;
             }
+
+            renderLeadTasksTable(tasks);
         }
+
+        function renderLeadTasksTable(tasks) {
+            const tbody = document.getElementById('myTasksTableBody');
+            if (!tbody) return;
+
+            if (!tasks.length) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 32px; color: #64748b;">
+                    <i class="ri-customer-service-2-line" style="font-size:28px;display:block;margin-bottom:10px;color:#cbd5e1;"></i>
+                    No regular lead tasks assigned yet.
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = tasks.map((task) => `
+                <tr id="tasks-task-row-${task._id}">
+                    <td><strong>${escapeHtml(task.clientName || 'Lead')}</strong><br><span class="sub-text">${escapeHtml(task.clientType || 'Lead')}</span></td>
+                    <td>${escapeHtml(task.contactNumber || '—')}</td>
+                    <td><span class="badge-service">${escapeHtml(task.servicePitch || 'Service')}</span></td>
+                    <td>${task.aiScore ? `<span style="font-size:12px;font-weight:bold;background:${task.aiScore.includes('Hot') ? '#fef2f2' : task.aiScore.includes('Cold') ? '#eff6ff' : '#fffbeb'};padding:3px 8px;border-radius:15px;">${escapeHtml(task.aiScore)}</span>` : '<span style="color:#ccc;font-size:11px;">...</span>'}</td>
+                    <td>
+                        <select class="status-dropdown">
+                            <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
+                            <option value="interested" ${task.status === 'interested' ? 'selected' : ''}>✅ Interested</option>
+                            <option value="not-answering" ${task.status === 'not-answering' ? 'selected' : ''}>📵 Not Answering</option>
+                            <option value="call-back" ${task.status === 'call-back' ? 'selected' : ''}>📞 Call Back Tom</option>
+                            <option value="rejected" ${task.status === 'rejected' ? 'selected' : ''}>❌ Rejected</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="notes-input" value="${escapeHtml(task.notes || '')}" placeholder="Type feedback..."></td>
+                    <td><button class="btn-update" onclick="updateTask(this, '${task._id}')">Save</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderBountyTaskStatus(status) {
+            const palette = {
+                Assigned: ['#e0e7ff', '#3730a3'],
+                Submitted: ['#fef3c7', '#b45309'],
+                Revision: ['#fee2e2', '#b91c1c'],
+                Approved: ['#dcfce7', '#166534']
+            };
+            const [bg, fg] = palette[status] || ['#e2e8f0', '#475569'];
+            return `<span class="attendance-status-pill" style="background:${bg};color:${fg};">${status || 'Assigned'}</span>`;
+        }
+
+        async function fetchMyBountyTasks() {
+            try {
+                const response = await fetch('/api/staff/bounty-tasks', { credentials: 'include' });
+                const data = await response.json();
+                if (data.success) {
+                    renderMyBountyTasks(data.tasks || []);
+                } else {
+                    renderMyBountyTasks([]);
+                }
+            } catch (e) {
+                console.error('Bounty task fetch error:', e);
+                renderMyBountyTasks([]);
+            }
+        }
+
+        function renderMyBountyTasks(tasks) {
+            const tbody = document.getElementById('myBountyTasksBody');
+            if (!tbody) return;
+
+            if (!tasks.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 32px; color: #64748b;">
+                    <i class="ri-briefcase-2-line" style="font-size:28px;display:block;margin-bottom:10px;color:#cbd5e1;"></i>
+                    No bounty tasks assigned yet.
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = tasks.map((task) => {
+                let actionMarkup = '<span style="color:#94a3b8;font-weight:700;">No action</span>';
+                if (task.status === 'Assigned' || task.status === 'Revision') {
+                    actionMarkup = `<button class="btn-update" data-task-title="${escapeHtml(task.title || '')}" data-submission-link="${escapeHtml(task.submissionLink || '')}" onclick="openSubmitTaskModalFromButton(this, '${task._id}')">Submit Work</button>`;
+                } else if (task.status === 'Submitted') {
+                    actionMarkup = '<span style="color:#b45309;font-weight:700;">Awaiting review</span>';
+                } else if (task.status === 'Approved') {
+                    actionMarkup = '<span style="color:#166534;font-weight:700;">Approved ✓</span>';
+                }
+
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(task.title || 'Untitled Task')}</strong><br><span class="sub-text">${escapeHtml(task.description || 'No description provided.')}</span></td>
+                        <td><strong>₹${Number(task.bountyAmount || 0).toLocaleString('en-IN')}</strong></td>
+                        <td>${renderBountyTaskStatus(task.status)}</td>
+                        <td>${task.submissionLink ? `<a href="${escapeHtml(task.submissionLink)}" target="_blank" rel="noopener">Open Link ↗</a>` : '<span style="color:#94a3b8;">Not submitted</span>'}</td>
+                        <td>${task.adminFeedback ? escapeHtml(task.adminFeedback) : '<span style="color:#94a3b8;">No feedback</span>'}</td>
+                        <td>${actionMarkup}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        let activeBountyTaskId = '';
+
+        function openSubmitTaskModalFromButton(button, taskId) {
+            openSubmitTaskModal(
+                taskId,
+                button?.dataset?.taskTitle || '',
+                button?.dataset?.submissionLink || ''
+            );
+        }
+
+        function openSubmitTaskModal(taskId, taskTitle = '', existingLink = '') {
+            activeBountyTaskId = taskId;
+            const modal = document.getElementById('submitTaskModal');
+            const input = document.getElementById('submitTaskUrl');
+            const title = document.getElementById('submitTaskModalTitle');
+            if (input) input.value = existingLink || '';
+            if (title) title.innerText = taskTitle ? `Paste the completed work link for "${taskTitle}".` : 'Paste your work URL below.';
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeSubmitTaskModal() {
+            activeBountyTaskId = '';
+            const modal = document.getElementById('submitTaskModal');
+            const input = document.getElementById('submitTaskUrl');
+            if (input) input.value = '';
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitBountyTaskWork() {
+            const submissionLink = document.getElementById('submitTaskUrl')?.value?.trim() || '';
+            const btn = document.getElementById('submitTaskWorkBtn');
+            if (!activeBountyTaskId || !submissionLink) {
+                return alert('Please add your work URL before submitting.');
+            }
+
+            const originalText = btn?.innerText || 'Submit Work';
+            if (btn) btn.innerText = 'Submitting...';
+
+            try {
+                const response = await fetch(`/api/staff/bounty-tasks/${activeBountyTaskId}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ submissionLink })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.message || 'Failed to submit task.');
+
+                alert(data.message || 'Work submitted successfully.');
+                closeSubmitTaskModal();
+                fetchMyBountyTasks();
+            } catch (e) {
+                alert(e.message || 'Failed to submit task.');
+            }
+
+            if (btn) btn.innerText = originalText;
+        }
+
+        window.fetchMyBountyTasks = fetchMyBountyTasks;
+        window.openSubmitTaskModalFromButton = openSubmitTaskModalFromButton;
+        window.openSubmitTaskModal = openSubmitTaskModal;
+        window.closeSubmitTaskModal = closeSubmitTaskModal;
+        window.submitBountyTaskWork = submitBountyTaskWork;
 
         async function updateTask(btnElement, taskId) {
             const row = btnElement.closest('tr');
@@ -2650,6 +2867,23 @@
             // Re-render the specific task row if we know how, or just fetch if staff is on tasks panel
             if (updatedTask.assignedTo === staffData.email) fetchMyTasks();
         });
+
+        socket.on('bounty_task_assigned', (data) => {
+            fetchMyBountyTasks();
+            if (Notification.permission === "granted") {
+                new Notification('New Task Assigned', {
+                    body: `${data.title || 'A new task'} was assigned with a payout of ₹${Number(data.bountyAmount || 0).toLocaleString('en-IN')}.`,
+                    icon: staffData?.profilePhoto || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                });
+            }
+        });
+
+        socket.on('bounty_task_updated', () => {
+            fetchMyBountyTasks();
+            fetchStaffStats();
+            if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
+        });
+
         // Init on load
         if (staffData) { initChat(); }
 

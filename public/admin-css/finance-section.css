@@ -1,0 +1,106 @@
+        .finance-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .finance-card,
+        .chart-card,
+        .editor-shell,
+        .editor-settings,
+        .resource-dropzone,
+        .chat-sidebar-shell,
+        .chat-window-shell {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(226, 232, 240, 0.92);
+            box-shadow: var(--shadow-sm);
+            border-radius: 22px;
+        }
+
+        .finance-card {
+            padding: 18px;
+        }
+
+        .finance-card .label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .finance-card .amount {
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+        }
+
+        .chart-card {
+            padding: 18px;
+        }
+
+        .finance-chart-frame {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            min-height: 400px;
+            max-height: 400px;
+            overflow: hidden;
+        }
+
+        .finance-chart-frame canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .finance-grid {
+            display: grid;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 18px;
+        }
+
+        .transaction-list-table .credit {
+            color: var(--success);
+            font-weight: 800;
+        }
+
+        .transaction-list-table .debit {
+            color: #111827;
+            font-weight: 800;
+        }
+
+        .finance-filter-tabs {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 6px;
+            border: 1px solid rgba(226, 232, 240, 0.92);
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 18px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .finance-filter-btn {
+            border: 1px solid transparent;
+            background: white;
+            color: var(--muted);
+            border-radius: 14px;
+            padding: 9px 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.18s ease;
+            white-space: nowrap;
+        }
+
+        .finance-filter-btn:hover {
+            color: var(--text);
+            background: #f8fafc;
+        }
+
+        .finance-filter-btn.active {
+            color: #1d4ed8;
+            background: #eff6ff;
+            border-color: rgba(59, 130, 246, 0.18);
+        }

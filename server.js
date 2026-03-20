@@ -372,6 +372,86 @@ function parsePositiveInt(value, fallback) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function normalizeStaffRoleInput(value) {
+    const rawRoles = Array.isArray(value) ? value : String(value || '').split(',');
+    const uniqueRoles = [];
+
+    rawRoles.forEach((role) => {
+        const cleaned = String(role || '').trim().replace(/\s+/g, ' ');
+        if (!cleaned) return;
+        if (uniqueRoles.some((existing) => existing.toLowerCase() === cleaned.toLowerCase())) return;
+        uniqueRoles.push(cleaned);
+    });
+
+    return uniqueRoles.join(', ') || 'Staff';
+}
+
+function parseOrderDateValue(value) {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+}
+
+async function getMonthlyApprovedCommissionSummary(staffEmail, month, year) {
+    const normalizedEmail = String(staffEmail || '').trim().toLowerCase();
+    const [orders, bountyTasks] = await Promise.all([
+        Order.find({
+            assignedStaff: normalizedEmail,
+            status: 'Done',
+            commissionValue: { $gt: 0 }
+        })
+            .select('orderId customerName package date commissionValue')
+            .lean(),
+        StaffBountyTask.find({
+            assignedStaffEmail: normalizedEmail,
+            status: 'Approved',
+            bountyAmount: { $gt: 0 }
+        })
+            .select('_id title approvedAt updatedAt createdAt bountyAmount')
+            .lean()
+    ]);
+
+    const orderRows = orders.map((order) => {
+        const orderDate = parseOrderDateValue(order.date);
+        if (!orderDate) return null;
+        if (orderDate.getMonth() + 1 !== month || orderDate.getFullYear() !== year) return null;
+
+        return {
+            orderId: order.orderId || 'NA',
+            clientName: order.customerName || 'Client',
+            packageName: order.package || 'Task',
+            date: orderDate,
+            commission: Number(order.commissionValue || 0)
+        };
+    }).filter(Boolean);
+
+    const bountyRows = bountyTasks.map((task) => {
+        const approvedDate = parseOrderDateValue(task.approvedAt || task.updatedAt || task.createdAt);
+        if (!approvedDate) return null;
+        if (approvedDate.getMonth() + 1 !== month || approvedDate.getFullYear() !== year) return null;
+
+        return {
+            orderId: `BT-${String(task._id || '').slice(-6).toUpperCase() || 'TASK'}`,
+            clientName: 'Internal Task Bounty',
+            packageName: task.title || 'Bounty Task',
+            date: approvedDate,
+            commission: Number(task.bountyAmount || 0)
+        };
+    }).filter(Boolean);
+
+    const rows = [...orderRows, ...bountyRows].sort((a, b) => a.date - b.date);
+
+    return {
+        rows: rows.map((row) => ({
+            ...row,
+            dateLabel: row.date.toLocaleDateString('en-IN')
+        })),
+        approvedTaskCount: rows.length,
+        totalCommission: rows.reduce((sum, row) => sum + Number(row.commission || 0), 0)
+    };
+}
+
 async function getDocumentApprovalStatus(staffEmail, documentType, month, year) {
     const doc = await DocumentApproval.findOne({ staffEmail, documentType, month, year }).lean();
     return doc?.approvalStatus || 'Unverified';
@@ -394,45 +474,16 @@ async function createAttendanceReportPdf(staff, month, year, approvalStatusOverr
 }
 
 async function createPayslipPdf(staff, month, year, options = {}) {
-    const records = await getMonthlyAttendanceRecords(staff.email, month, year);
+    const [records, payoutData] = await Promise.all([
+        getMonthlyAttendanceRecords(staff.email, month, year),
+        getMonthlyApprovedCommissionSummary(staff.email, month, year)
+    ]);
     const summary = calculateMonthAttendanceSummary(records);
-
-    const configuredSalary = Number(options.salary) || Number(staff.salaryCtc) || 0;
-    if (configuredSalary <= 0) {
-        throw new Error(options.missingSalaryMessage || 'Monthly salary is missing. Please set salaryCtc for this staff profile.');
-    }
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const perDaySalary = configuredSalary / daysInMonth;
-    const lopDeduction = perDaySalary * summary.absentDays;
-    const professionalTax = Number(options.professionalTax) || 0;
-    const otherDeductions = Number(options.otherDeductions) || 0;
-
-    const earnings = [
-        { label: 'Basic Pay', amount: configuredSalary * 0.5 },
-        { label: 'House Rent Allowance', amount: configuredSalary * 0.2 },
-        { label: 'Special Allowance', amount: configuredSalary * 0.3 }
-    ];
-
-    const deductions = [
-        { label: 'Loss Of Pay (Absent Days)', amount: lopDeduction },
-        { label: 'Professional Tax', amount: professionalTax },
-        { label: 'Other Deductions', amount: otherDeductions }
-    ];
-
-    const totalDeductions = deductions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const netPay = Math.max(0, configuredSalary - totalDeductions);
-    const salaryData = {
-        earnings,
-        deductions,
-        grossSalary: configuredSalary,
-        netPay
-    };
 
     const monthLabel = getMonthLabel(month, year);
     const approvalStatus = options.approvalStatus ?? await getDocumentApprovalStatus(staff.email, 'Payslip', month, year);
     const generatedAt = new Date().toLocaleString('en-IN');
-    const html = buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt, approvalStatus });
+    const html = buildPayslipHtml({ staff, monthLabel, summary, payoutData, generatedAt, approvalStatus });
     const pdfBuffer = await renderHtmlToPdfBuffer(html);
 
     return {
@@ -546,14 +597,14 @@ function streamAttendanceReportPdf(res, payload) {
 }
 
 function streamPayslipPdf(res, payload) {
-    const { staff, monthLabel, summary, salaryData, fileName, approvalStatus } = payload;
+    const { staff, monthLabel, summary, payoutData, fileName, approvalStatus } = payload;
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     doc.pipe(res);
 
-    drawDocumentHeader(doc, 'Employee Payslip', monthLabel, staff);
+    drawDocumentHeader(doc, 'Task Payout Slip', monthLabel, staff);
 
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(11)
         .text(`Present: ${summary.presentDays}`, 40, 194)
@@ -561,38 +612,41 @@ function streamPayslipPdf(res, payload) {
         .text(`Leave: ${summary.leaveDays}`, 260, 194)
         .text(`Net Work: ${formatHoursMinutesFromMs(summary.totalWorkingMs)}`, 380, 194, { width: 175, align: 'right' });
 
-    doc.rect(40, 225, 245, 22).fill('#0f172a');
-    doc.rect(310, 225, 245, 22).fill('#0f172a');
+    doc.rect(40, 225, 515, 22).fill('#0f172a');
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(10)
-        .text('Earnings', 48, 232)
-        .text('Amount', 215, 232)
-        .text('Deductions', 318, 232)
-        .text('Amount', 485, 232);
+        .text('Date', 48, 232)
+        .text('Ref ID', 128, 232)
+        .text('Context', 220, 232)
+        .text('Task', 360, 232)
+        .text('Payout', 470, 232, { width: 75, align: 'right' });
 
-    let yLeft = 247;
-    salaryData.earnings.forEach((item, idx) => {
-        if (idx % 2 === 0) doc.rect(40, yLeft, 245, 22).fill('#f8fafc');
+    const lines = payoutData.rows.length ? payoutData.rows : [{
+        dateLabel: '-',
+        orderId: '-',
+        clientName: 'No approved task payouts for this month',
+        packageName: '-',
+        commission: 0
+    }];
+
+    let y = 247;
+    lines.forEach((item, idx) => {
+        if (y > 640) return;
+        if (idx % 2 === 0) doc.rect(40, y, 515, 22).fill('#f8fafc');
         doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
-            .text(item.label, 48, yLeft + 7)
-            .text(formatINR(item.amount), 190, yLeft + 7, { width: 85, align: 'right' });
-        yLeft += 22;
+            .text(item.dateLabel, 48, y + 7, { width: 70 })
+            .text(item.orderId, 128, y + 7, { width: 82 })
+            .text(item.clientName, 220, y + 7, { width: 130 })
+            .text(item.packageName, 360, y + 7, { width: 95 })
+            .text(formatINR(item.commission), 470, y + 7, { width: 75, align: 'right' });
+        y += 22;
     });
 
-    let yRight = 247;
-    salaryData.deductions.forEach((item, idx) => {
-        if (idx % 2 === 0) doc.rect(310, yRight, 245, 22).fill('#f8fafc');
-        doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
-            .text(item.label, 318, yRight + 7)
-            .text(formatINR(item.amount), 460, yRight + 7, { width: 85, align: 'right' });
-        yRight += 22;
-    });
-
-    doc.roundedRect(40, 360, 245, 58, 8).fill('#eef2ff');
-    doc.roundedRect(310, 360, 245, 58, 8).fill('#dcfce7');
-    doc.fillColor('#3730a3').font('Helvetica-Bold').fontSize(10).text('Gross Salary', 52, 376)
-        .fontSize(16).text(formatINR(salaryData.grossSalary), 52, 392);
-    doc.fillColor('#166534').font('Helvetica-Bold').fontSize(10).text('Net Salary Payable', 322, 376)
-        .fontSize(16).text(formatINR(salaryData.netPay), 322, 392);
+    doc.roundedRect(40, 670, 245, 58, 8).fill('#eef2ff');
+    doc.roundedRect(310, 670, 245, 58, 8).fill('#dcfce7');
+    doc.fillColor('#3730a3').font('Helvetica-Bold').fontSize(10).text('Approved Items', 52, 686)
+        .fontSize(16).text(String(payoutData.approvedTaskCount || 0), 52, 702);
+    doc.fillColor('#166534').font('Helvetica-Bold').fontSize(10).text('Total Approved Payout', 322, 686)
+        .fontSize(16).text(formatINR(payoutData.totalCommission || 0), 322, 702);
 
     drawApprovalSignatureBlock(doc, approvalStatus);
     doc.end();
@@ -870,24 +924,24 @@ function buildAttendanceReportHtml({ staff, monthLabel, summary, rows, generated
     `;
 }
 
-function buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt, approvalStatus }) {
+function buildPayslipHtml({ staff, monthLabel, summary, payoutData, generatedAt, approvalStatus }) {
     const logoSrc = getHtmlImageSrc('logo.png', 'VIBESPHERE_LOGO_URL');
     const signatureSrc = getHtmlImageSrc('signature.png', 'CEO_SIGNATURE_URL');
     const isApproved = approvalStatus === 'Approved';
 
-    const earningsRows = salaryData.earnings.map((item) => `
+    const payoutRows = payoutData.rows.length ? payoutData.rows.map((item) => `
         <tr>
-            <td>${escapeHtml(item.label)}</td>
-            <td style="text-align:right;">${escapeHtml(formatINR(item.amount))}</td>
+            <td>${escapeHtml(item.dateLabel)}</td>
+            <td>${escapeHtml(item.orderId)}</td>
+            <td>${escapeHtml(item.clientName)}</td>
+            <td>${escapeHtml(item.packageName)}</td>
+            <td style="text-align:right;">${escapeHtml(formatINR(item.commission))}</td>
         </tr>
-    `).join('');
-
-    const deductionRows = salaryData.deductions.map((item) => `
+    `).join('') : `
         <tr>
-            <td>${escapeHtml(item.label)}</td>
-            <td style="text-align:right;">${escapeHtml(formatINR(item.amount))}</td>
+            <td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No approved task payouts found for this month.</td>
         </tr>
-    `).join('');
+    `;
 
     return `
         <!doctype html>
@@ -897,8 +951,8 @@ function buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt,
             <meta name="viewport" content="width=device-width,initial-scale=1" />
             ${buildPdfShellStyles()}
             <style>
-                .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 12px; }
                 .mono { font-variant-numeric: tabular-nums; }
+                .section-table { padding: 0 24px 12px; }
                 .totals {
                     padding: 0 24px 8px;
                     display: grid;
@@ -917,19 +971,19 @@ function buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt,
             </style>
         </head>
         <body>
-            <div class="page">
-                <div class="watermark">PAYSLIP</div>
-                <div class="head">
+                <div class="page">
+                    <div class="watermark">PAYSLIP</div>
+                    <div class="head">
                     <div class="company">
                         ${logoSrc
             ? `<img src="${logoSrc}" alt="VibeSphere Media" style="width:165px;max-width:100%;height:auto;display:block;margin-bottom:8px;" />`
             : `<h1>VibeSphere Media</h1>`}
-                        <p>Payroll and Compensation Department</p>
+                        <p>Task-Based Payout Statement</p>
                         <p>support@vibespheremedia.in | www.vibespheremedia.in</p>
                     </div>
                     <div class="meta">
-                        <p><strong>Document:</strong> Employee Payslip</p>
-                        <p><strong>Salary Month:</strong> ${escapeHtml(monthLabel)}</p>
+                        <p><strong>Document:</strong> Task Payout Slip</p>
+                        <p><strong>Payout Month:</strong> ${escapeHtml(monthLabel)}</p>
                         <p><strong>Generated:</strong> ${escapeHtml(generatedAt)}</p>
                     </div>
                 </div>
@@ -946,30 +1000,34 @@ function buildPayslipHtml({ staff, monthLabel, summary, salaryData, generatedAt,
                     <div class="card"><div class="label">Net Worked</div><div class="value">${escapeHtml(formatHoursMinutesFromMs(summary.totalWorkingMs))}</div></div>
                 </div>
 
-                <div class="split">
+                <div class="section-table">
                     <table class="mono">
-                        <thead><tr><th>Earnings</th><th style="text-align:right;">Amount</th></tr></thead>
-                        <tbody>${earningsRows}</tbody>
-                    </table>
-                    <table class="mono">
-                        <thead><tr><th>Deductions</th><th style="text-align:right;">Amount</th></tr></thead>
-                        <tbody>${deductionRows}</tbody>
+                        <thead>
+                            <tr>
+                                <th style="width:14%">Date</th>
+                                <th style="width:16%">Ref ID</th>
+                                <th style="width:28%">Context</th>
+                                <th style="width:22%">Task</th>
+                                <th style="width:20%;text-align:right;">Payout</th>
+                            </tr>
+                        </thead>
+                        <tbody>${payoutRows}</tbody>
                     </table>
                 </div>
 
                 <div class="totals">
                     <div class="total-card">
-                        <div class="k">Gross Salary</div>
-                        <div class="v mono">${escapeHtml(formatINR(salaryData.grossSalary))}</div>
+                        <div class="k">Approved Items</div>
+                        <div class="v mono">${escapeHtml(String(payoutData.approvedTaskCount || 0))}</div>
                     </div>
                     <div class="total-card net">
-                        <div class="k">Net Salary Payable</div>
-                        <div class="v mono">${escapeHtml(formatINR(salaryData.netPay))}</div>
+                        <div class="k">Total Approved Payout</div>
+                        <div class="v mono">${escapeHtml(formatINR(payoutData.totalCommission || 0))}</div>
                     </div>
                 </div>
 
                 <div class="foot">
-                    <div class="note">This is a computer-generated payslip and does not require a physical signature. For payroll queries, contact HR within 3 business days.</div>
+                    <div class="note">This is a computer-generated payout slip. It reflects approved order commissions and approved task bounties for the selected month only.</div>
                     <div class="sign">
                         ${isApproved
             ? `<span style="color: green; font-weight: bold; font-size: 13px;">VERIFIED ✓</span>`
@@ -1139,6 +1197,8 @@ const otpLimiter = rateLimit({
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'htm'] }));
 
 // Dynamic page routes (serve HTML shell, JS fetches data from API)
+const serveAdminDashboard = (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+app.get(['/admin', '/admin/'], serveAdminDashboard);
 app.get('/service/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'service-detail.html')));
 app.get('/package/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'package-detail.html')));
 app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
@@ -2241,7 +2301,6 @@ const staffSchema = new mongoose.Schema({
     totalEarnings: { type: Number, default: 0 },
     pendingPayout: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 50000 }, // 🟢 NAYA: Default 50k target set kiya hai
-    salaryCtc: { type: Number, default: 0 },
     joiningDate: { type: Date, default: null },
     // 🟢 NAYA: Duty Status Tracker
     isOnline: { type: Boolean, default: false },
@@ -2265,6 +2324,22 @@ const taskSchema = new mongoose.Schema({
     aiScore: { type: String, default: '' } // 🧠 AI Lead Score: 🔥 Hot, 🟡 Warm, ❄️ Cold
 });
 const Task = mongoose.model('Task', taskSchema);
+
+const staffBountyTaskSchema = new mongoose.Schema({
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: '', trim: true },
+    assignedStaffEmail: { type: String, required: true, trim: true, lowercase: true },
+    bountyAmount: { type: Number, required: true, min: 0 },
+    status: {
+        type: String,
+        enum: ['Assigned', 'Submitted', 'Revision', 'Approved'],
+        default: 'Assigned'
+    },
+    submissionLink: { type: String, default: '', trim: true },
+    adminFeedback: { type: String, default: '', trim: true },
+    approvedAt: { type: Date, default: null }
+}, { timestamps: true });
+const StaffBountyTask = mongoose.model('StaffBountyTask', staffBountyTaskSchema);
 
 // ==========================================
 // 💬 TEAM CHAT SCHEMAS
@@ -2311,6 +2386,24 @@ const jobSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const Job = mongoose.model('Job', jobSchema);
+
+async function enrichStaffBountyTasks(tasks = []) {
+    const emailList = [...new Set(tasks.map((task) => String(task.assignedStaffEmail || '').trim().toLowerCase()).filter(Boolean))];
+    const staffRows = emailList.length
+        ? await Staff.find({ email: { $in: emailList } }).select('email name empId profilePhoto').lean()
+        : [];
+    const staffMap = new Map(staffRows.map((staff) => [String(staff.email || '').trim().toLowerCase(), staff]));
+
+    return tasks.map((task) => {
+        const staff = staffMap.get(String(task.assignedStaffEmail || '').trim().toLowerCase()) || {};
+        return {
+            ...task,
+            assignedStaffName: staff.name || task.assignedStaffEmail,
+            assignedStaffEmpId: staff.empId || '',
+            assignedStaffProfilePhoto: staff.profilePhoto || ''
+        };
+    });
+}
 
 // ==========================================
 // 🚀 STAFF PORTAL APIs
@@ -2655,12 +2748,7 @@ app.get('/api/staff/download-payslip', async (req, res) => {
         if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
 
         const { month, year } = resolveMonthYear(req.query.month, req.query.year);
-        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year, {
-            salary: req.query.salary,
-            professionalTax: req.query.professionalTax,
-            otherDeductions: req.query.otherDeductions,
-            missingSalaryMessage: 'Monthly salary is missing. Please set salaryCtc for this staff profile.'
-        });
+        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
@@ -2668,9 +2756,6 @@ app.get('/api/staff/download-payslip', async (req, res) => {
         res.end(pdfBuffer);
     } catch (e) {
         console.error('Staff payslip PDF error:', e.message);
-        if (e.message.includes('Monthly salary is missing')) {
-            return res.status(400).json({ success: false, message: e.message });
-        }
         res.status(500).json({ success: false, message: 'Failed to generate payslip PDF.' });
     }
 });
@@ -2923,11 +3008,7 @@ app.get('/api/admin/preview-document/:docType/:recordId', checkAuth, async (req,
         const generatorOptions = requestedDocType === 'AttendanceReport'
             ? previewStatus
             : {
-                salary: req.query.salary,
-                professionalTax: req.query.professionalTax,
-                otherDeductions: req.query.otherDeductions,
-                approvalStatus: previewStatus,
-                missingSalaryMessage: 'Monthly salary is missing. Add salaryCtc for this staff profile or pass ?salary=...'
+                approvalStatus: previewStatus
             };
         const { pdfBuffer } = requestedDocType === 'AttendanceReport'
             ? await generator(staff, approval.month, approval.year, generatorOptions)
@@ -2939,9 +3020,6 @@ app.get('/api/admin/preview-document/:docType/:recordId', checkAuth, async (req,
         res.end(pdfBuffer);
     } catch (e) {
         console.error('Admin preview document PDF error:', e.message);
-        if (e.message.includes('Monthly salary is missing')) {
-            return res.status(400).json({ success: false, message: e.message });
-        }
         res.status(500).json({ success: false, message: 'Failed to generate preview document PDF.' });
     }
 });
@@ -2978,12 +3056,7 @@ app.get('/api/admin/staff/:staffId/download-payslip', checkAuth, async (req, res
         if (!staff) return res.status(404).json({ success: false, message: 'Staff profile not found.' });
 
         const { month, year } = resolveMonthYear(req.query.month, req.query.year);
-        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year, {
-            salary: req.query.salary,
-            professionalTax: req.query.professionalTax,
-            otherDeductions: req.query.otherDeductions,
-            missingSalaryMessage: 'Monthly salary is missing. Add salaryCtc for this staff profile or pass ?salary=...'
-        });
+        const { pdfBuffer, fileName } = await createPayslipPdf(staff, month, year);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
@@ -2991,10 +3064,63 @@ app.get('/api/admin/staff/:staffId/download-payslip', checkAuth, async (req, res
         res.end(pdfBuffer);
     } catch (e) {
         console.error('Admin payslip PDF error:', e.message);
-        if (e.message.includes('Monthly salary is missing')) {
-            return res.status(400).json({ success: false, message: e.message });
-        }
         res.status(500).json({ success: false, message: 'Failed to generate payslip PDF.' });
+    }
+});
+
+app.get('/api/staff/bounty-tasks', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const tasks = await StaffBountyTask.find({ assignedStaffEmail: String(decoded.email || '').trim().toLowerCase() })
+            .sort({ createdAt: -1, updatedAt: -1 })
+            .lean();
+
+        res.json({ success: true, tasks });
+    } catch (e) {
+        console.error('Fetch staff bounty tasks error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch your tasks.' });
+    }
+});
+
+app.post('/api/staff/bounty-tasks/:id/submit', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const submissionLink = String(req.body.submissionLink || '').trim();
+        if (!submissionLink) {
+            return res.status(400).json({ success: false, message: 'Submission link is required.' });
+        }
+
+        const task = await StaffBountyTask.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+        if (task.assignedStaffEmail !== String(decoded.email || '').trim().toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'You can only submit your own assigned tasks.' });
+        }
+        if (!['Assigned', 'Revision'].includes(task.status)) {
+            return res.status(400).json({ success: false, message: 'This task is not open for submission.' });
+        }
+
+        task.submissionLink = submissionLink;
+        task.status = 'Submitted';
+        task.adminFeedback = '';
+        await task.save();
+
+        io.to('Admin').emit('bounty_task_updated', { action: 'submitted', taskId: task._id });
+        io.to(task.assignedStaffEmail).emit('bounty_task_updated', { action: 'submitted', taskId: task._id });
+
+        res.json({ success: true, message: 'Work submitted successfully.' });
+    } catch (e) {
+        console.error('Submit staff bounty task error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to submit task.' });
     }
 });
 // API 2: Get Staff Tasks (Dashbaord Load Hote Hi Chalegi)
@@ -4610,7 +4736,7 @@ app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
             query.$or = [{ name: regex }, { email: regex }, { empId: regex }];
         }
 
-        const projection = 'name email role empId isOnline isMuted monthlyTarget salaryCtc joiningDate profilePhoto';
+        const projection = 'name email role empId isOnline isMuted monthlyTarget joiningDate profilePhoto';
 
         const approvedLeaves = await Leave.find({ status: 'Approved' })
             .select('staffEmail dateFrom dateTo')
@@ -4975,7 +5101,7 @@ app.get('/api/admin/staff', checkAuth, async (req, res) => {
 // 2. Add new staff
 app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
     try {
-        const { name, email, password, role, joiningDate, salaryCtc } = req.body;
+        const { name, email, password, role, joiningDate } = req.body;
 
         const existingStaff = await Staff.findOne({ email });
         if (existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
@@ -4990,7 +5116,6 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const parsedSalary = Number(salaryCtc) || 0;
         const parsedJoiningDate = joiningDate ? new Date(joiningDate) : null;
 
         const newStaff = new Staff({
@@ -4998,13 +5123,65 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role,
-            salaryCtc: parsedSalary,
+            role: normalizeStaffRoleInput(role),
             joiningDate: parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime()) ? parsedJoiningDate : null
         });
         await newStaff.save();
         res.json({ success: true, message: `Staff Added! ID is ${newEmpId}` });
     } catch (e) { res.status(500).json({ success: false, error: "Server error!" }); }
+});
+
+app.patch('/api/admin/staff/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const staff = await Staff.findById(req.params.id);
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Staff profile not found.' });
+        }
+
+        const nextName = String(req.body.name || '').trim();
+        const nextRole = normalizeStaffRoleInput(req.body.role);
+
+        if (!nextName) {
+            return res.status(400).json({ success: false, message: 'Staff name is required.' });
+        }
+
+        staff.name = nextName;
+        staff.role = nextRole;
+
+        if (!staff.joiningDate) {
+            const parsedJoiningDate = req.body.joiningDate ? new Date(req.body.joiningDate) : null;
+            if (parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime())) {
+                staff.joiningDate = parsedJoiningDate;
+            }
+        }
+
+        await staff.save();
+        io.emit('staff_list_updated');
+
+        res.json({
+            success: true,
+            message: 'Staff profile updated successfully.',
+            staff: {
+                _id: staff._id,
+                name: staff.name,
+                email: staff.email,
+                role: staff.role,
+                empId: staff.empId,
+                joiningDate: staff.joiningDate,
+                profilePhoto: staff.profilePhoto,
+                isOnline: staff.isOnline,
+                isMuted: staff.isMuted,
+                monthlyTarget: staff.monthlyTarget
+            }
+        });
+    } catch (e) {
+        console.error('Update staff profile error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to update staff profile.' });
+    }
 });
 // 3. Delete a staff member
 app.delete('/api/admin/delete-staff/:id', checkAuth, async (req, res) => {
@@ -5109,6 +5286,213 @@ app.delete('/api/admin/delete-task/:id', checkAuth, async (req, res) => {
         res.json({ success: true, message: "Lead Deleted Successfully!" });
     } catch (e) {
         res.status(500).json({ success: false, error: "Failed to delete lead" });
+    }
+});
+
+app.post('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const title = String(req.body.title || '').trim();
+        const description = String(req.body.description || '').trim();
+        const assignedStaffEmail = String(req.body.assignedStaffEmail || '').trim().toLowerCase();
+        const bountyAmount = Number(req.body.bountyAmount || 0);
+
+        if (!title || !assignedStaffEmail || bountyAmount <= 0) {
+            return res.status(400).json({ success: false, message: 'Title, staff email, and bounty amount are required.' });
+        }
+
+        const staff = await Staff.findOne({ email: assignedStaffEmail }).select('name email').lean();
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Assigned staff member not found.' });
+        }
+
+        const task = await StaffBountyTask.create({
+            title,
+            description,
+            assignedStaffEmail,
+            bountyAmount
+        });
+
+        io.to(assignedStaffEmail).emit('bounty_task_assigned', {
+            taskId: task._id,
+            title: task.title,
+            bountyAmount: task.bountyAmount,
+            assignedStaffEmail
+        });
+        io.to('Admin').emit('bounty_task_updated', { action: 'created', taskId: task._id });
+
+        res.json({ success: true, message: 'Task assigned successfully.', task });
+    } catch (e) {
+        console.error('Create bounty task error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to create bounty task.' });
+    }
+});
+
+app.get('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const status = String(req.query.status || '').trim();
+        const query = status ? { status } : {};
+        const tasks = await StaffBountyTask.find(query).sort({ createdAt: -1, updatedAt: -1 }).lean();
+        const enriched = await enrichStaffBountyTasks(tasks);
+
+        res.json({ success: true, tasks: enriched });
+    } catch (e) {
+        console.error('List bounty tasks error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch bounty tasks.' });
+    }
+});
+
+app.patch('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const task = await StaffBountyTask.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+        if (task.status === 'Approved') {
+            return res.status(400).json({ success: false, message: 'Approved tasks cannot be edited.' });
+        }
+
+        const previousAssignedEmail = task.assignedStaffEmail;
+        const title = String(req.body.title || task.title || '').trim();
+        const description = String(req.body.description || '').trim();
+        const assignedStaffEmail = String(req.body.assignedStaffEmail || task.assignedStaffEmail || '').trim().toLowerCase();
+        const bountyAmount = Number(req.body.bountyAmount ?? task.bountyAmount ?? 0);
+
+        if (!title || !assignedStaffEmail || bountyAmount <= 0) {
+            return res.status(400).json({ success: false, message: 'Title, staff email, and bounty amount are required.' });
+        }
+
+        const staff = await Staff.findOne({ email: assignedStaffEmail }).select('name email').lean();
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Assigned staff member not found.' });
+        }
+
+        task.title = title;
+        task.description = description;
+        task.assignedStaffEmail = assignedStaffEmail;
+        task.bountyAmount = bountyAmount;
+        await task.save();
+
+        if (previousAssignedEmail && previousAssignedEmail !== assignedStaffEmail) {
+            io.to(previousAssignedEmail).emit('bounty_task_updated', { action: 'reassigned', taskId: task._id });
+        }
+        io.to(assignedStaffEmail).emit('bounty_task_updated', { action: 'edited', taskId: task._id });
+        io.to('Admin').emit('bounty_task_updated', { action: 'edited', taskId: task._id });
+
+        res.json({ success: true, message: 'Task updated successfully.', task });
+    } catch (e) {
+        console.error('Update bounty task error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to update task.' });
+    }
+});
+
+app.patch('/api/admin/bounty-tasks/:id/revision', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const adminFeedback = String(req.body.adminFeedback || '').trim();
+        if (!adminFeedback) {
+            return res.status(400).json({ success: false, message: 'Revision feedback is required.' });
+        }
+
+        const task = await StaffBountyTask.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+        if (task.status === 'Approved') {
+            return res.status(400).json({ success: false, message: 'Approved tasks cannot be moved back to revision.' });
+        }
+        if (task.status !== 'Submitted') {
+            return res.status(400).json({ success: false, message: 'Only submitted tasks can be sent for revision.' });
+        }
+
+        task.status = 'Revision';
+        task.adminFeedback = adminFeedback;
+        await task.save();
+
+        io.to(task.assignedStaffEmail).emit('bounty_task_updated', { action: 'revision', taskId: task._id });
+        io.to('Admin').emit('bounty_task_updated', { action: 'revision', taskId: task._id });
+
+        res.json({ success: true, message: 'Revision requested successfully.' });
+    } catch (e) {
+        console.error('Request bounty task revision error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to request revision.' });
+    }
+});
+
+app.patch('/api/admin/bounty-tasks/:id/approve', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const task = await StaffBountyTask.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+        if (task.status === 'Approved') {
+            return res.status(400).json({ success: false, message: 'Task is already approved.' });
+        }
+        if (task.status !== 'Submitted') {
+            return res.status(400).json({ success: false, message: 'Only submitted tasks can be approved.' });
+        }
+
+        const staff = await Staff.findOne({ email: task.assignedStaffEmail });
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Assigned staff member not found.' });
+        }
+
+        task.status = 'Approved';
+        task.approvedAt = new Date();
+        task.adminFeedback = '';
+        await task.save();
+
+        await Staff.updateOne(
+            { _id: staff._id },
+            { $inc: { pendingPayout: Number(task.bountyAmount || 0), totalEarnings: Number(task.bountyAmount || 0) } }
+        );
+
+        io.to(task.assignedStaffEmail).emit('bounty_task_updated', { action: 'approved', taskId: task._id, bountyAmount: task.bountyAmount });
+        io.to('Admin').emit('bounty_task_updated', { action: 'approved', taskId: task._id, bountyAmount: task.bountyAmount });
+
+        res.json({ success: true, message: 'Task approved and bounty added to pending payout.' });
+    } catch (e) {
+        console.error('Approve bounty task error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to approve task.' });
+    }
+});
+
+app.delete('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const task = await StaffBountyTask.findByIdAndDelete(req.params.id).lean();
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+
+        io.to(task.assignedStaffEmail).emit('bounty_task_updated', { action: 'deleted', taskId: task._id });
+        io.to('Admin').emit('bounty_task_updated', { action: 'deleted', taskId: task._id });
+
+        res.json({ success: true, message: 'Task deleted successfully.' });
+    } catch (e) {
+        console.error('Delete bounty task error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to delete task.' });
     }
 });
 
