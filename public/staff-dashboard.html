@@ -5,9 +5,1050 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard | VibeSphere Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        :root {
+            --bg-base: #eef4ff;
+            --bg-deep: #071124;
+            --panel: rgba(255, 255, 255, 0.82);
+            --panel-strong: rgba(255, 255, 255, 0.95);
+            --panel-dark: rgba(7, 17, 36, 0.72);
+            --line: rgba(148, 163, 184, 0.18);
+            --line-strong: rgba(148, 163, 184, 0.28);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #64748b;
+            --accent: #2563eb;
+            --accent-strong: #0f4fd6;
+            --accent-soft: #dbeafe;
+            --success: #059669;
+            --success-soft: #dcfce7;
+            --warning: #d97706;
+            --warning-soft: #fef3c7;
+            --danger: #dc2626;
+            --danger-soft: #fee2e2;
+            --purple: #7c3aed;
+            --purple-soft: #ede9fe;
+            --shadow-xl: 0 24px 80px rgba(15, 23, 42, 0.16);
+            --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.1);
+            --radius-xl: 28px;
+            --radius-lg: 22px;
+            --radius-md: 18px;
+        }
+
+        .staff-dashboard-bg {
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 26%),
+                radial-gradient(circle at bottom right, rgba(12, 74, 110, 0.18), transparent 24%),
+                linear-gradient(180deg, #f8fbff 0%, #edf3ff 46%, #eef4ff 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .staff-dashboard-bg,
+        .staff-dashboard-bg button,
+        .staff-dashboard-bg input,
+        .staff-dashboard-bg select,
+        .staff-dashboard-bg textarea {
+            font-family: 'Inter', 'Poppins', sans-serif;
+        }
+
+        .dashboard-container {
+            display: flex;
+            gap: 26px;
+            align-items: stretch;
+            height: 100vh;
+            width: 100%;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .dashboard-container.sidebar-is-collapsed {
+            gap: 0;
+        }
+
+        .sidebar {
+            position: relative;
+            top: auto;
+            width: 16rem;
+            min-width: 16rem;
+            height: 100%;
+            border-radius: 30px;
+            padding: 24px 18px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            backdrop-filter: blur(26px);
+            -webkit-backdrop-filter: blur(26px);
+            box-shadow: var(--shadow-xl);
+            overflow-x: hidden;
+            overflow-y: auto;
+            transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
+        }
+
+        .sidebar::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 34%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.82), transparent 30%);
+            pointer-events: none;
+        }
+
+        .sidebar>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar-logo {
+            padding: 6px 10px 22px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .sidebar-logo h2 {
+            color: var(--text-primary);
+            font-size: 28px;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-logo span {
+            color: #93c5fd;
+        }
+
+        .sidebar-logo p {
+            color: var(--text-tertiary);
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            margin: 0;
+            border-radius: 18px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 0;
+            font-size: 19px;
+        }
+
+        .sidebar-menu li:hover {
+            color: var(--text-primary);
+            background: rgba(37, 99, 235, 0.08);
+            transform: translateX(3px);
+        }
+
+        .sidebar-menu li.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(124, 58, 237, 0.88));
+            box-shadow: 0 14px 28px rgba(37, 99, 235, 0.26);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            border-radius: 22px;
+            padding: 16px;
+            background: rgba(241, 245, 249, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .sidebar-footer strong {
+            display: block;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .sidebar-footer p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            height: 64px;
+            min-height: 64px;
+            padding: 0 16px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.96);
+            border-radius: 0;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: none;
+            flex-shrink: 0;
+            overflow: visible;
+        }
+
+        .dashboard-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .main-scroll-area {
+            min-height: 0;
+        }
+
+        .topbar-menu-btn {
+            width: 36px;
+            min-width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            padding: 0;
+            margin-top: 0;
+        }
+
+        .sidebar-collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            border-color: transparent !important;
+            opacity: 0;
+            overflow: hidden !important;
+            pointer-events: none;
+        }
+
+        .page-title-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1 1 auto;
+            width: 100%;
+            padding-right: 16px;
+        }
+
+        .dashboard-header .topbar-badge {
+            display: none;
+        }
+
+        .topbar-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: var(--accent);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.125rem;
+            line-height: 1.25;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .dashboard-header p {
+            display: block;
+            margin: 0;
+            max-width: none;
+            color: var(--text-tertiary);
+            font-size: 0.75rem;
+            line-height: 1.1;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 1;
+        }
+
+        .dashboard-header-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: nowrap;
+            min-width: max-content;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .header-profile {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .profile-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+        }
+
+        .dropdown-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 0 16px 10px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(241, 245, 249, 1);
+            background: transparent;
+        }
+
+        .dropdown-header strong {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .dropdown-header span {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        #profileDropdown ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #profileDropdown li {
+            margin: 0;
+        }
+
+        .profile-menu-action {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: left;
+            padding: 10px 16px;
+            border-radius: 0;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .profile-menu-action:hover {
+            background: rgba(248, 250, 252, 0.96);
+            transform: translateX(1px);
+        }
+
+        .btn-outline {
+            appearance: none;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: rgba(255, 255, 255, 0.72);
+            color: var(--text-primary);
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-outline:hover {
+            transform: translateY(-1px);
+            background: #ffffff;
+            border-color: rgba(37, 99, 235, 0.28);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .glass-panel,
+        .task-section,
+        .staff-card,
+        .leaderboard-section {
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--radius-xl);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .dashboard-hero {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+
+        .hero-copy h2 {
+            margin: 0;
+            font-size: clamp(28px, 2.5vw, 40px);
+            line-height: 1.08;
+            letter-spacing: -0.06em;
+        }
+
+        .hero-copy p {
+            margin: 12px 0 0;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 700px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .hero-spotlight {
+            padding: 22px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 76, 129, 0.88));
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-spotlight::after {
+            content: "";
+            position: absolute;
+            inset: auto -20% -36% auto;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.36), transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-spotlight .label {
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .hero-spotlight .value {
+            font-size: 34px;
+            font-weight: 800;
+            margin-top: 10px;
+            letter-spacing: -0.04em;
+        }
+
+        .hero-spotlight .sub {
+            margin-top: 12px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.72);
+            line-height: 1.6;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .overview-card {
+            padding: 18px;
+            border-radius: 24px;
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 166px;
+        }
+
+        .overview-card.featured {
+            background: linear-gradient(140deg, rgba(37, 99, 235, 0.94), rgba(124, 58, 237, 0.92));
+            color: #ffffff;
+        }
+
+        .overview-card.featured .overview-label,
+        .overview-card.featured .overview-subtext,
+        .overview-card.featured .overview-meta {
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .overview-card.featured .overview-value {
+            color: #ffffff;
+        }
+
+        .overview-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .overview-label {
+            color: var(--text-tertiary);
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .overview-value {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            color: var(--text-primary);
+        }
+
+        .overview-meta,
+        .overview-subtext {
+            color: var(--text-tertiary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .overview-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent);
+        }
+
+        .overview-card.featured .overview-icon {
+            background: rgba(255, 255, 255, 0.16);
+            color: #ffffff;
+        }
+
+        .metric-rail,
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .metric-pill,
+        .wallet-card {
+            padding: 18px 20px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.74);
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+        }
+
+        .metric-pill .k,
+        .wallet-card .k {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .metric-pill .v,
+        .wallet-card .v {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: var(--text-primary);
+        }
+
+        .metric-pill p,
+        .wallet-card p {
+            margin: 10px 0 0;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .dashboard-home-grid {
+            display: grid;
+            margin-bottom: 20px;
+        }
+
+        .dashboard-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dashboard-home-span-full {
+            grid-column: 1 / -1;
+        }
+
+        .dashboard-home-panel {
+            padding: 16px;
+        }
+
+        .quick-action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .quick-action-card {
+            padding: 18px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.74);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 12px 25px rgba(15, 23, 42, 0.06);
+        }
+
+        .quick-action-card strong {
+            display: block;
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .quick-action-card p {
+            margin: 0 0 14px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .announcement-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .announcement-item {
+            padding: 16px 18px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.74);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+        }
+
+        .announcement-item strong {
+            display: block;
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .announcement-item p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .announcement-meta {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .section-header h2 {
+            font-size: 22px;
+            color: var(--text-primary);
+            margin: 0;
+            letter-spacing: -0.03em;
+        }
+
+        .section-header p {
+            margin: 8px 0 0;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .panel-action-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-card {
+            margin-bottom: 20px;
+            padding: 18px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.76));
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .toolbar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+        }
+
+        .toolbar-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
+
+        .attendance-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .attendance-day-card {
+            min-height: 120px;
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .attendance-day-card.is-empty {
+            opacity: 0.45;
+        }
+
+        .attendance-day-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .attendance-day-number {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .attendance-day-weekday {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
+
+        .attendance-day-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            width: fit-content;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .attendance-day-card small {
+            color: var(--text-tertiary);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .subtab-switch {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            max-width: 100%;
+            padding: 6px;
+            border-radius: 18px;
+            background: rgba(241, 245, 249, 0.86);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .subtab-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .subtab-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .subtab-btn.active {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(124, 58, 237, 0.88));
+            color: #ffffff;
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+        }
+
+        .subtab-panel {
+            display: none;
+        }
+
+        .subtab-panel.active {
+            display: block;
+            animation: subtabPanelReveal 0.22s ease;
+        }
+
+        @keyframes subtabPanelReveal {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .ledger-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .wallet-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 18px 0 24px;
+        }
+
+        .payout-subtab-bar {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 22px;
+        }
+
+        .payslip-toolbar-layout {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .task-table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            padding-bottom: 1rem;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 100%;
+        }
+
+        .task-table th {
+            padding: 14px 16px;
+            background: rgba(248, 250, 252, 0.92);
+            color: var(--text-tertiary);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .task-table td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.72);
+            vertical-align: middle;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .task-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .task-table tbody tr:hover {
+            background: rgba(248, 250, 252, 0.9);
+        }
+
+        .task-table td strong {
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .notice-card {
+            margin-bottom: 16px;
+            border-left-width: 4px;
+            border-radius: 22px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            padding: 24px;
+            display: none !important;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.54);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 1400 !important;
+        }
+
+        .modal-overlay.is-open {
+            display: flex !important;
+        }
+
+        .modal-content {
+            width: min(100%, 580px);
+            max-height: min(88vh, 960px);
+            overflow: auto;
+            background: rgba(255, 255, 255, 0.94);
+            border-radius: 28px;
+            border: 1px solid rgba(226, 232, 240, 0.92);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            position: relative;
+            padding: 28px;
+            transform: none;
+            animation: none;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(248, 250, 252, 0.92);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .modal-close:hover {
+            transform: translateY(-1px);
+            background: #ffffff;
+        }
+
+        .fab-submit-work {
+            position: fixed;
+            right: 28px;
+            bottom: 28px;
+            z-index: 1300;
+            border: none;
+            border-radius: 999px;
+            padding: 18px 22px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 18px 35px rgba(37, 99, 235, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .fab-submit-work:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 22px 40px rgba(37, 99, 235, 0.36);
+        }
+
+        .fab-submit-work i {
+            font-size: 18px;
+        }
+
+        @media (min-width: 640px) {
+            .overview-grid,
+            .metric-rail,
+            .wallet-grid,
+            .attendance-summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         /* ==========================================
            ✨ MODERN FORM STYLING (LEADS & LEAVES)
            ========================================== */
@@ -86,33 +1127,74 @@
         .attendance-toolbar {
             display: flex;
             align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px;
+            flex-wrap: nowrap;
+            min-width: 0;
+            max-width: min(42vw, 360px);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .attendance-toolbar::-webkit-scrollbar {
+            display: none;
         }
 
         .attendance-action-btn {
             border: none;
-            border-radius: 22px;
-            padding: 8px 14px;
+            border-radius: 999px;
+            padding: 6px 12px;
             font-weight: 700;
             color: #fff;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+            gap: 8px;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+            letter-spacing: -0.01em;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        .attendance-action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.14);
+            filter: saturate(1.05);
+        }
+
+        .attendance-action-btn.is-checkin {
+            background: linear-gradient(135deg, #0f9f6e, #10b981);
+        }
+
+        .attendance-action-btn.is-checkout {
+            background: linear-gradient(135deg, #dc2626, #f43f5e);
+        }
+
+        .attendance-action-btn.is-break {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+
+        .attendance-action-btn.is-resume {
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+        }
+
+        .attendance-action-btn.is-disabled {
+            background: linear-gradient(135deg, #475569, #64748b);
+            box-shadow: 0 8px 18px rgba(100, 116, 139, 0.16);
         }
 
         .attendance-chip {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 999px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             background: #e2e8f0;
             color: #475569;
+            white-space: nowrap;
         }
 
         .attendance-summary-grid {
@@ -265,31 +1347,170 @@
                 justify-content: center;
             }
         }
+
+        @media (max-width: 1200px) {
+            .dashboard-hero {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                border-radius: 0 28px 28px 0;
+                max-width: min(88vw, 20rem);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .dashboard-header p {
+                -webkit-line-clamp: 2;
+            }
+
+            .dashboard-hero {
+                grid-template-columns: 1.3fr 0.95fr;
+                gap: 18px;
+                padding: 30px;
+            }
+
+            .overview-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 18px;
+            }
+
+            .metric-rail,
+            .wallet-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            .dashboard-home-panel {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 991px) {
+            .dashboard-container {
+                gap: 0;
+                padding: 18px;
+            }
+
+            .dashboard-header {
+                flex-direction: row;
+                align-items: center;
+                padding: 0 14px;
+            }
+
+            .dashboard-header-left,
+            .dashboard-header-right {
+                width: auto;
+                justify-content: flex-start;
+            }
+
+            .attendance-toolbar {
+                max-width: min(44vw, 280px);
+            }
+
+            .attendance-calendar-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 767px) {
+            .dashboard-container {
+                padding: 0;
+            }
+
+            .dashboard-header {
+                padding: 0 12px;
+                height: 64px;
+                min-height: 64px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+                border-top: none;
+                margin-bottom: 0;
+            }
+
+            .page-title-wrap {
+                padding-right: 10px;
+            }
+
+            .dashboard-header p {
+                -webkit-line-clamp: 1;
+            }
+
+            .overview-grid,
+            .metric-rail,
+            .wallet-grid,
+            .quick-action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .attendance-calendar-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .task-table {
+                min-width: 720px;
+            }
+
+            .fab-submit-work {
+                left: auto;
+                right: 24px;
+                justify-content: center;
+                bottom: 24px;
+                padding: 14px 18px;
+                gap: 10px;
+            }
+
+            .main-scroll-area {
+                padding-bottom: 110px;
+            }
+
+            .payout-subtab-bar {
+                margin-bottom: 18px;
+            }
+
+            .subtab-switch {
+                width: 100%;
+            }
+
+            .subtab-btn {
+                flex: 1 1 140px;
+                text-align: center;
+            }
+
+            .payslip-toolbar-layout {
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 
-<body class="staff-dashboard-bg">
+<body class="staff-dashboard-bg h-screen overflow-hidden">
 
-    <div class="dashboard-container" style="display: none;">
-        <aside class="sidebar">
+    <div class="dashboard-container h-screen w-full flex overflow-hidden" style="display: none;">
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"
+            onclick="toggleStaffSidebar(false)" aria-hidden="true"></div>
+        <aside id="staffSidebar"
+            class="sidebar fixed inset-y-0 left-0 z-50 w-64 h-full flex-shrink-0 overflow-y-auto transform -translate-x-full lg:relative lg:translate-x-0 transition duration-300 ease-in-out bg-white">
             <div class="sidebar-logo">
                 <h2>VibeSphere<span>.</span></h2>
-                <p>Staff Portal</p>
+                <p>Commission Staff Console</p>
             </div>
             <ul class="sidebar-menu">
                 <li id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="ri-dashboard-line"></i>
-                    Dashboard</li>
-                <li id="nav-attendance" onclick="switchTab('attendance')"><i class="ri-timer-line"></i> Attendance
-                </li>
-                <li id="nav-payslip" onclick="switchTab('payslip')"><i class="ri-file-list-3-line"></i> Payslip</li>
+                    Dashboard Home</li>
+                <li id="nav-attendance" onclick="switchTab('attendance')"><i class="ri-timer-line"></i> Attendance</li>
                 <li id="nav-tasks" onclick="switchTab('tasks')"><i class="ri-list-check"></i> My Tasks</li>
-                <li id="nav-payouts" onclick="switchTab('payouts')"><i class="ri-history-line"></i> Payout History</li>
-                <li id="nav-notices" onclick="switchTab('notices')"><i class="ri-notification-3-line"></i> Notice Board
-                </li>
-                <li id="nav-chat" onclick="switchTab('chat'); scrollToBottom();"><i class="ri-chat-voice-line"></i> Team
-                    Chat</li>
-                <li id="nav-leaves" onclick="switchTab('leaves')"><i class="ri-calendar-event-line"></i> Leave
-                    Application</li>
+                <li id="nav-payouts" onclick="switchTab('payouts')"><i class="ri-wallet-3-line"></i> Payouts & Wallet</li>
+                <li id="nav-notices" onclick="switchTab('notices')"><i class="ri-notification-3-line"></i> Notice Board</li>
+                <li id="nav-chat" onclick="switchTab('chat'); scrollToBottom();"><i class="ri-chat-voice-line"></i> Team Chat</li>
+                <li id="nav-leaves" onclick="switchTab('leaves')"><i class="ri-calendar-event-line"></i> Leave Application</li>
                 <li id="nav-helpdesk" onclick="switchTab('helpdesk'); fetchStaffTickets();"><i
                         class="ri-customer-service-2-line"></i> Helpdesk 🎧</li>
                 <li id="nav-kb" onclick="switchTab('kb'); fetchStaffResources();"><i class="ri-book-read-line"></i>
@@ -298,188 +1519,240 @@
                         class="ri-vidicon-line"></i> Meetings 🎬</li>
                 <li onclick="openIDCard()"><i class="ri-profile-line"></i> My ID Card</li>
             </ul>
+            <div class="sidebar-footer">
+                <strong>Commission-first workflow</strong>
+                <p>Attendance, task submission, credited earnings, approvals, and wallet activity now live in one clean system.</p>
+            </div>
         </aside>
 
-        <main class="main-content">
-            <header class="dashboard-header">
-                <div>
-                    <h1>Welcome back, Staff! 👋</h1>
-                    <p>Here is your summary for today.</p>
+        <main class="main-content flex-1 flex flex-col h-full overflow-hidden">
+            <header class="dashboard-header h-16 flex items-center justify-between px-4 md:px-6 bg-white/80 backdrop-blur-md border-b border-gray-100 flex-shrink-0 z-30">
+                <div class="dashboard-header-left">
+                    <button id="mobileMenuBtn" type="button" class="topbar-menu-btn btn-outline lg:hidden" onclick="toggleStaffSidebar()" aria-label="Toggle sidebar">
+                        <i class="ri-menu-line"></i>
+                    </button>
+                    <div class="page-title-wrap flex-1 min-w-0 pr-4">
+                        <h1 class="topbar-title text-lg font-bold leading-tight">Welcome back, Staff! 👋</h1>
+                        <p class="topbar-subtitle text-xs text-gray-500 line-clamp-1 lg:line-clamp-2">Track daily attendance, commission credits, payout requests, and task submissions from a single premium workspace.</p>
+                    </div>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="dashboard-header-right">
                     <div id="attendanceControls" class="attendance-toolbar">
                         <span class="attendance-chip">Loading attendance...</span>
                     </div>
 
-                    <div class="header-profile" style="position: relative;">
-                        <img id="headerProfileImg" class="profile-circle" onclick="toggleProfileMenu()"
-                            style="cursor: pointer; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #7d5fff; padding: 0;"
-                            src="">
-                        <div id="profile-menu" class="profile-dropdown" style="display: none;">
+                    <div class="header-profile relative">
+                        <button type="button" class="profile-trigger" onclick="toggleProfileMenu()" aria-label="Open profile menu">
+                            <img id="headerProfileImg" class="profile-circle"
+                                style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1.5px solid rgba(125, 95, 255, 0.55); padding: 0;"
+                                src="">
+                        </button>
+                        <div id="profileDropdown" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-[100] py-2">
                             <div class="dropdown-header">
                                 <strong>Staff Name</strong>
                                 <span>staff@vibespheremedia.com</span>
                             </div>
                             <ul>
-                                <li onclick="switchTab('settings'); toggleProfileMenu();"><i
-                                        class="ri-user-settings-line"></i> Account Settings</li>
-                                <li style="color: #dc2626;" onclick="staffLogout()">
-                                    <i class="ri-logout-box-r-line"></i> Logout
-                                </li>
+                                <li><button type="button" class="profile-menu-action" onclick="switchTab('settings'); closeProfileMenu();"><i
+                                            class="ri-user-settings-line"></i> Settings</button></li>
+                                <li><button type="button" class="profile-menu-action" style="color:#dc2626;" onclick="closeProfileMenu(); staffLogout();">
+                                        <i class="ri-logout-box-r-line"></i> Logout
+                                    </button></li>
                             </ul>
                         </div>
                     </div>
                 </div>
             </header>
 
+            <div id="staffMainContent" class="main-scroll-area flex-1 overflow-y-auto p-4 lg:p-6">
             <div id="view-dashboard" class="tab-content" style="display: block;">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: #e0e7ff; color: #4f46e5;"><i
-                                class="ri-briefcase-4-line"></i></div>
-                        <div class="stat-info">
-                            <h3>0</h3>
-                            <p>Total Assigned</p>
+                <section class="dashboard-hero glass-panel">
+                    <div class="hero-copy">
+                        <span class="topbar-badge"><i class="ri-layout-grid-line"></i> Dashboard Home</span>
+                        <h2 id="dashboardWelcomeTitle">Welcome Back, Staff!</h2>
+                        <p id="dashboardWelcomeSubtitle">Here is your operations command hub. View your tasks, attendance, and earnings breakdown below.</p>
+                        <div class="hero-actions">
+                            <button class="btn-modern btn-purple" style="width:auto;padding:12px 18px;" onclick="openQuickSubmitTaskModal()">Submit Task Work</button>
+                            <button class="btn-outline" onclick="switchTab('payouts')">Open Wallet</button>
+                            <button class="btn-outline" onclick="switchTab('attendance')">Review Attendance</button>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: #dcfce7; color: #16a34a;"><i
-                                class="ri-checkbox-circle-line"></i></div>
-                        <div class="stat-info">
-                            <h3>0</h3>
-                            <p>Completed</p>
+                    <div class="hero-spotlight">
+                        <div class="label">Monthly Target Pulse</div>
+                        <div class="value" id="targetText">₹0 / ₹50,000</div>
+                        <div style="width:100%;background:rgba(255,255,255,0.14);border-radius:999px;height:12px;overflow:hidden;margin-top:14px;">
+                            <div id="targetProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#93c5fd,#f5d0fe);border-radius:999px;transition:width 1.3s cubic-bezier(0.4,0,0.2,1);"></div>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: #fee2e2; color: #dc2626;"><i class="ri-time-line"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>0</h3>
-                            <p>Pending Calls</p>
-                        </div>
-                    </div>
-                </div>
-
-                <section class="leaderboard-section"
-                    style="margin-top: 25px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
-                    <div class="section-header" style="margin-bottom: 15px;">
-                        <h2 style="color: #1e293b; font-size: 18px;"><i class="ri-trophy-fill"
-                                style="color: #f59e0b;"></i> Top Performers (Leaderboard)</h2>
-                    </div>
-                    <div id="leaderboardContainer"
-                        style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin;">
-                        <p style="color: #64748b; font-size: 14px;">Loading top performers... ⏳</p>
+                        <div class="sub" id="targetMotivation">Loading target... ⏳</div>
                     </div>
                 </section>
 
-                <div class="stats-grid" style="margin-top: 15px;">
-                    <div class="stat-card"
-                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
-                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i
-                                class="ri-money-rupee-circle-line"></i></div>
-                        <div class="stat-info">
-                            <h3 id="earnTotal" style="color: white; font-size: 28px;">₹0</h3>
-                            <p style="color: #d1fae5; font-weight: 500;">Total Earned (20% Comm)</p>
-                        </div>
-                    </div>
-                    <div class="stat-card"
-                        style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; position: relative;">
-                        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i
-                                class="ri-wallet-3-line"></i></div>
-                        <div class="stat-info">
-                            <h3 id="earnPending" style="color: white; font-size: 28px;">₹0</h3>
-                            <p style="color: #fef3c7; font-weight: 500;">Pending Payout</p>
-                        </div>
-                        <button onclick="openPayoutModal()"
-                            style="position: absolute; bottom: 15px; right: 15px; background: white; color: #d97706; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s;">Withdraw
-                            💸</button>
-                    </div>
-                </div>
-                <div class="staff-card"
-                    style="margin-top: 20px; padding: 20px; border-radius: 12px; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                    <div
-                        style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-                        <h3 style="color: #1e293b; font-size: 15px; margin: 0;"><i class="ri-focus-2-line"
-                                style="color: #ef4444; margin-right: 5px;"></i> Monthly Target</h3>
-                        <span id="targetText"
-                            style="color: #6c63ff; font-weight: bold; font-size: 14px; background: #f3f0ff; padding: 4px 10px; border-radius: 20px;">₹0
-                            / ₹50,000</span>
-                    </div>
-                    <div
-                        style="width: 100%; background: #f1f5f9; border-radius: 10px; height: 14px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                        <div id="targetProgressBar"
-                            style="width: 0%; height: 100%; background: linear-gradient(90deg, #6c63ff, #a78bfa); border-radius: 10px; transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
-                        </div>
-                    </div>
-                    <p id="targetMotivation"
-                        style="font-size: 12px; color: #64748b; margin-top: 12px; text-align: center; font-weight: 500;">
-                        Loading target... ⏳</p>
-                </div>
-                <div class="staff-card"
-                    style="margin-top: 25px; margin-bottom: 25px; border-top: 4px solid #8b5cf6; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: white; padding: 20px; border-radius: 12px;">
-                    <h3
-                        style="color: #1e293b; margin-bottom: 20px; font-size: 18px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
-                        <i class="ri-user-add-line" style="color: #8b5cf6; margin-right: 5px;"></i> Add Your Own Lead
-                    </h3>
-                    <form onsubmit="staffAddSelfLead(event)">
-                        <div class="modern-form-grid">
+                <div class="overview-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                    <article class="overview-card featured">
+                        <div class="overview-top">
                             <div>
-                                <label class="modern-label">Client Name</label>
-                                <input type="text" id="selfClientName" class="modern-input" placeholder="e.g. John Doe"
-                                    required>
+                                <div class="overview-label">Total Earnings This Month</div>
+                                <div id="earnTotal" class="overview-value">₹0</div>
                             </div>
-                            <div>
-                                <label class="modern-label">Contact No.</label>
-                                <input type="text" id="selfContact" class="modern-input" placeholder="Phone or Insta ID"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="modern-label">Service Pitch</label>
-                                <select id="selfService" class="modern-input" required>
-                                    <option value="">-- Select Service --</option>
-                                    <option value="Instagram Growth">Instagram Growth</option>
-                                    <option value="Web Development">Web Development</option>
-                                    <option value="Combo Package">Combo Package</option>
-                                </select>
-                            </div>
+                            <div class="overview-icon"><i class="ri-money-rupee-circle-line"></i></div>
                         </div>
-                        <button type="submit" class="btn-modern btn-purple">Add Lead to CRM 🚀</button>
-                    </form>
+                        <div id="earnTotalHint" class="overview-subtext">Loading credited commissions for this month.</div>
+                    </article>
+                    <article class="overview-card">
+                        <div class="overview-top">
+                            <div>
+                                <div class="overview-label">Pending Payouts</div>
+                                <div id="earnPending" class="overview-value">₹0</div>
+                            </div>
+                            <div class="overview-icon"><i class="ri-wallet-3-line"></i></div>
+                        </div>
+                        <div class="overview-subtext">Available wallet balance ready for your next withdrawal request.</div>
+                    </article>
+                    <article class="overview-card">
+                        <div class="overview-top">
+                            <div>
+                                <div class="overview-label">Completed Tasks</div>
+                                <div id="completedTasksHome" class="overview-value">0</div>
+                            </div>
+                            <div class="overview-icon"><i class="ri-checkbox-circle-line"></i></div>
+                        </div>
+                        <div class="overview-subtext">Lead closures and approved bounty deliveries combined.</div>
+                    </article>
                 </div>
 
-                <section class="task-section">
-                    <div class="section-header">
-                        <h2>Today's Pending Leads</h2>
+                <div class="dashboard-home-grid grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                    <div class="lg:col-span-2 flex flex-col gap-4 lg:gap-6">
+                        <section class="task-section dashboard-home-panel">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Lead Activity Snapshot</h2>
+                                    <p>Quick visibility into current assignments so you can prioritize what closes next.</p>
+                                </div>
+                            </div>
+                            <div class="metric-rail grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                <div class="metric-pill">
+                                    <span class="k">Assigned Leads</span>
+                                    <div id="dashboardAssignedCount" class="v">0</div>
+                                    <p>Total lead records currently attached to your dashboard.</p>
+                                </div>
+                                <div class="metric-pill">
+                                    <span class="k">Closed Leads</span>
+                                    <div id="dashboardLeadClosedCount" class="v">0</div>
+                                    <p>Leads moved out of follow-up because a decision was captured.</p>
+                                </div>
+                                <div class="metric-pill">
+                                    <span class="k">Pending Follow-ups</span>
+                                    <div id="dashboardPendingLeadCount" class="v">0</div>
+                                    <p>Calls and callbacks that still need your action.</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="task-section dashboard-home-panel">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Add Your Own Lead</h2>
+                                    <p>Drop fresh opportunities into the CRM without leaving the staff workspace.</p>
+                                </div>
+                            </div>
+                            <form onsubmit="staffAddSelfLead(event)" class="flex flex-col">
+                                <div class="modern-form-grid">
+                                    <div>
+                                        <label class="modern-label">Client Name</label>
+                                        <input type="text" id="selfClientName" class="modern-input" placeholder="e.g. John Doe" required>
+                                    </div>
+                                    <div>
+                                        <label class="modern-label">Contact No.</label>
+                                        <input type="text" id="selfContact" class="modern-input" placeholder="Phone or Insta ID" required>
+                                    </div>
+                                    <div>
+                                        <label class="modern-label">Service Pitch</label>
+                                        <select id="selfService" class="modern-input" required>
+                                            <option value="">-- Select Service --</option>
+                                            <option value="Instagram Growth">Instagram Growth</option>
+                                            <option value="Web Development">Web Development</option>
+                                            <option value="Combo Package">Combo Package</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-modern btn-purple mt-6">Add Lead to CRM 🚀</button>
+                            </form>
+                        </section>
+
+                        <section class="task-section dashboard-home-panel">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Today's Pending Leads</h2>
+                                    <p>Only active follow-ups stay here so your day starts with the next best actions.</p>
+                                </div>
+                            </div>
+                            <div class="task-table-wrapper">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Client Name</th>
+                                            <th>Contact Number</th>
+                                            <th>Service Pitch</th>
+                                            <th>Status</th>
+                                            <th>Notes / Reason</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </section>
                     </div>
-                    <div class="task-table-wrapper">
-                        <table class="task-table">
-                            <thead>
-                                <tr>
-                                    <th>Client Name</th>
-                                    <th>Contact Number</th>
-                                    <th>Service Pitch</th>
-                                    <th>Status</th>
-                                    <th>Notes / Reason</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+
+                    <div class="lg:col-span-1">
+                        <section class="leaderboard-section dashboard-home-panel h-fit self-start">
+                            <div class="section-header">
+                                <div>
+                                    <h2><i class="ri-trophy-fill" style="color:#f59e0b;"></i> Top Performers</h2>
+                                    <p>See who is setting the pace across the agency this month.</p>
+                                </div>
+                            </div>
+                            <div id="leaderboardContainer" style="display:grid;gap:12px;">
+                                <p style="color:#64748b;font-size:14px;">Loading top performers... ⏳</p>
+                            </div>
+                        </section>
                     </div>
-                </section>
+                </div>
             </div>
             <div id="view-attendance" class="tab-content" style="display: none;">
                 <section class="task-section">
-                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <h2>🕒 Attendance Dashboard</h2>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn-outline" onclick="fetchMyAttendanceHistory()" style="padding:8px 12px;">Refresh</button>
-                            <button class="btn-outline" onclick="openApprovalRequestsModal()" style="padding:8px 12px;">My Approval Requests</button>
+                    <div class="section-header">
+                        <div>
+                            <h2>Attendance</h2>
+                            <p>This space now shows only your daily attendance logs, check-in/check-out timings, break totals, and shift status.</p>
+                        </div>
+                        <div class="panel-action-group">
+                            <button class="btn-outline" onclick="fetchMyAttendanceHistory()">Refresh</button>
+                            <button class="btn-outline" onclick="initializeDutyStatus()">Sync Live Status</button>
+                            <button class="btn-outline" onclick="downloadCurrentAttendanceReport()"><i class="ri-file-pdf-line"></i> Download Monthly Report</button>
+                            <button class="btn-outline" onclick="submitCurrentAttendanceReportForApproval()"><i class="ri-shield-check-line"></i> Submit Report for Approval</button>
                         </div>
                     </div>
 
-                    <div class="attendance-summary-grid">
+                    <div class="toolbar-card">
+                        <div class="toolbar-grid">
+                            <div class="toolbar-field">
+                                <label>Month</label>
+                                <select id="attendanceMonthFilter" class="modern-input" onchange="fetchMyAttendanceHistory()"></select>
+                            </div>
+                            <div class="toolbar-field">
+                                <label>Year</label>
+                                <select id="attendanceYearFilter" class="modern-input" onchange="fetchMyAttendanceHistory()"></select>
+                            </div>
+                            <div class="toolbar-field">
+                                <label>Daily State</label>
+                                <div id="attendanceSummaryState" class="attendance-chip" style="width:fit-content;">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                        <div class="attendance-summary-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                         <div class="attendance-summary-card">
                             <div class="label">Present Days</div>
                             <div id="attPresentDays" class="value">0</div>
@@ -498,53 +1771,68 @@
                         </div>
                     </div>
 
-                    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:20px;background:#ffffff;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <div class="section-header" style="margin-top:8px;">
                         <div>
-                            <h3 style="margin:0;color:#0f172a;font-size:16px;">Attendance History</h3>
-                            <p style="margin:6px 0 0 0;color:#64748b;font-size:13px;">Minimal view: open month-wise history only when needed.</p>
+                            <h2>Calendar View</h2>
+                            <p>Each day shows the shift status along with the first and last punch if available.</p>
                         </div>
-                        <button class="btn-modern btn-purple" style="width:auto;padding:10px 16px;" onclick="openAttendanceHistoryModal()">View Attendance History</button>
-                    </div>
-                </section>
-            </div>
-            <div id="view-payslip" class="tab-content" style="display: none;">
-                <section class="task-section">
-                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <h2>🧾 Payslip Center</h2>
-                        <button class="btn-outline" onclick="openApprovalRequestsModal()" style="padding:8px 12px;">My Approval Requests</button>
+                        <button class="btn-outline" onclick="fetchMyAttendanceHistory()">Reload Calendar</button>
                     </div>
 
-                    <div style="max-width:560px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-                        <div style="text-align:left;">
-                            <label class="modern-label">Month</label>
-                            <select id="payslipMonthFilter" class="modern-input"></select>
-                        </div>
-                        <div style="text-align:left;">
-                            <label class="modern-label">Year</label>
-                            <select id="payslipYearFilter" class="modern-input"></select>
+                    <div id="attendanceCalendarGrid" class="attendance-calendar-grid">
+                        <div class="attendance-day-card is-empty">
+                            <div class="attendance-day-head">
+                                <span class="attendance-day-number">--</span>
+                                <span class="attendance-day-weekday">Wait</span>
+                            </div>
+                            <div class="attendance-day-status" style="background:#e2e8f0;color:#475569;">Loading</div>
+                            <small>Attendance data is loading.</small>
                         </div>
                     </div>
 
-                    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
-                        <button class="btn-modern btn-purple" type="button" onclick="handleQuickDownload('Payslip')">📥 Download Payslip PDF</button>
+                    <div class="section-header">
+                        <div>
+                            <h2>Daily Attendance Log</h2>
+                            <p>List view for exact check-in, check-out, break time, worked time, and Present or Leave status.</p>
+                        </div>
+                    </div>
+                    <div class="task-table-wrapper">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Break Time</th>
+                                    <th>Worked Time</th>
+                                    <th>Shift Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceHistoryBody">
+                                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">Loading attendance records...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div class="section-header" style="margin-top:20px;">
-                        <h2>📜 Payslip History</h2>
+                    <div class="section-header" style="margin-top:22px;">
+                        <div>
+                            <h2>My Approved Attendance Reports</h2>
+                            <p>Only attendance-report documents appear here for payroll verification, approval tracking, and official downloads.</p>
+                        </div>
+                        <button class="btn-outline" type="button" onclick="fetchMyDocumentApprovals()">Refresh Reports</button>
                     </div>
                     <div class="task-table-wrapper">
                         <table class="task-table">
                             <thead>
                                 <tr>
                                     <th>Month</th>
-                                    <th>Present</th>
-                                    <th>Absent</th>
-                                    <th>Document Status</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="payslipHistoryBody">
-                                <tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No payslip history available.</td></tr>
+                            <tbody id="attendanceApprovalsBody">
+                                <tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">Loading attendance approvals...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -664,25 +1952,193 @@
             <div id="view-payouts" class="tab-content" style="display: none;">
                 <section class="task-section">
                     <div class="section-header">
-                        <h2>💸 My Payout History</h2>
+                        <div>
+                            <h2>💸 Payouts & Wallet</h2>
+                            <p>One cohesive workspace for wallet balances, approval documents, and payslip history without random floating actions.</p>
+                        </div>
                     </div>
-                    <div class="task-table-wrapper">
-                        <table class="task-table">
-                            <thead>
-                                <tr>
-                                    <th>Date Requested</th>
-                                    <th>Amount</th>
-                                    <th>Transfer Details</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="payoutHistoryBody">
-                                <tr>
-                                    <td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">Loading
-                                        history...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                    <div class="payout-subtab-bar">
+                        <div class="subtab-switch">
+                            <button id="payoutSubtabWalletBtn" class="subtab-btn active" type="button" onclick="switchPayoutSubtab('wallet')">Wallet Overview</button>
+                            <button id="payoutSubtabApprovalsBtn" class="subtab-btn" type="button" onclick="switchPayoutSubtab('approvals')">My Approvals</button>
+                            <button id="payoutSubtabPayslipBtn" class="subtab-btn" type="button" onclick="switchPayoutSubtab('payslip')">Payslip Center</button>
+                        </div>
+                    </div>
+
+                    <div id="payoutSubtabWallet" class="subtab-panel active">
+                        <div class="wallet-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                            <div class="wallet-card">
+                                <span class="k">Wallet Balance</span>
+                                <div id="walletBalanceValue" class="v">₹0</div>
+                                <p>Live pending payout amount currently available for withdrawal.</p>
+                            </div>
+                            <div class="wallet-card">
+                                <span class="k">Pending Requests</span>
+                                <div id="walletPendingRequests" class="v">0</div>
+                                <p>Withdrawal requests that are still waiting for admin processing.</p>
+                            </div>
+                            <div class="wallet-card">
+                                <span class="k">Paid Out Total</span>
+                                <div id="walletPaidOutTotal" class="v">₹0</div>
+                                <p>Total amount already paid out across your wallet history.</p>
+                            </div>
+                        </div>
+
+                        <div class="wallet-actions">
+                            <button class="btn-modern btn-amber" style="width:auto;padding:12px 18px;" type="button" onclick="openPayoutModal()">Request Withdrawal</button>
+                            <button class="btn-outline" type="button" onclick="fetchMyPayouts(); fetchEarningsLedger();">Refresh Wallet</button>
+                        </div>
+
+                        <div class="glass-panel" style="padding:22px;margin-bottom:18px;">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Earnings Ledger</h2>
+                                    <p>Itemized view of every credited commission or bounty so staff can see exactly what has been paid for.</p>
+                                </div>
+                            </div>
+                            <div class="ledger-controls">
+                                <div class="toolbar-grid" style="flex:1;min-width:min(100%,420px);">
+                                    <div class="toolbar-field">
+                                        <label>Month</label>
+                                        <select id="ledgerMonthFilter" class="modern-input" onchange="fetchEarningsLedger()"></select>
+                                    </div>
+                                    <div class="toolbar-field">
+                                        <label>Year</label>
+                                        <select id="ledgerYearFilter" class="modern-input" onchange="fetchEarningsLedger()"></select>
+                                    </div>
+                                </div>
+                                <div class="panel-action-group">
+                                    <div class="attendance-chip">Items: <span id="ledgerItemsCount" style="font-weight:800;">0</span></div>
+                                    <div class="attendance-chip">Credited: <span id="ledgerTotalAmount" style="font-weight:800;">₹0</span></div>
+                                </div>
+                            </div>
+                            <div class="task-table-wrapper">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Task / Project</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="earningsLedgerBody">
+                                        <tr><td colspan="4" style="text-align:center;padding:20px;color:#64748b;">Loading earnings ledger...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel" style="padding:22px;">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Payment History</h2>
+                                    <p>Only your withdrawal requests and settled wallet payments appear here.</p>
+                                </div>
+                            </div>
+                            <div class="task-table-wrapper">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Requested</th>
+                                            <th>Amount</th>
+                                            <th>Transfer Details</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payoutHistoryBody">
+                                        <tr>
+                                            <td colspan="4" style="text-align:center; padding:20px; color:#64748b;">Loading history...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="payoutSubtabApprovals" class="subtab-panel">
+                        <div class="glass-panel" style="padding:22px;">
+                            <div class="section-header">
+                                <div>
+                                    <h2>My Approvals</h2>
+                                    <p>Official document statuses and download actions are separated here so they never clutter the wallet or attendance views again.</p>
+                                </div>
+                                <div class="panel-action-group">
+                                    <button class="btn-outline" type="button" onclick="fetchMyDocumentApprovals()">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="task-table-wrapper">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payoutApprovalsBody">
+                                        <tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">Loading approvals...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="payoutSubtabPayslip" class="subtab-panel">
+                        <div class="glass-panel" style="padding:22px;margin-bottom:18px;">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Payslip Center</h2>
+                                    <p>Generate monthly payout slips and review every payslip approval from the same premium workspace.</p>
+                                </div>
+                            </div>
+
+                            <div class="payslip-toolbar-layout">
+                                <div class="toolbar-grid" style="flex:1;min-width:min(100%,360px);">
+                                    <div class="toolbar-field">
+                                        <label>Month</label>
+                                        <select id="payslipMonthFilter" class="modern-input"></select>
+                                    </div>
+                                    <div class="toolbar-field">
+                                        <label>Year</label>
+                                        <select id="payslipYearFilter" class="modern-input"></select>
+                                    </div>
+                                </div>
+                                <div class="panel-action-group">
+                                    <button class="btn-modern btn-purple" type="button" style="width:auto;padding:12px 18px;" onclick="handleQuickDownload('Payslip')">
+                                        <i class="ri-download-2-line"></i>
+                                        Download Payslip PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel" style="padding:22px;">
+                            <div class="section-header">
+                                <div>
+                                    <h2>Payslip History</h2>
+                                    <p>Clean monthly records of present days, absent days, document status, and available actions.</p>
+                                </div>
+                            </div>
+                            <div class="task-table-wrapper">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Month</th>
+                                            <th>Present</th>
+                                            <th>Absent</th>
+                                            <th>Document Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payslipHistoryBody">
+                                        <tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No payslip history available.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -728,8 +2184,7 @@
             </div>
             <div id="idCardModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content" style="max-width: 350px; text-align: center;">
-                    <span class="close-btn" onclick="closeIDCard()"
-                        style="position: absolute; right: 20px; top: 15px; cursor: pointer;">&times;</span>
+                    <button class="modal-close" type="button" onclick="closeIDCard()"><i class="ri-close-line"></i></button>
                     <div class="id-card-wrapper" id="printableIDCard">
                         <div class="id-card">
                             <div class="id-header">
@@ -835,7 +2290,7 @@
                             style="background:#e0e7ff;color:#6c63ff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:bold;">0
                             Tickets</span>
                     </div>
-                    <div style="overflow-x:auto;">
+                    <div class="task-table-wrapper w-full overflow-x-auto pb-4">
                         <table class="task-table" style="width:100%;">
                             <thead>
                                 <tr>
@@ -878,6 +2333,7 @@
                 </section>
                 </section>
             </div>
+            </div>
 
             <!-- 🎬 STAFF JAAS.VC MEETING CONTAINER (Hidden by default) -->
             <div id="staff-jaas-container"
@@ -909,8 +2365,7 @@
                 style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center;">
                 <div class="modal-content"
                     style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-                    <span onclick="closePayoutModal()"
-                        style="position: absolute; right: 20px; top: 15px; cursor: pointer; font-size: 24px; color: #64748b;">&times;</span>
+                    <button class="modal-close" type="button" onclick="closePayoutModal()"><i class="ri-close-line"></i></button>
                     <h2 style="margin-bottom: 5px; color: #1e293b;"><i class="ri-bank-card-line"
                             style="color: #f59e0b;"></i> Withdraw Funds</h2>
                     <p style="margin-bottom: 20px; font-size: 14px; color: #64748b;">Available Balance: <strong
@@ -963,6 +2418,7 @@
 
             <div id="downloadChoiceModal" class="modal-overlay" style="display:none;">
                 <div class="modal-content" style="max-width:480px;">
+                    <button class="modal-close" type="button" onclick="closeDownloadChoiceModal()"><i class="ri-close-line"></i></button>
                     <h3 style="margin:0 0 10px 0;color:#0f172a;">How do you want to download this document?</h3>
                     <p id="downloadChoiceText" style="margin:0 0 18px 0;color:#475569;font-size:14px;">Choose a format for this month.</p>
                     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
@@ -977,6 +2433,7 @@
 
             <div id="sendApprovalModal" class="modal-overlay" style="display:none;">
                 <div class="modal-content" style="max-width:460px;">
+                    <button class="modal-close" type="button" onclick="closeSendApprovalModal()"><i class="ri-close-line"></i></button>
                     <h3 style="margin:0 0 10px 0;color:#0f172a;">Do you want to send this document to the Admin for verification?</h3>
                     <p id="sendApprovalText" style="margin:0 0 18px 0;color:#475569;font-size:14px;">Approval will be required for official PDF.</p>
                     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
@@ -988,6 +2445,7 @@
 
             <div id="approvalRequestsModal" class="modal-overlay" style="display:none;">
                 <div class="modal-content" style="max-width:860px;width:94%;">
+                    <button class="modal-close" type="button" onclick="closeApprovalRequestsModal()"><i class="ri-close-line"></i></button>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
                         <h3 style="margin:0;color:#0f172a;">My Approval Requests</h3>
                         <button class="btn-outline" onclick="closeApprovalRequestsModal()" style="padding:8px 12px;">Close</button>
@@ -1011,6 +2469,7 @@
 
             <div id="attendanceHistoryModal" class="modal-overlay" style="display:none;">
                 <div class="modal-content" style="max-width:900px;width:94%;">
+                    <button class="modal-close" type="button" onclick="closeAttendanceHistoryModal()"><i class="ri-close-line"></i></button>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
                         <h3 style="margin:0;color:#0f172a;">Attendance History</h3>
                         <button class="btn-outline" onclick="closeAttendanceHistoryModal()" style="padding:8px 12px;">Close</button>
@@ -1037,12 +2496,17 @@
 
             <div id="submitTaskModal" class="modal-overlay" style="display:none;">
                 <div class="modal-content" style="max-width:560px;width:94%;">
+                    <button class="modal-close" type="button" onclick="closeSubmitTaskModal()"><i class="ri-close-line"></i></button>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                         <div>
                             <h3 style="margin:0;color:#0f172a;">Submit Task Work</h3>
                             <p id="submitTaskModalTitle" style="margin:6px 0 0;color:#64748b;font-size:13px;">Paste your work URL below.</p>
                         </div>
                         <button class="btn-outline" onclick="closeSubmitTaskModal()" style="padding:8px 12px;">Close</button>
+                    </div>
+                    <div id="submitTaskSelectWrap" style="margin-bottom:14px;">
+                        <label class="modern-label">Choose Task</label>
+                        <select id="submitTaskSelect" class="modern-input"></select>
                     </div>
                     <div>
                         <label class="modern-label">Work URL</label>
@@ -1055,6 +2519,11 @@
                 </div>
             </div>
 
+            <button class="fab-submit-work" type="button" onclick="openQuickSubmitTaskModal()">
+                <i class="ri-add-circle-line"></i>
+                Submit Task Work
+            </button>
+
         </main>
     </div>
     <script src="/js/NotificationManager.js"></script>
@@ -1065,6 +2534,20 @@
         // ==========================================
         let staffData = null;
         let staffPinnedMessage = null;
+        let cachedNotices = [];
+        let cachedBountyTasks = [];
+        let activePayoutSubtab = 'wallet';
+        const MODAL_IDS = [
+            'idCardModal',
+            'payoutModal',
+            'downloadChoiceModal',
+            'sendApprovalModal',
+            'approvalRequestsModal',
+            'attendanceHistoryModal',
+            'submitTaskModal'
+        ];
+        let desktopSidebarCollapsed = false;
+        let mobileSidebarOpen = false;
 
         async function checkAuthAndLoadData() {
             try {
@@ -1085,6 +2568,12 @@
 
                     const firstName = staffData.name.split(' ')[0];
                     document.querySelector('.dashboard-header h1').innerHTML = `Welcome back, ${firstName}! 👋`;
+                    if (document.getElementById('dashboardWelcomeTitle')) {
+                        document.getElementById('dashboardWelcomeTitle').innerText = `Welcome Back, ${firstName}!`;
+                    }
+                    if (document.getElementById('dashboardWelcomeSubtitle')) {
+                        document.getElementById('dashboardWelcomeSubtitle').innerText = 'Here is your operations command hub. View your tasks, attendance, and earnings breakdown below.';
+                    }
                     document.querySelector('.dropdown-header strong').innerText = staffData.name;
                     document.querySelector('.dropdown-header span').innerText = staffData.email;
 
@@ -1102,9 +2591,12 @@
                     fetchStaffStats();
                     fetchLeaderboard();
                     fetchMyPayouts();
+                    fetchEarningsLedger();
                     fetchMyLeaves();
                     window.initializeDutyStatus();
                     window.requestNotificationPermission();
+                    initChat();
+                    switchPayoutSubtab(activePayoutSubtab);
 
                     // 🟢 Join Socket Room for Real-Time Updates
                     if (socket && staffData.email) {
@@ -1128,7 +2620,47 @@
         // ==========================================
         // 2. UI FUNCTIONS (TABS & MENU)
         // ==========================================
+        function isMobileSidebarViewport() {
+            return window.innerWidth < 1024;
+        }
+
+        function applyStaffSidebarState() {
+            const sidebar = document.getElementById('staffSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (!sidebar) return;
+
+            if (isMobileSidebarViewport()) {
+                sidebar.classList.toggle('-translate-x-full', !mobileSidebarOpen);
+                if (overlay) overlay.classList.toggle('hidden', !mobileSidebarOpen);
+                document.body.classList.toggle('overflow-hidden', mobileSidebarOpen);
+            } else {
+                mobileSidebarOpen = false;
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.remove('sidebar-collapsed');
+                if (overlay) overlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function toggleStaffSidebar(forceOpen) {
+            if (isMobileSidebarViewport()) {
+                mobileSidebarOpen = typeof forceOpen === 'boolean' ? forceOpen : !mobileSidebarOpen;
+            } else {
+                mobileSidebarOpen = false;
+            }
+            applyStaffSidebarState();
+        }
+
+        window.toggleStaffSidebar = toggleStaffSidebar;
+        window.addEventListener('resize', applyStaffSidebarState);
+        applyStaffSidebarState();
+
         function switchTab(tabId) {
+            if (tabId === 'payslip') {
+                activePayoutSubtab = 'payslip';
+                tabId = 'payouts';
+            }
+
             let contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.style.display = 'none');
 
@@ -1141,10 +2673,19 @@
             const navElement = document.getElementById('nav-' + tabId);
             if (navElement) navElement.classList.add('active');
 
-            if (tabId === 'attendance' || tabId === 'payslip') fetchMyAttendanceHistory();
+            if (tabId === 'attendance') fetchMyAttendanceHistory(true);
             if (tabId === 'tasks') {
                 fetchMyTasks();
                 fetchMyBountyTasks();
+            }
+            if (tabId === 'payouts') {
+                switchPayoutSubtab(activePayoutSubtab);
+            }
+            if (tabId === 'notices') fetchNotices();
+
+            if (isMobileSidebarViewport()) {
+                mobileSidebarOpen = false;
+                applyStaffSidebarState();
             }
         }
 
@@ -1170,32 +2711,129 @@
         }
 
         function toggleProfileMenu() {
-            const menu = document.getElementById('profile-menu');
-            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+            const menu = document.getElementById('profileDropdown');
+            if (!menu) return;
+            menu.classList.toggle('hidden');
         }
 
-        window.onclick = function (event) {
-            if (!event.target.matches('.profile-circle')) {
-                const menu = document.getElementById('profile-menu');
-                if (menu && menu.style.display === 'block') menu.style.display = 'none';
+        function closeProfileMenu() {
+            const menu = document.getElementById('profileDropdown');
+            if (!menu) return;
+            menu.classList.add('hidden');
+        }
+
+        window.toggleProfileMenu = toggleProfileMenu;
+        window.closeProfileMenu = closeProfileMenu;
+
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        function closeAllModals() {
+            MODAL_IDS.forEach(hideModal);
+        }
+
+        function switchPayoutSubtab(subtabId = 'wallet') {
+            const allowedSubtabs = ['wallet', 'approvals', 'payslip'];
+            activePayoutSubtab = allowedSubtabs.includes(subtabId) ? subtabId : 'wallet';
+            const subtabKey = activePayoutSubtab.charAt(0).toUpperCase() + activePayoutSubtab.slice(1);
+
+            document.querySelectorAll('#view-payouts .subtab-btn').forEach((button) => {
+                button.classList.toggle('active', button.id === `payoutSubtab${subtabKey}Btn`);
+            });
+            document.querySelectorAll('#view-payouts .subtab-panel').forEach((panel) => {
+                panel.classList.toggle('active', panel.id === `payoutSubtab${subtabKey}`);
+            });
+
+            if (activePayoutSubtab === 'wallet') {
+                fetchMyPayouts();
+                fetchEarningsLedger();
             }
 
-            const closableModalIds = ['downloadChoiceModal', 'sendApprovalModal', 'approvalRequestsModal', 'attendanceHistoryModal', 'submitTaskModal'];
-            closableModalIds.forEach((id) => {
-                const modal = document.getElementById(id);
-                if (modal && event.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
+            if (activePayoutSubtab === 'approvals') {
+                fetchMyDocumentApprovals();
+            }
+
+            if (activePayoutSubtab === 'payslip') {
+                fetchMyAttendanceHistory(false);
+            }
         }
 
-        function openIDCard() { document.getElementById('idCardModal').style.display = 'flex'; }
-        function closeIDCard() { document.getElementById('idCardModal').style.display = 'none'; }
+        window.switchPayoutSubtab = switchPayoutSubtab;
+
+        document.addEventListener('click', function (event) {
+            const menu = document.getElementById('profileDropdown');
+            const clickedProfile = event.target.closest('.header-profile');
+            if (menu && !clickedProfile && !menu.classList.contains('hidden')) {
+                closeProfileMenu();
+            }
+
+            const modal = event.target.closest('.modal-overlay');
+            if (modal && event.target === modal) {
+                hideModal(modal.id);
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeAllModals();
+                closeProfileMenu();
+            }
+        });
+
+        function openIDCard() { showModal('idCardModal'); }
+        function closeIDCard() { hideModal('idCardModal'); }
         function printIDCard() { window.print(); }
 
         // ==========================================
         // 3. FETCH DATA LOGIC
         // ==========================================
+
+        function renderDashboardAnnouncements(notices = []) {
+            const previewList = document.getElementById('dashboardAnnouncementsList');
+            const countEl = document.getElementById('recentAnnouncementsCount');
+            const hintEl = document.getElementById('recentAnnouncementHint');
+            const items = notices.slice(0, 3);
+
+            if (countEl) countEl.innerText = String(notices.length || 0);
+            if (hintEl) {
+                hintEl.innerText = notices.length
+                    ? `Latest: ${notices[0].title || 'Announcement'}`
+                    : 'No recent staff-wide announcements right now.';
+            }
+
+            if (!previewList) return;
+            if (!items.length) {
+                previewList.innerHTML = `
+                    <div class="announcement-item">
+                        <strong>No recent announcements</strong>
+                        <p>The notice board is quiet right now. New official updates will appear here automatically.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            previewList.innerHTML = items.map((notice) => `
+                <div class="announcement-item">
+                    <strong>${escapeHtml(notice.title || 'Notice')}</strong>
+                    <p>${escapeHtml(String(notice.message || '').slice(0, 140) || 'No additional details.')}</p>
+                    <div class="announcement-meta">
+                        <span>${new Date(notice.date).toLocaleString()}</span>
+                        <span>${escapeHtml(notice.author || 'Admin')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
 
         async function fetchNotices() {
             try {
@@ -1204,22 +2842,29 @@
                 const container = document.getElementById('noticeContainer');
 
                 if (data.success && data.notices.length > 0) {
+                    cachedNotices = data.notices || [];
                     container.innerHTML = '';
-                    data.notices.forEach((notice, index) => {
+                    cachedNotices.forEach((notice, index) => {
                         let borderColor = index % 2 === 0 ? '#6c63ff' : '#10b981';
                         container.innerHTML += `
                         <div class="notice-card" style="border-left-color: ${borderColor};">
                             <span class="notice-date">${new Date(notice.date).toLocaleString()}</span>
-                            <h3>${notice.title}</h3>
-                            <p>${notice.message}</p>
-                            <div class="notice-author">By ${notice.author}</div>
+                            <h3>${escapeHtml(notice.title || 'Notice')}</h3>
+                            <p>${escapeHtml(notice.message || '')}</p>
+                            <div class="notice-author">By ${escapeHtml(notice.author || 'Admin')}</div>
                         </div>
                     `;
                     });
                 } else {
+                    cachedNotices = [];
                     container.innerHTML = '<p style="color: #64748b;">No new notices at the moment.</p>';
                 }
-            } catch (e) { console.error("Notice fetch error:", e); }
+                renderDashboardAnnouncements(cachedNotices);
+            } catch (e) {
+                cachedNotices = [];
+                renderDashboardAnnouncements([]);
+                console.error("Notice fetch error:", e);
+            }
         }
 
         async function fetchMyTasks() {
@@ -1230,11 +2875,15 @@
                     body: JSON.stringify({ email: staffData.email }), credentials: 'include'
                 });
                 const data = await response.json();
-                if (data.success) renderDashboard(data.tasks);
-            } catch (e) { console.error("Task fetch error:", e); }
+                if (data.success) renderDashboard(data.tasks || []);
+                else renderDashboard([]);
+            } catch (e) {
+                renderDashboard([]);
+                console.error("Task fetch error:", e);
+            }
         }
 
-        function renderDashboard(tasks) {
+        function renderDashboard(tasks = []) {
             const dashTbody = document.querySelector('#view-dashboard .task-table tbody');
             const tasksTbody = document.getElementById('myTasksTableBody');
 
@@ -1290,12 +2939,12 @@
                 }
             }
 
-            const statCards = document.querySelectorAll('.stat-info h3');
-            if (statCards.length > 0) {
-                statCards[0].innerText = tasks.length;
-                statCards[1].innerText = completed;
-                statCards[2].innerText = pending;
-            }
+            const assignedEl = document.getElementById('dashboardAssignedCount');
+            const completedEl = document.getElementById('dashboardLeadClosedCount');
+            const pendingEl = document.getElementById('dashboardPendingLeadCount');
+            if (assignedEl) assignedEl.innerText = String(tasks.length || 0);
+            if (completedEl) completedEl.innerText = String(completed || 0);
+            if (pendingEl) pendingEl.innerText = String(pending || 0);
 
             renderLeadTasksTable(tasks);
         }
@@ -1360,10 +3009,12 @@
         }
 
         function renderMyBountyTasks(tasks) {
+            cachedBountyTasks = Array.isArray(tasks) ? tasks : [];
             const tbody = document.getElementById('myBountyTasksBody');
+            syncSubmitTaskOptions(activeBountyTaskId);
             if (!tbody) return;
 
-            if (!tasks.length) {
+            if (!cachedBountyTasks.length) {
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 32px; color: #64748b;">
                     <i class="ri-briefcase-2-line" style="font-size:28px;display:block;margin-bottom:10px;color:#cbd5e1;"></i>
                     No bounty tasks assigned yet.
@@ -1371,7 +3022,7 @@
                 return;
             }
 
-            tbody.innerHTML = tasks.map((task) => {
+            tbody.innerHTML = cachedBountyTasks.map((task) => {
                 let actionMarkup = '<span style="color:#94a3b8;font-weight:700;">No action</span>';
                 if (task.status === 'Assigned' || task.status === 'Revision') {
                     actionMarkup = `<button class="btn-update" data-task-title="${escapeHtml(task.title || '')}" data-submission-link="${escapeHtml(task.submissionLink || '')}" onclick="openSubmitTaskModalFromButton(this, '${task._id}')">Submit Work</button>`;
@@ -1396,6 +3047,64 @@
 
         let activeBountyTaskId = '';
 
+        function getSubmittableBountyTasks() {
+            return (cachedBountyTasks || []).filter((task) => ['Assigned', 'Revision'].includes(task.status));
+        }
+
+        function getBountyTaskById(taskId) {
+            return (cachedBountyTasks || []).find((task) => String(task._id) === String(taskId));
+        }
+
+        function syncSubmitTaskOptions(selectedTaskId = '') {
+            const select = document.getElementById('submitTaskSelect');
+            const tasks = getSubmittableBountyTasks();
+            if (!select) return;
+
+            if (!tasks.length) {
+                select.innerHTML = '<option value="">No open tasks available for submission</option>';
+                select.disabled = true;
+                activeBountyTaskId = '';
+                return;
+            }
+
+            select.disabled = false;
+            select.innerHTML = tasks.map((task) => `
+                <option value="${task._id}">
+                    ${escapeHtml(task.title || 'Untitled Task')} - ₹${Number(task.bountyAmount || 0).toLocaleString('en-IN')}
+                </option>
+            `).join('');
+
+            const preferredTaskId = tasks.some((task) => String(task._id) === String(selectedTaskId))
+                ? selectedTaskId
+                : tasks[0]._id;
+            select.value = preferredTaskId;
+            activeBountyTaskId = preferredTaskId;
+        }
+
+        function updateSubmitTaskSelection(taskId, options = {}) {
+            const { explicitTitle = '', explicitLink = '' } = options;
+            const task = getBountyTaskById(taskId);
+            const title = document.getElementById('submitTaskModalTitle');
+            const input = document.getElementById('submitTaskUrl');
+            const select = document.getElementById('submitTaskSelect');
+
+            activeBountyTaskId = task ? task._id : '';
+            if (select && activeBountyTaskId) select.value = activeBountyTaskId;
+
+            if (!task) {
+                if (title) title.innerText = 'No open task is available for submission right now.';
+                if (input) input.value = '';
+                return;
+            }
+
+            if (title) {
+                title.innerText = explicitTitle
+                    ? `Paste the completed work link for "${explicitTitle}".`
+                    : `Paste the completed work link for "${task.title || 'selected task'}".`;
+            }
+            if (input) input.value = explicitLink || task.submissionLink || '';
+        }
+
         function openSubmitTaskModalFromButton(button, taskId) {
             openSubmitTaskModal(
                 taskId,
@@ -1405,21 +3114,27 @@
         }
 
         function openSubmitTaskModal(taskId, taskTitle = '', existingLink = '') {
-            activeBountyTaskId = taskId;
-            const modal = document.getElementById('submitTaskModal');
-            const input = document.getElementById('submitTaskUrl');
-            const title = document.getElementById('submitTaskModalTitle');
-            if (input) input.value = existingLink || '';
-            if (title) title.innerText = taskTitle ? `Paste the completed work link for "${taskTitle}".` : 'Paste your work URL below.';
-            if (modal) modal.style.display = 'flex';
+            syncSubmitTaskOptions(taskId);
+            const fallbackTaskId = taskId || document.getElementById('submitTaskSelect')?.value || '';
+            updateSubmitTaskSelection(fallbackTaskId, { explicitTitle: taskTitle, explicitLink: existingLink });
+            showModal('submitTaskModal');
         }
 
         function closeSubmitTaskModal() {
             activeBountyTaskId = '';
-            const modal = document.getElementById('submitTaskModal');
             const input = document.getElementById('submitTaskUrl');
+            const title = document.getElementById('submitTaskModalTitle');
             if (input) input.value = '';
-            if (modal) modal.style.display = 'none';
+            if (title) title.innerText = 'Paste your work URL below.';
+            hideModal('submitTaskModal');
+        }
+
+        function openQuickSubmitTaskModal() {
+            if (!getSubmittableBountyTasks().length) {
+                alert('No open bounty tasks are available for submission right now.');
+                return;
+            }
+            openSubmitTaskModal();
         }
 
         async function submitBountyTaskWork() {
@@ -1456,7 +3171,12 @@
         window.openSubmitTaskModalFromButton = openSubmitTaskModalFromButton;
         window.openSubmitTaskModal = openSubmitTaskModal;
         window.closeSubmitTaskModal = closeSubmitTaskModal;
+        window.openQuickSubmitTaskModal = openQuickSubmitTaskModal;
         window.submitBountyTaskWork = submitBountyTaskWork;
+
+        document.getElementById('submitTaskSelect')?.addEventListener('change', function () {
+            updateSubmitTaskSelection(this.value);
+        });
 
         async function updateTask(btnElement, taskId) {
             const row = btnElement.closest('tr');
@@ -1485,21 +3205,6 @@
             }
         }
 
-        async function fetchStaffStats() {
-            try {
-                const response = await fetch('/api/staff/stats', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: staffData.email }), credentials: 'include'
-                });
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
-                    document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
-                }
-            } catch (e) { console.error("Stats fetch error:", e); }
-        }
-
         async function fetchLeaderboard() {
             const container = document.getElementById('leaderboardContainer');
             try {
@@ -1510,28 +3215,31 @@
                 container.innerHTML = '';
 
                 if (data.success && data.leaderboard && data.leaderboard.length > 0) {
-                    const hasEarnings = data.leaderboard.some(s => s.totalEarnings > 0);
+                    const rankedStaff = data.leaderboard
+                        .filter((staff) => Number(staff.totalEarnings || 0) > 0)
+                        .slice(0, 3);
 
-                    if (!hasEarnings) {
+                    if (!rankedStaff.length) {
                         container.innerHTML = '<p style="color: #64748b; font-size: 14px; width: 100%; text-align: center; padding: 10px;">No top performers yet. Convert a lead to be the first! 🚀</p>';
                         return;
                     }
 
-                    data.leaderboard.forEach((staff, index) => {
-                        if (staff.totalEarnings > 0) {
-                            let rankIcon = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🎖️'));
-                            let photo = staff.profilePhoto || `https://ui-avatars.com/api/?name=${staff.name}&background=7d5fff&color=fff`;
+                    container.innerHTML = rankedStaff.map((staff, index) => {
+                        const rankIcon = index === 0 ? '👑' : (index === 1 ? '🥈' : '🥉');
+                        const photo = staff.profilePhoto || `https://ui-avatars.com/api/?name=${staff.name}&background=7d5fff&color=fff`;
 
-                            container.innerHTML += `
-                            <div style="min-width: 140px; background: #f8fafc; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 24px; margin-bottom: 5px;">${rankIcon}</div>
-                                <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid #e2e8f0;">
-                                <h4 style="margin: 0; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${staff.name.split(' ')[0]}</h4>
-                                <p style="margin: 5px 0 0 0; font-size: 13px; color: #10b981; font-weight: bold;">₹${staff.totalEarnings.toLocaleString('en-IN')}</p>
+                        return `
+                            <div style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:14px 16px;border-radius:16px;border:1px solid #e2e8f0;">
+                                <div style="width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#ffffff;font-size:20px;flex-shrink:0;">${rankIcon}</div>
+                                <img src="${photo}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;flex-shrink:0;">
+                                <div style="min-width:0;flex:1;">
+                                    <h4 style="margin:0;font-size:14px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${staff.name.split(' ')[0]}</h4>
+                                    <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Rank ${index + 1} Performer</p>
+                                </div>
+                                <div style="font-size:13px;color:#10b981;font-weight:800;white-space:nowrap;">₹${staff.totalEarnings.toLocaleString('en-IN')}</div>
                             </div>
                         `;
-                        }
-                    });
+                    }).join('');
                 } else {
                     container.innerHTML = '<p style="color: #64748b; font-size: 14px; padding: 10px;">No staff data found.</p>';
                 }
@@ -1607,6 +3315,8 @@
 
         async function fetchMyPayouts() {
             const tbody = document.getElementById('payoutHistoryBody');
+            const pendingRequestsEl = document.getElementById('walletPendingRequests');
+            const paidOutEl = document.getElementById('walletPaidOutTotal');
             try {
                 const response = await fetch('/api/staff/my-payouts', {
                     method: 'POST',
@@ -1616,19 +3326,27 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    const payouts = data.payouts || [];
+                    const pendingRequests = payouts.filter((p) => p.status !== 'Paid').length;
+                    const paidOutTotal = payouts
+                        .filter((p) => p.status === 'Paid')
+                        .reduce((sum, payout) => sum + Number(payout.amount || 0), 0);
+
+                    if (pendingRequestsEl) pendingRequestsEl.innerText = String(pendingRequests);
+                    if (paidOutEl) paidOutEl.innerText = `₹${paidOutTotal.toLocaleString('en-IN')}`;
                     tbody.innerHTML = '';
-                    if (data.payouts.length === 0) {
+                    if (!payouts.length) {
                         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">No payout requests found yet. Start closing deals! 🚀</td></tr>';
                         return;
                     }
-                    data.payouts.forEach(p => {
+                    payouts.forEach(p => {
                         let statusBadge = p.status === 'Paid'
                             ? `<span style="background:#d1fae5; color:#10b981; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Paid ✅</span>`
                             : `<span style="background:#fef3c7; color:#d97706; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending ⏳</span>`;
 
                         let methodText = p.paymentMethod === 'UPI' && p.paymentDetails
-                            ? `📱 UPI: <strong>${p.paymentDetails.upiId}</strong>`
-                            : `🏦 Bank: <strong>${p.paymentDetails ? p.paymentDetails.accNo : 'N/A'}</strong>`;
+                            ? `📱 UPI: <strong>${escapeHtml(p.paymentDetails.upiId || 'N/A')}</strong>`
+                            : `🏦 Bank: <strong>${escapeHtml(p.paymentDetails ? p.paymentDetails.accNo : 'N/A')}</strong>`;
 
                         tbody.innerHTML += `
                         <tr>
@@ -1641,9 +3359,82 @@
                     });
                 }
             } catch (e) {
+                if (pendingRequestsEl) pendingRequestsEl.innerText = '0';
+                if (paidOutEl) paidOutEl.innerText = '₹0';
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #ef4444;">⚠️ Failed to load history. Check your internet connection.</td></tr>';
             }
         }
+
+        function seedLedgerFilters() {
+            const monthSel = document.getElementById('ledgerMonthFilter');
+            const yearSel = document.getElementById('ledgerYearFilter');
+            if (!monthSel || !yearSel) return;
+
+            monthSel.innerHTML = `
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            `;
+
+            const year = new Date().getFullYear();
+            yearSel.innerHTML = `
+                <option value="${year + 1}">${year + 1}</option>
+                <option value="${year}" selected>${year}</option>
+                <option value="${year - 1}">${year - 1}</option>
+                <option value="${year - 2}">${year - 2}</option>
+            `;
+
+            monthSel.value = String(new Date().getMonth() + 1).padStart(2, '0');
+        }
+
+        async function fetchEarningsLedger() {
+            const tbody = document.getElementById('earningsLedgerBody');
+            const itemsEl = document.getElementById('ledgerItemsCount');
+            const totalEl = document.getElementById('ledgerTotalAmount');
+            const month = document.getElementById('ledgerMonthFilter')?.value || String(new Date().getMonth() + 1).padStart(2, '0');
+            const year = document.getElementById('ledgerYearFilter')?.value || String(new Date().getFullYear());
+            if (!tbody) return;
+
+            try {
+                const response = await fetch(`/api/staff/earnings-ledger?month=${month}&year=${year}`, { credentials: 'include' });
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to load earnings ledger.');
+                }
+
+                if (itemsEl) itemsEl.innerText = String(data.totalItems || 0);
+                if (totalEl) totalEl.innerText = `₹${Number(data.totalAmount || 0).toLocaleString('en-IN')}`;
+
+                if (!(data.rows || []).length) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#64748b;">No credited earnings found for the selected month.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = (data.rows || []).map((row) => `
+                    <tr>
+                        <td>${escapeHtml(row.dateLabel || '—')}</td>
+                        <td><strong>${escapeHtml(row.taskName || 'Credited Item')}</strong><br><span class="sub-text">${escapeHtml(row.referenceId || row.source || 'Ledger')}</span></td>
+                        <td><strong style="color:#059669;">₹${Number(row.amount || 0).toLocaleString('en-IN')}</strong></td>
+                        <td><span class="attendance-status-pill" style="background:#dcfce7;color:#166534;">${escapeHtml(row.status || 'Credited')}</span></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                if (itemsEl) itemsEl.innerText = '0';
+                if (totalEl) totalEl.innerText = '₹0';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#ef4444;">Unable to load the earnings ledger right now.</td></tr>';
+            }
+        }
+
+        window.fetchEarningsLedger = fetchEarningsLedger;
 
         let currentPendingBalance = 0;
         window.openPayoutModal = function () {
@@ -1656,11 +3447,11 @@
             document.getElementById('payoutAmount').max = currentPendingBalance;
             document.getElementById('payoutAmount').value = currentPendingBalance;
 
-            document.getElementById('payoutModal').style.display = 'flex';
+            showModal('payoutModal');
         };
 
         window.closePayoutModal = function () {
-            document.getElementById('payoutModal').style.display = 'none';
+            hideModal('payoutModal');
             document.getElementById('payoutForm').reset();
             togglePaymentFields();
         };
@@ -1737,49 +3528,60 @@
 
         function renderAttendanceControls() {
             const box = document.getElementById('attendanceControls');
-            if (!box) return;
-
             const state = getDutyState();
             const liveWorkMs = todayAttendance?.totalWorkingMsLive ?? todayAttendance?.totalWorkingMs ?? 0;
             let content = '';
+            const summaryState = document.getElementById('attendanceSummaryState');
 
             if (state === 'not-started') {
                 content = `
-                    <button class="attendance-action-btn" style="background:#10b981;" onclick="performAttendanceAction('check-in')">
-                        <i class="ri-login-box-line"></i> Check-In
+                    <button class="attendance-action-btn is-checkin text-sm px-3 py-1.5 rounded-full shadow-sm" onclick="performAttendanceAction('check-in')">
+                        <i class="ri-login-box-line"></i><span class="hidden sm:inline">Check-In</span>
                     </button>
                     ${getStatusChipHtml('Offline', '#fee2e2', '#b91c1c')}
                 `;
             } else if (state === 'on-break') {
                 content = `
-                    <button class="attendance-action-btn" style="background:#0ea5e9;" onclick="performAttendanceAction('resume-work')">
-                        <i class="ri-play-circle-line"></i> Resume
+                    <button class="attendance-action-btn is-resume text-sm px-3 py-1.5 rounded-full shadow-sm" onclick="performAttendanceAction('resume-work')">
+                        <i class="ri-play-circle-line"></i><span class="hidden sm:inline">Resume</span>
                     </button>
-                    <button class="attendance-action-btn" style="background:#ef4444;" onclick="performAttendanceAction('check-out')">
-                        <i class="ri-logout-box-r-line"></i> Check-Out
+                    <button class="attendance-action-btn is-checkout text-sm px-3 py-1.5 rounded-full shadow-sm" onclick="performAttendanceAction('check-out')">
+                        <i class="ri-logout-box-r-line"></i><span class="hidden sm:inline">Check-Out</span>
                     </button>
                     ${getStatusChipHtml('On Break', '#fef3c7', '#b45309')}
                 `;
             } else if (state === 'working') {
                 content = `
-                    <button class="attendance-action-btn" style="background:#f59e0b;" onclick="performAttendanceAction('take-break')">
-                        <i class="ri-pause-circle-line"></i> Break
+                    <button class="attendance-action-btn is-break text-sm px-3 py-1.5 rounded-full shadow-sm" onclick="performAttendanceAction('take-break')">
+                        <i class="ri-pause-circle-line"></i><span class="hidden sm:inline">Break</span>
                     </button>
-                    <button class="attendance-action-btn" style="background:#ef4444;" onclick="performAttendanceAction('check-out')">
-                        <i class="ri-logout-box-r-line"></i> Check-Out
+                    <button class="attendance-action-btn is-checkout text-sm px-3 py-1.5 rounded-full shadow-sm" onclick="performAttendanceAction('check-out')">
+                        <i class="ri-logout-box-r-line"></i><span class="hidden sm:inline">Check-Out</span>
                     </button>
                     ${getStatusChipHtml('Online', '#dcfce7', '#15803d')}
                 `;
             } else {
                 content = `
-                    <button class="attendance-action-btn" style="background:#64748b;cursor:not-allowed;" disabled>
-                        <i class="ri-check-double-line"></i> Shift Closed
+                    <button class="attendance-action-btn is-disabled text-sm px-3 py-1.5 rounded-full shadow-sm" style="cursor:not-allowed;" disabled>
+                        <i class="ri-check-double-line"></i><span class="hidden sm:inline">Shift Closed</span>
                     </button>
                     ${getStatusChipHtml(`Worked ${formatDuration(liveWorkMs)}`, '#e2e8f0', '#334155')}
                 `;
             }
 
-            box.innerHTML = content;
+            if (box) box.innerHTML = content;
+            if (summaryState) {
+                const stateMeta = {
+                    'not-started': ['Offline', '#fee2e2', '#b91c1c'],
+                    'on-break': ['On Break', '#fef3c7', '#b45309'],
+                    'working': ['Online', '#dcfce7', '#166534'],
+                    'completed': [`Shift Closed · ${formatDuration(liveWorkMs)}`, '#e2e8f0', '#334155']
+                };
+                const [label, bg, fg] = stateMeta[state] || ['Waiting', '#e2e8f0', '#475569'];
+                summaryState.innerText = label;
+                summaryState.style.background = bg;
+                summaryState.style.color = fg;
+            }
         }
 
         async function fetchTodayAttendance() {
@@ -1847,6 +3649,34 @@
             return `${documentType}-${year}-${String(month).padStart(2, '0')}`;
         }
 
+        function normalizeDocumentTypeKey(documentType) {
+            return String(documentType || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+        }
+
+        function isAttendanceDocumentType(documentType) {
+            const normalized = normalizeDocumentTypeKey(documentType);
+            return normalized === 'attendancereport' || normalized.includes('attendance');
+        }
+
+        function isPayoutDocumentType(documentType) {
+            const normalized = normalizeDocumentTypeKey(documentType);
+            return normalized === 'payslip'
+                || normalized.includes('payout')
+                || normalized.includes('payment')
+                || normalized.includes('wallet');
+        }
+
+        function getFilteredApprovalRows(documentGroup = 'all') {
+            const rows = cachedApprovalRows || [];
+            if (documentGroup === 'attendance') {
+                return rows.filter((row) => isAttendanceDocumentType(row.documentType));
+            }
+            if (documentGroup === 'payouts') {
+                return rows.filter((row) => isPayoutDocumentType(row.documentType));
+            }
+            return rows;
+        }
+
         function normalizeApprovalStatus(status) {
             const normalized = String(status || '').trim();
             if (normalized === 'Approved') return 'Approved';
@@ -1864,7 +3694,10 @@
         }
 
         function getDocumentLabel(documentType) {
-            return documentType === 'AttendanceReport' ? 'Attendance Report' : 'Payslip';
+            if (isAttendanceDocumentType(documentType)) return 'Attendance Report';
+            if (normalizeDocumentTypeKey(documentType) === 'payslip') return 'Payslip';
+            if (isPayoutDocumentType(documentType)) return 'Payout Document';
+            return String(documentType || 'Document');
         }
 
         function getMonthYearLabel(month, year) {
@@ -1928,7 +3761,7 @@
             });
 
             (cachedApprovalRows || []).forEach((row) => {
-                if (row.documentType !== 'Payslip') return;
+                if (!isPayoutDocumentType(row.documentType)) return;
                 const key = `${row.year}-${String(row.month).padStart(2, '0')}`;
                 if (!map.has(key)) {
                     map.set(key, { month: row.month, year: row.year, present: 0, absent: 0, totalWorkMs: 0 });
@@ -2080,13 +3913,16 @@
                 if (!data.success) {
                     cachedApprovalRows = [];
                     rebuildApprovalMap([]);
+                    renderApprovalRequestsTable();
                     return;
                 }
                 cachedApprovalRows = data.approvals || [];
                 rebuildApprovalMap(cachedApprovalRows);
+                renderApprovalRequestsTable();
             } catch (e) {
                 cachedApprovalRows = [];
                 rebuildApprovalMap([]);
+                renderApprovalRequestsTable();
             }
         }
 
@@ -2096,17 +3932,79 @@
             renderPayslipHistory(mergeMonthsFromApprovals(monthRows));
         }
 
+        function getAttendanceStatusStyle(status) {
+            if (status === 'Present') return { bg: '#dcfce7', color: '#15803d' };
+            if (status === 'Absent') return { bg: '#fee2e2', color: '#b91c1c' };
+            if (status === 'Leave') return { bg: '#fef3c7', color: '#b45309' };
+            return { bg: '#e2e8f0', color: '#475569' };
+        }
+
+        function renderAttendanceCalendar(attendance = []) {
+            const grid = document.getElementById('attendanceCalendarGrid');
+            if (!grid) return;
+
+            const monthValue = document.getElementById('attendanceMonthFilter')?.value || '';
+            const yearValue = document.getElementById('attendanceYearFilter')?.value || '';
+            if (!monthValue || !yearValue) {
+                grid.innerHTML = `
+                    <div class="attendance-day-card is-empty" style="grid-column:1/-1;">
+                        <div class="attendance-day-head">
+                            <span class="attendance-day-number">--</span>
+                            <span class="attendance-day-weekday">Filter</span>
+                        </div>
+                        <div class="attendance-day-status" style="background:#e2e8f0;color:#475569;">Select month</div>
+                        <small>Please choose a specific month and year to view the attendance calendar.</small>
+                    </div>
+                `;
+                return;
+            }
+
+            const month = Number(monthValue);
+            const year = Number(yearValue);
+            const prefix = `${year}-${String(month).padStart(2, '0')}`;
+            const recordMap = new Map(
+                (attendance || [])
+                    .filter((record) => String(record.dateString || '').startsWith(prefix))
+                    .map((record) => [Number(String(record.dateString || '').slice(8, 10)), record])
+            );
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const today = new Date();
+
+            grid.innerHTML = Array.from({ length: daysInMonth }, (_, index) => {
+                const day = index + 1;
+                const currentDate = new Date(year, month - 1, day);
+                const isFuture = currentDate > today;
+                const record = recordMap.get(day);
+                const status = record?.status || (isFuture ? 'Upcoming' : 'No Log');
+                const style = getAttendanceStatusStyle(record?.status);
+                const statusBg = record ? style.bg : '#e2e8f0';
+                const statusColor = record ? style.color : '#475569';
+
+                return `
+                    <div class="attendance-day-card ${!record && !isFuture ? 'is-empty' : ''}">
+                        <div class="attendance-day-head">
+                            <span class="attendance-day-number">${day}</span>
+                            <span class="attendance-day-weekday">${currentDate.toLocaleDateString([], { weekday: 'short' })}</span>
+                        </div>
+                        <div class="attendance-day-status" style="background:${statusBg};color:${statusColor};">${status}</div>
+                        <small>${record ? `In ${formatTime(record.checkInTime)} · Out ${formatTime(record.checkOutTime)}` : (isFuture ? 'Future shift' : 'No punch recorded')}</small>
+                    </div>
+                `;
+            }).join('');
+        }
+
         function renderAttendanceHistory(attendance) {
             const body = document.getElementById('attendanceHistoryBody');
 
             if (!attendance || !attendance.length) {
                 if (body) {
-                    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px;">No attendance records found.</td></tr>';
+                    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">No attendance records found.</td></tr>';
                 }
                 document.getElementById('attPresentDays').innerText = '0';
                 document.getElementById('attAbsentDays').innerText = '0';
                 document.getElementById('attTotalHours').innerText = '0h 0m';
                 document.getElementById('attTotalBreak').innerText = '0h 0m';
+                renderAttendanceCalendar([]);
                 return;
             }
 
@@ -2122,20 +4020,12 @@
                 totalBreakMs += breakMs;
                 if (rec.status === 'Present') presentDays += 1;
                 if (rec.status === 'Absent') absentDays += 1;
-
-                const statusStyle = rec.status === 'Present'
-                    ? { bg: '#dcfce7', color: '#15803d' }
-                    : rec.status === 'Absent'
-                        ? { bg: '#fee2e2', color: '#b91c1c' }
-                        : { bg: '#fef3c7', color: '#b45309' };
-
-                const breakCount = (rec.breaks || []).length;
+                const statusStyle = getAttendanceStatusStyle(rec.status);
                 return `
                     <tr>
                         <td>${rec.dateString || '—'}</td>
                         <td>${formatTime(rec.checkInTime)}</td>
                         <td>${formatTime(rec.checkOutTime)}</td>
-                        <td>${breakCount}</td>
                         <td>${formatDuration(breakMs)}</td>
                         <td>${formatDuration(workMs)}</td>
                         <td><span class="attendance-status-pill" style="background:${statusStyle.bg};color:${statusStyle.color};">${rec.status}</span></td>
@@ -2149,11 +4039,12 @@
             document.getElementById('attAbsentDays').innerText = absentDays;
             document.getElementById('attTotalHours').innerText = formatDuration(totalWorkMs);
             document.getElementById('attTotalBreak').innerText = formatDuration(totalBreakMs);
+            renderAttendanceCalendar(attendance);
         }
 
-        async function fetchMyAttendanceHistory() {
-            const month = document.getElementById('attendanceMonthFilter')?.value || '';
-            const year = document.getElementById('attendanceYearFilter')?.value || '';
+        async function fetchMyAttendanceHistory(useFilters = true) {
+            const month = useFilters ? (document.getElementById('attendanceMonthFilter')?.value || '') : '';
+            const year = useFilters ? (document.getElementById('attendanceYearFilter')?.value || '') : '';
             const params = new URLSearchParams();
             if (month && year) {
                 params.set('month', month);
@@ -2196,6 +4087,42 @@
             return { month, year };
         }
 
+        function getCurrentAttendanceMonthYear() {
+            const { month, year } = getActiveMonthYear('AttendanceReport');
+            if (!month || !year) {
+                alert('Please select a month and year first.');
+                return null;
+            }
+            return { month, year };
+        }
+
+        function downloadCurrentAttendanceReport() {
+            const current = getCurrentAttendanceMonthYear();
+            if (!current) return;
+            window.downloadDocumentFile('AttendanceReport', current.month, current.year);
+        }
+
+        function submitCurrentAttendanceReportForApproval() {
+            const current = getCurrentAttendanceMonthYear();
+            if (!current) return;
+            const status = getDocStatus('AttendanceReport', current.month, current.year);
+
+            if (status === 'Approved') {
+                alert('This monthly attendance report is already approved.');
+                return;
+            }
+
+            if (status === 'Pending_Approval') {
+                alert('This monthly attendance report is already pending approval.');
+                return;
+            }
+
+            openSendApprovalModal('AttendanceReport', current.month, current.year);
+        }
+
+        window.downloadCurrentAttendanceReport = downloadCurrentAttendanceReport;
+        window.submitCurrentAttendanceReportForApproval = submitCurrentAttendanceReportForApproval;
+
         window.downloadDocumentFile = function (documentType, month, year) {
             const params = new URLSearchParams();
             params.set('month', String(month).padStart(2, '0'));
@@ -2209,32 +4136,28 @@
 
         function openDownloadChoiceModal(documentType, month, year) {
             pendingDocumentContext = { documentType, month, year };
-            const modal = document.getElementById('downloadChoiceModal');
             const info = document.getElementById('downloadChoiceText');
             if (info) {
                 info.innerText = `${getDocumentLabel(documentType)} • ${getMonthYearLabel(month, year)}`;
             }
-            if (modal) modal.style.display = 'flex';
+            showModal('downloadChoiceModal');
         }
 
         function closeDownloadChoiceModal() {
-            const modal = document.getElementById('downloadChoiceModal');
-            if (modal) modal.style.display = 'none';
+            hideModal('downloadChoiceModal');
         }
 
         function openSendApprovalModal(documentType, month, year) {
             pendingDocumentContext = { documentType, month, year };
-            const modal = document.getElementById('sendApprovalModal');
             const info = document.getElementById('sendApprovalText');
             if (info) {
                 info.innerText = `${getDocumentLabel(documentType)} • ${getMonthYearLabel(month, year)}`;
             }
-            if (modal) modal.style.display = 'flex';
+            showModal('sendApprovalModal');
         }
 
         function closeSendApprovalModal() {
-            const modal = document.getElementById('sendApprovalModal');
-            if (modal) modal.style.display = 'none';
+            hideModal('sendApprovalModal');
         }
 
         window.closeDownloadChoiceModal = closeDownloadChoiceModal;
@@ -2295,44 +4218,74 @@
         };
 
         function renderApprovalRequestsTable() {
-            const body = document.getElementById('approvalRequestsBody');
-            if (!body) return;
+            const modalBody = document.getElementById('approvalRequestsBody');
+            const payoutsBody = document.getElementById('payoutApprovalsBody');
+            const attendanceBody = document.getElementById('attendanceApprovalsBody');
+            const allApprovalRows = getFilteredApprovalRows('all');
+            const payoutApprovalRows = getFilteredApprovalRows('payouts');
+            const attendanceApprovalRows = getFilteredApprovalRows('attendance');
 
-            if (!cachedApprovalRows.length) {
-                body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px;">No approval requests found.</td></tr>';
+            if (!allApprovalRows.length) {
+                if (modalBody) modalBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:20px;">No approval requests found.</td></tr>';
+                if (payoutsBody) payoutsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No payout approval records found yet.</td></tr>';
+                if (attendanceBody) attendanceBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No attendance report approvals found yet.</td></tr>';
                 return;
             }
 
-            body.innerHTML = cachedApprovalRows.map((row) => `
-                <tr>
-                    <td>${getMonthYearLabel(row.month, row.year)}</td>
-                    <td>${getDocumentLabel(row.documentType)}</td>
-                    <td>${getApprovalStatusBadge(row.approvalStatus)}</td>
-                </tr>
-            `).join('');
+            if (modalBody) {
+                modalBody.innerHTML = allApprovalRows.map((row) => `
+                    <tr>
+                        <td>${getMonthYearLabel(row.month, row.year)}</td>
+                        <td>${getDocumentLabel(row.documentType)}</td>
+                        <td>${getApprovalStatusBadge(row.approvalStatus)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            if (payoutsBody) {
+                payoutsBody.innerHTML = payoutApprovalRows.length
+                    ? payoutApprovalRows.map((row) => `
+                    <tr>
+                        <td>${getMonthYearLabel(row.month, row.year)}</td>
+                        <td>${getDocumentLabel(row.documentType)}</td>
+                        <td>${getApprovalStatusBadge(row.approvalStatus)}</td>
+                        <td>${getDocumentActionsHtml(row.documentType, row.month, row.year, row.approvalStatus)}</td>
+                    </tr>
+                `).join('')
+                    : '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No payout approval records found yet.</td></tr>';
+            }
+
+            if (attendanceBody) {
+                attendanceBody.innerHTML = attendanceApprovalRows.length
+                    ? attendanceApprovalRows.map((row) => `
+                    <tr>
+                        <td>${getMonthYearLabel(row.month, row.year)}</td>
+                        <td>${getDocumentLabel(row.documentType)}</td>
+                        <td>${getApprovalStatusBadge(row.approvalStatus)}</td>
+                        <td>${getDocumentActionsHtml(row.documentType, row.month, row.year, row.approvalStatus)}</td>
+                    </tr>
+                `).join('')
+                    : '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No attendance report approvals found yet.</td></tr>';
+            }
         }
 
         window.openApprovalRequestsModal = async function () {
-            const modal = document.getElementById('approvalRequestsModal');
-            if (modal) modal.style.display = 'flex';
+            showModal('approvalRequestsModal');
             await fetchMyDocumentApprovals();
             renderApprovalRequestsTable();
         };
 
         window.closeApprovalRequestsModal = function () {
-            const modal = document.getElementById('approvalRequestsModal');
-            if (modal) modal.style.display = 'none';
+            hideModal('approvalRequestsModal');
         };
 
         window.openAttendanceHistoryModal = async function () {
-            const modal = document.getElementById('attendanceHistoryModal');
-            if (modal) modal.style.display = 'flex';
-            await fetchMyAttendanceHistory();
+            showModal('attendanceHistoryModal');
+            await fetchMyAttendanceHistory(false);
         };
 
         window.closeAttendanceHistoryModal = function () {
-            const modal = document.getElementById('attendanceHistoryModal');
-            if (modal) modal.style.display = 'none';
+            hideModal('attendanceHistoryModal');
         };
 
         document.getElementById('btnChoiceDraft')?.addEventListener('click', () => {
@@ -2881,14 +4834,13 @@
         socket.on('bounty_task_updated', () => {
             fetchMyBountyTasks();
             fetchStaffStats();
+            fetchEarningsLedger();
             if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
         });
 
-        // Init on load
-        if (staffData) { initChat(); }
-
         seedAttendanceFilters();
         seedPayslipFilters();
+        seedLedgerFilters();
 
         async function fetchStaffStats() {
             try {
@@ -2899,13 +4851,28 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('earnTotal').innerText = `₹${data.totalEarnings.toLocaleString('en-IN')}`;
-                    document.getElementById('earnPending').innerText = `₹${data.pendingPayout.toLocaleString('en-IN')}`;
+                    const monthlyEarnings = Number(data.currentMonthEarnings || 0);
+                    const lifetimeEarnings = Number(data.totalEarnings || 0);
+                    const pendingPayout = Number(data.pendingPayout || 0);
+                    const currentMonthItems = Number(data.currentMonthApprovedItems || 0);
+                    const completedTasks = Number(data.completedTasks || 0);
+
+                    document.getElementById('earnTotal').innerText = `₹${monthlyEarnings.toLocaleString('en-IN')}`;
+                    document.getElementById('earnPending').innerText = `₹${pendingPayout.toLocaleString('en-IN')}`;
+                    if (document.getElementById('walletBalanceValue')) {
+                        document.getElementById('walletBalanceValue').innerText = `₹${pendingPayout.toLocaleString('en-IN')}`;
+                    }
+                    if (document.getElementById('completedTasksHome')) {
+                        document.getElementById('completedTasksHome').innerText = String(completedTasks);
+                    }
+                    if (document.getElementById('earnTotalHint')) {
+                        document.getElementById('earnTotalHint').innerText = `Lifetime earnings: ₹${lifetimeEarnings.toLocaleString('en-IN')} • ${currentMonthItems} credited items this month.`;
+                    }
 
                     // 🟢 NAYA FIX: Progress Bar Calculations
                     if (document.getElementById('targetText')) {
                         const target = data.monthlyTarget || 50000;
-                        const earned = data.totalEarnings || 0;
+                        const earned = monthlyEarnings;
                         let percent = (earned / target) * 100;
                         if (percent > 100) percent = 100; // 100% se aage bar ko bahar mat nikalne do
 
@@ -2919,7 +4886,7 @@
                         else if (percent >= 50 && percent < 100) motivation = "Halfway there! 🎯 You are doing amazing!";
                         else if (percent >= 100) motivation = "Target Hit! 🏆 You are an absolute Rockstar!";
 
-                        document.getElementById('targetMotivation').innerText = motivation;
+                            document.getElementById('targetMotivation').innerText = motivation;
                     }
                 }
             } catch (e) { console.error("Stats fetch error:", e); }

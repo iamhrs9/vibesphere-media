@@ -3136,18 +3136,90 @@ app.post('/api/staff/tasks', async (req, res) => {
 app.post('/api/staff/stats', async (req, res) => {
     try {
         const { email } = req.body;
-        const staff = await Staff.findOne({ email });
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const staff = await Staff.findOne({ email: normalizedEmail });
 
         if (!staff) return res.json({ success: false, message: "Staff not found" });
+
+        const todayIst = getISTDateString(0);
+        const currentMonth = Number(todayIst.slice(5, 7));
+        const currentYear = Number(todayIst.slice(0, 4));
+
+        const [
+            monthlyCommissionSummary,
+            completedLeadTasks,
+            completedBountyTasks
+        ] = await Promise.all([
+            getMonthlyApprovedCommissionSummary(normalizedEmail, currentMonth, currentYear),
+            Task.countDocuments({
+                assignedTo: normalizedEmail,
+                status: { $in: ['interested', 'rejected'] }
+            }),
+            StaffBountyTask.countDocuments({
+                assignedStaffEmail: normalizedEmail,
+                status: 'Approved'
+            })
+        ]);
 
         res.json({
             success: true,
             totalEarnings: staff.totalEarnings || 0,
             pendingPayout: staff.pendingPayout || 0,
-            monthlyTarget: staff.monthlyTarget || 50000 // 🟢 Target yahan se frontend jayega
+            monthlyTarget: staff.monthlyTarget || 50000,
+            currentMonthEarnings: monthlyCommissionSummary.totalCommission || 0,
+            currentMonthApprovedItems: monthlyCommissionSummary.approvedTaskCount || 0,
+            completedTasks: Number(completedLeadTasks || 0) + Number(completedBountyTasks || 0)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: "Fetch Error" });
+    }
+});
+
+app.get('/api/staff/earnings-ledger', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const todayIst = getISTDateString(0);
+        const fallbackMonth = Number(todayIst.slice(5, 7));
+        const fallbackYear = Number(todayIst.slice(0, 4));
+        const month = parsePositiveInt(req.query.month, fallbackMonth);
+        const year = parsePositiveInt(req.query.year, fallbackYear);
+
+        const summary = await getMonthlyApprovedCommissionSummary(decoded.email, month, year);
+        const rows = (summary.rows || [])
+            .slice()
+            .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+            .map((row) => {
+                const isBounty = String(row.orderId || '').startsWith('BT-');
+                const taskName = isBounty
+                    ? (row.packageName || 'Bounty Task')
+                    : `${row.clientName || 'Client'}${row.packageName ? ` - ${row.packageName}` : ''}`;
+
+                return {
+                    date: row.date,
+                    dateLabel: row.dateLabel,
+                    referenceId: row.orderId || 'NA',
+                    taskName,
+                    source: isBounty ? 'Bounty' : 'Commission',
+                    amount: Number(row.commission || 0),
+                    status: 'Credited'
+                };
+            });
+
+        res.json({
+            success: true,
+            month,
+            year,
+            totalAmount: summary.totalCommission || 0,
+            totalItems: summary.approvedTaskCount || 0,
+            rows
+        });
+    } catch (e) {
+        console.error('Staff earnings ledger error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch earnings ledger.' });
     }
 });
 // ==========================================
