@@ -1,6 +1,7 @@
 (function () {
     const SECTION_HTML = {
-        "helpdesk-section": "<div id=\"helpdesk-section\" class=\"section\" data-module-mounted=\"true\">\n                <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\">\n                    <h2>🎧 Client Helpdesk</h2>\n                    <span id=\"ticketCount\"\n                        style=\"background:#e0e7ff;color:#6c63ff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;\">0\n                        Tickets</span>\n                </div>\n                <div class=\"table-responsive\" style=\"overflow-x:auto;width:100%;\">\n                    <table>\n                        <thead>\n                            <tr>\n                                <th>Client</th>\n                                <th>Subject</th>\n                                <th>Issue</th>\n                                <th>Status</th>\n                                <th>Reply & Action</th>\n                            </tr>\n                        </thead>\n                        <tbody id=\"ticketsTable\"></tbody>\n                    </table>\n                </div>\n            </div>",
+        "helpdesk-section": "<div id=\"helpdesk-section\" class=\"section\" data-module-mounted=\"true\"><div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;\"><h2>🎧 Client Helpdesk</h2><span id=\"ticketCount\" style=\"background:#e0e7ff;color:#6c63ff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;\">0 Tickets</span></div><div class=\"table-responsive\" style=\"overflow-x:auto;width:100%;\"><table><thead><tr><th>Client</th><th>Subject</th><th>Issue</th><th>Status</th><th>Reply & Action</th></tr></thead><tbody id=\"ticketsTable\"></tbody></table></div></div>",
+        "staff-tickets-section": "<div id=\"staff-tickets-section\" class=\"section\" data-module-mounted=\"true\"><div class=\"premium-section\"><div class=\"section-header\"><div><h2 class=\"section-title\">Staff Internal Tickets</h2><p class=\"section-subtitle\">HR, IT, Accounts, and general support tickets raised by team members.</p></div><div class=\"section-actions\"><span style=\"color:#64748b;font-weight:700;\">Total: <span id=\"staffTicketCount\" style=\"color:#1d4ed8;\">0</span></span><button onclick=\"fetchStaffTickets()\" class=\"section-refresh-btn\"><i class=\"ri-refresh-line\"></i> Refresh</button></div></div><div class=\"table-responsive\" style=\"overflow-x:auto;width:100%;\"><table><thead><tr><th>Staff</th><th>Category</th><th>Subject</th><th>Issue</th><th>Status</th><th>Reply & Action</th></tr></thead><tbody id=\"staffTicketsTable\"></tbody></table></div></div></div>",
         "meetings-section": "<div id=\"meetings-section\" class=\"section\" data-module-mounted=\"true\">\n                <h2 style=\"margin-bottom:20px;\">🎬 Video Meetings</h2>\n\n                <div class=\"staff-card\" style=\"padding:20px;margin-bottom:20px;\">\n                    <h3 style=\"margin-bottom:15px;\">➕ Schedule New Meeting</h3>\n                    <div style=\"display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;\">\n                        <div style=\"flex:2;min-width:180px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Meeting\n                                Topic</label>\n                            <input type=\"text\" id=\"meetTopic\" placeholder=\"e.g. Weekly Team Sync\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <div style=\"flex:1;min-width:180px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Date &\n                                Time</label>\n                            <input type=\"datetime-local\" id=\"meetTime\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <div style=\"flex:1;min-width:150px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Password\n                                (Optional)</label>\n                            <input type=\"text\" id=\"meetPass\" placeholder=\"e.g. 1234\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <button onclick=\"scheduleMeeting()\" class=\"btn-publish\" style=\"padding:10px 20px;\">Schedule\n                            🎬</button>\n                    </div>\n                </div>\n\n                <div id=\"meetingsList\"\n                    style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:15px;\"></div>\n            </div>",
         "jobs-section": "<div id=\"jobs-section\" class=\"section\" data-module-mounted=\"true\">\n                <h3>💼 Manage Careers (Jobs)</h3>\n                <div class=\"staff-card\" style=\"padding: 20px; margin-bottom: 20px;\">\n                    <form id=\"addJobForm\" onsubmit=\"submitJob(event)\"\n                        style=\"display: flex; gap: 15px; flex-wrap: wrap;\">\n                        <input type=\"text\" id=\"jobTitle\" placeholder=\"Job Title (e.g. Graphic Designer)\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <select id=\"jobType\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                            <option value=\"Full-Time\">Full-Time</option>\n                            <option value=\"Part-Time\">Part-Time</option>\n                            <option value=\"Internship\">Internship</option>\n                            <option value=\"Freelance\">Freelance</option>\n                        </select>\n                        <input type=\"text\" id=\"jobLocation\" placeholder=\"Location (e.g. Remote / Jaipur)\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <input type=\"text\" id=\"jobDesc\" placeholder=\"Short Description...\" required\n                            style=\"flex:2; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <button type=\"submit\" id=\"btnJob\" class=\"btn-publish\">Post Job 🚀</button>\n                    </form>\n                </div>\n                <div class=\"table-responsive\">\n                    <table>\n                        <thead>\n                            <tr>\n                                <th>Job Title</th>\n                                <th>Type & Location</th>\n                                <th>Posted On</th>\n                                <th>Action</th>\n                            </tr>\n                        </thead>\n                        <tbody id=\"jobsTableBody\"></tbody>\n                    </table>\n                </div>\n            </div>",
         "clients-section": "<div id=\"clients-section\" class=\"section\" data-module-mounted=\"true\">\n                <div class=\"premium-section\">\n                    <div class=\"section-header\">\n                        <div>\n                            <h2 class=\"section-title\">Clients</h2>\n                            <p class=\"section-subtitle\">A cleaner client directory with account state, onboarding context, and security controls.</p>\n                        </div>\n                        <div class=\"section-actions\">\n                            <div class=\"approvals-search\" style=\"min-width: 280px;\">\n                                <i class=\"ri-search-line\"></i>\n                                <input id=\"clientSearch\" type=\"text\" placeholder=\"Search by Name or Email...\" oninput=\"fetchClients()\">\n                            </div>\n                            <span style=\"color:#64748b;font-weight:700;\">Total: <span id=\"totalUsersCount\" style=\"color:#1d4ed8;\">0</span></span>\n                            <button onclick=\"fetchClients()\" class=\"section-refresh-btn\"><i class=\"ri-refresh-line\"></i> Refresh</button>\n                        </div>\n                    </div>\n                    <div class=\"modern-table-shell\">\n                        <div id=\"clientsTableBody\" class=\"record-card-grid\"></div>\n                    </div>\n                </div>\n            </div>"
@@ -13,6 +14,88 @@
             if (!target || !markup || target.dataset.moduleMounted === 'true') return;
             target.outerHTML = markup;
         });
+    }
+
+    // ==========================================
+    // 🏢 STAFF INTERNAL TICKETS FUNCTIONS
+    // ==========================================
+    async function fetchStaffTickets() {
+        const tbody = document.getElementById('staffTicketsTable');
+        const countSpan = document.getElementById('staffTicketCount');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">Loading staff tickets...</td></tr>';
+        try {
+            const res = await fetch('/api/admin/staff-tickets', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;">Failed to load staff tickets.</td></tr>';
+                return;
+            }
+            const tickets = data.tickets || [];
+            if (countSpan) countSpan.innerText = tickets.length;
+            if (!tickets.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:30px;">No internal staff tickets yet 🎉</td></tr>';
+                return;
+            }
+            const categoryColors = { 'IT Support': '#3b82f6', 'HR': '#f59e0b', 'Accounts': '#8b5cf6', 'General': '#64748b' };
+            const statusColors = { 'Open': '#f59e0b', 'In Progress': '#3b82f6', 'Resolved': '#10b981' };
+            tbody.innerHTML = tickets.map(t => {
+                const repliesHtml = (t.replies || []).map(r =>
+                    `<div style="font-size:11px;color:#475569;background:#f8fafc;padding:5px 8px;border-radius:6px;margin-top:4px;"><strong>${escapeHtml(r.sender || 'Admin')}:</strong> ${escapeHtml(r.message)}</div>`
+                ).join('');
+                const catColor = categoryColors[t.category] || '#64748b';
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(t.staffName || 'Staff')}</strong><br><small style="color:#94a3b8;">${escapeHtml(t.staffEmail || '')}</small></td>
+                        <td><span style="background:${catColor}14;color:${catColor};padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;">${escapeHtml(t.category || 'General')}</span></td>
+                        <td style="font-weight:600;">${escapeHtml(t.subject || '')}</td>
+                        <td style="max-width:200px;font-size:13px;">${escapeHtml(t.issue || '')}${repliesHtml}</td>
+                        <td>
+                            <select onchange="updateStaffTicketStatus('${t._id}', this.value)" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-weight:bold;color:${statusColors[t.status] || '#333'};">
+                                <option value="Open" ${t.status === 'Open' ? 'selected' : ''}>🟡 Open</option>
+                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>🟠 In Progress</option>
+                                <option value="Resolved" ${t.status === 'Resolved' ? 'selected' : ''}>✅ Resolved</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:5px;">
+                                <input type="text" id="staff-reply-${t._id}" placeholder="Type reply..." style="flex:1;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;">
+                                <button onclick="replyToStaffTicket('${t._id}')" style="background:#6c63ff;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">Reply</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        } catch (e) {
+            console.error('Staff tickets fetch error:', e);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;">Could not connect to server.</td></tr>';
+        }
+    }
+
+    async function updateStaffTicketStatus(id, status) {
+        try {
+            await fetch('/api/admin/update-staff-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: id, status, sender: 'Admin' }),
+                credentials: 'include'
+            });
+            fetchStaffTickets();
+        } catch (e) { alert('Failed to update staff ticket'); }
+    }
+
+    async function replyToStaffTicket(id) {
+        const input = document.getElementById('staff-reply-' + id);
+        const reply = (input?.value || '').trim();
+        if (!reply) return alert('Please type a reply');
+        try {
+            await fetch('/api/admin/update-staff-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: id, reply, sender: 'Admin' }),
+                credentials: 'include'
+            });
+            fetchStaffTickets();
+        } catch (e) { alert('Failed to send reply'); }
     }
 
     async function fetchClients() {
@@ -157,10 +240,13 @@
     }
 
     window.mountAdminClientOpsSections = function () {
-        mountSections(["helpdesk-section","meetings-section","jobs-section","clients-section"]);
+        mountSections(["helpdesk-section","staff-tickets-section","meetings-section","jobs-section","clients-section"]);
     };
     window.fetchClients = fetchClients;
     window.toggleBan = toggleBan;
     window.deleteClient = deleteClient;
     window.adminResetPassword = adminResetPassword;
+    window.fetchStaffTickets = fetchStaffTickets;
+    window.updateStaffTicketStatus = updateStaffTicketStatus;
+    window.replyToStaffTicket = replyToStaffTicket;
 })();

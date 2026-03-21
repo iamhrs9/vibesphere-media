@@ -1135,6 +1135,7 @@
                 width: 100%;
             }
         }
+
     </style>
 </head>
 
@@ -1225,6 +1226,10 @@
                 onclick="navTo('helpdesk-section', this); fetchAdminTickets();">
                 <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 13a9 9 0 0 1 18 0"></path><path d="M21 13v5a2 2 0 0 1-2 2h-1"></path><path d="M3 13v5a2 2 0 0 0 2 2h1"></path><path d="M8 20h8"></path><rect x="2" y="12" width="4" height="8" rx="2"></rect><rect x="18" y="12" width="4" height="8" rx="2"></rect></svg></span><span class="nav-label"> Helpdesk</span>
             </button>
+            <button class="sidebar-link" data-label="Staff Tickets"
+                onclick="navTo('staff-tickets-section', this); fetchStaffTickets();">
+                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M15 5v2"></path><path d="M15 11v2"></path><path d="M15 17v2"></path><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path></svg></span><span class="nav-label"> Staff Tickets</span>
+            </button>
             <button class="sidebar-link" data-label="Meetings"
                 onclick="navTo('meetings-section', this); fetchMeetings();">
                 <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"></rect><path d="M16 10l5-3v10l-5-3"></path></svg></span><span class="nav-label"> Meetings</span>
@@ -1295,6 +1300,7 @@
                     <span class="eyebrow">Live Status</span>
                     <span id="topbarStatusText" class="value">Dashboard Ready</span>
                 </div>
+
                 <button onclick="logout()" class="logout-btn">
                     <i class="ri-logout-box-r-line"></i> Logout
                 </button>
@@ -1366,6 +1372,11 @@
              🎧 HELPDESK SECTION
              ========================================== -->
             <div id="helpdesk-section" class="section"></div>
+
+            <!-- ==========================================
+             🏢 STAFF INTERNAL TICKETS SECTION
+             ========================================== -->
+            <div id="staff-tickets-section" class="section"></div>
 
             <!-- ==========================================
              💰 FINANCE SECTION (Admin Only)
@@ -1459,6 +1470,7 @@
                     chatSidebarCollapsed: false
                 };
 
+
                 function debounce(fn, delay = 300) {
                     let timer = null;
                     return (...args) => {
@@ -1504,6 +1516,8 @@
                     const status = document.getElementById('topbarStatusText');
                     if (status) status.innerText = text;
                 }
+
+
 
                 function renderLoadingRows(colspan, rows = 5) {
                     return Array.from({ length: rows }).map(() => `
@@ -1633,6 +1647,8 @@
                     }
                 }
 
+
+
                 // navTo: switches visible section AND highlights sidebar link
                 function navTo(tabName, element) {
                     closeSidebarOnMobile();
@@ -1645,7 +1661,8 @@
                         'dashboard-section': 'Dashboard Overview',
                         'staff-section': 'Staff Management',
                         'attendance-section': 'Attendance & Shifts',
-                        'document-approvals-section': 'Pending Document Approvals'
+                        'document-approvals-section': 'Pending Document Approvals',
+                        'staff-tickets-section': 'Staff Internal Tickets'
                     };
                     updateTopbarStatus(labels[tabName] || 'Admin Workspace');
 

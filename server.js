@@ -194,6 +194,35 @@ async function checkAuth(req, res, next) {
     }
 }
 
+async function checkStaffSession(req, res, next) {
+    const authHeader = String(req.headers.authorization || '');
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const token = bearerToken || req.cookies?.token;
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'No active staff session.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+
+        if (decoded.role !== 'Staff') {
+            return res.status(403).json({ success: false, message: 'Staff access required.' });
+        }
+
+        const staff = await Staff.findOne({ email: decoded.email }).select('-password');
+
+        if (!staff) {
+            return res.status(401).json({ success: false, message: 'Staff session not found.' });
+        }
+
+        req.staff = staff;
+        next();
+    } catch (err) {
+        res.status(401).json({ success: false, message: 'Invalid or expired staff session.' });
+    }
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -270,7 +299,14 @@ async function renderHtmlToPdfBuffer(html, pdfOptions = {}) {
         browser = await launchHtmlPdfBrowser();
         const page = await browser.newPage();
         await page.setViewport({ width: 1240, height: 1754, deviceScaleFactor: 1 });
-        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.evaluate(async () => {
+            if (document.fonts?.ready) {
+                try {
+                    await document.fonts.ready;
+                } catch (_) { }
+            }
+        });
         await page.emulateMediaType('screen');
 
         return await page.pdf({
@@ -821,12 +857,1144 @@ function getHtmlImageSrc(localFileName, envUrlKey) {
         const localPath = path.join(__dirname, localFileName);
         if (fs.existsSync(localPath)) {
             const base64 = fs.readFileSync(localPath).toString('base64');
-            return `data:image/png;base64,${base64}`;
+            const extension = path.extname(localPath).toLowerCase();
+            const mimeType = extension === '.jpg' || extension === '.jpeg'
+                ? 'image/jpeg'
+                : extension === '.webp'
+                    ? 'image/webp'
+                    : extension === '.svg'
+                        ? 'image/svg+xml'
+                        : extension === '.gif'
+                            ? 'image/gif'
+                            : 'image/png';
+            return `data:${mimeType};base64,${base64}`;
         }
     } catch (e) {
         console.error(`Asset read failed for ${localFileName}:`, e.message);
     }
     return process.env[envUrlKey] || '';
+}
+
+function getStaffVerificationUrl(empId, req) {
+    if (!empId) {
+        return '';
+    }
+
+    const requestBaseUrl = req
+        ? `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.get('host') || 'vibespheremedia.in'}`
+        : '';
+
+    const configuredBaseUrl =
+        process.env.PUBLIC_BASE_URL ||
+        process.env.SITE_URL ||
+        process.env.APP_URL ||
+        process.env.CLIENT_URL ||
+        process.env.SERVER_URL ||
+        requestBaseUrl ||
+        'https://vibespheremedia.in';
+
+    const normalizedBaseUrl = String(configuredBaseUrl)
+        .replace(/\/api\/?$/, '')
+        .replace(/\/$/, '');
+
+    return `${normalizedBaseUrl}/verify-staff?id=${encodeURIComponent(String(empId).trim().toUpperCase())}`;
+}
+
+function getOnboardingIconSvg(iconName) {
+    const iconMap = {
+        dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"></rect><path d="M9 4.5v15"></path><path d="M3.5 10.5H9"></path><path d="M13 9h4"></path><path d="M13 13h4"></path><path d="M13 17h3"></path></svg>',
+        tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6"></path><path d="M10 2.5h4a1.5 1.5 0 0 1 1.5 1.5v1H8.5V4A1.5 1.5 0 0 1 10 2.5Z"></path><path d="M7 5h10a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"></path><path d="m8.5 13 2.2 2.2L15.8 10"></path></svg>',
+        attendance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 1.8"></path><path d="M9 2.8h6"></path></svg>',
+        wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v2.5H4v-2Z"></path><path d="M4 9.5h16v7A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-7Z"></path><path d="M16 13.5h2.5"></path></svg>',
+        leave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"></rect><path d="M8 3.5v3"></path><path d="M16 3.5v3"></path><path d="M4 9.5h16"></path><path d="m9 14 1.8 1.8L15.5 11"></path></svg>',
+        chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5V6.8A2.8 2.8 0 0 1 7.8 4h8.4A2.8 2.8 0 0 1 19 6.8v5.4A2.8 2.8 0 0 1 16.2 15H9.7L5 19v-2.5Z"></path><path d="M8.5 8.5h7"></path><path d="M8.5 11.5h4.5"></path></svg>',
+        support: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a7 7 0 1 1 14 0"></path><path d="M5 13v3.2A1.8 1.8 0 0 0 6.8 18H8v-6H6.8A1.8 1.8 0 0 0 5 13Z"></path><path d="M19 13v3.2a1.8 1.8 0 0 1-1.8 1.8H16v-6h1.2A1.8 1.8 0 0 1 19 13Z"></path><path d="M12 20h2"></path></svg>',
+        knowledge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h11v15.5a2.5 2.5 0 0 0-2.5-2.5H4.5Z"></path><path d="M7 3v13a2.5 2.5 0 0 0-2.5 2.5"></path><path d="M10 7h5"></path><path d="M10 10.5h5"></path></svg>',
+        briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6.5" width="17" height="12" rx="3"></rect><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1"></path><path d="M3.5 11.5h17"></path></svg>',
+        shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.6c0 4.2-2.7 7.8-6.5 8.9-3.8-1.1-6.5-4.7-6.5-8.9V6L12 3.5Z"></path><path d="m9.3 12.2 1.8 1.8 3.8-4.1"></path></svg>'
+    };
+
+    return iconMap[iconName] || iconMap.dashboard;
+}
+
+function buildOnboardingDocumentStyles() {
+    return `
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+            @page { margin: 0; }
+            :root {
+                --navy: #16233B;
+                --accent: #4E7BFF;
+                --accent-soft: #EDF3FF;
+                --paper: #FFFFFF;
+                --paper-soft: #F8FBFF;
+                --line: #DDE6F2;
+                --text: #142033;
+                --muted: #6D7788;
+                --muted-deep: #425466;
+            }
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                font-family: 'Lato', Arial, sans-serif;
+                color: var(--text);
+                background: linear-gradient(180deg, #E9F2FF 0%, #F5F9FF 34%, #FFFFFF 100%);
+            }
+            .doc-shell { padding: 22px; }
+            .doc-card {
+                position: relative;
+                overflow: hidden;
+                background: rgba(255, 255, 255, 0.96);
+                border: 1px solid rgba(148, 163, 184, 0.18);
+                border-radius: 30px;
+                box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            }
+            .doc-card::before {
+                content: '';
+                position: absolute;
+                top: -70px;
+                left: -70px;
+                width: 230px;
+                height: 230px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(78, 123, 255, 0.16) 0%, transparent 72%);
+            }
+            .doc-card::after {
+                content: '';
+                position: absolute;
+                top: -80px;
+                right: -70px;
+                width: 230px;
+                height: 230px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(22, 35, 59, 0.09) 0%, transparent 72%);
+            }
+            .doc-inner {
+                position: relative;
+                padding: 34px 36px 32px;
+            }
+            .doc-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 24px;
+                padding-bottom: 26px;
+                border-bottom: 1px solid var(--line);
+            }
+            .brand-block {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                max-width: 64%;
+            }
+            .logo-frame {
+                width: 72px;
+                height: 72px;
+                border-radius: 22px;
+                background: linear-gradient(135deg, #16233B 0%, #4E7BFF 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+            .logo-frame img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                padding: 10px;
+            }
+            .logo-fallback {
+                color: #FFFFFF;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 26px;
+                font-weight: 800;
+                letter-spacing: -1px;
+            }
+            .brand-title {
+                margin: 0;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 28px;
+                font-weight: 800;
+                color: var(--navy);
+                letter-spacing: -0.03em;
+            }
+            .brand-subtitle {
+                margin: 6px 0 0;
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.18em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+            .brand-meta {
+                margin: 8px 0 0;
+                font-size: 13px;
+                line-height: 1.55;
+                color: #64748B;
+            }
+            .doc-header-meta {
+                min-width: 200px;
+                text-align: right;
+            }
+            .doc-chip {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                border: 1px solid rgba(78, 123, 255, 0.18);
+                border-radius: 999px;
+                padding: 8px 14px;
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--accent);
+                background: var(--accent-soft);
+            }
+            .doc-header-label {
+                margin-top: 14px;
+                font-size: 12px;
+                color: #64748B;
+            }
+            .doc-header-value {
+                margin-top: 4px;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--navy);
+            }
+            .doc-header-hint {
+                margin-top: 6px;
+                font-size: 12px;
+                line-height: 1.55;
+                color: #64748B;
+            }
+            .doc-title {
+                margin: 28px 0 10px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 30px;
+                line-height: 1.08;
+                color: var(--navy);
+                letter-spacing: -0.04em;
+            }
+            .doc-subtitle {
+                margin: 0 0 24px;
+                font-size: 14px;
+                line-height: 1.72;
+                color: #526071;
+            }
+            .doc-grid { display: grid; gap: 18px; }
+            .two-col { grid-template-columns: 1.15fr 0.85fr; align-items: start; }
+            .section-card {
+                background: linear-gradient(180deg, #FFFFFF 0%, #F9FBFF 100%);
+                border: 1px solid var(--line);
+                border-radius: 24px;
+                padding: 22px 24px;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+                break-inside: avoid;
+            }
+            .section-card h2 {
+                margin: 0 0 12px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 18px;
+                color: var(--navy);
+                letter-spacing: -0.02em;
+            }
+            .section-card h3 {
+                margin: 0 0 8px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 15px;
+                color: var(--navy);
+            }
+            .section-card p {
+                margin: 0 0 12px;
+                font-size: 14px;
+                line-height: 1.75;
+                color: #334155;
+            }
+            .section-card ul {
+                margin: 0;
+                padding-left: 18px;
+                color: #334155;
+            }
+            .section-card li {
+                margin: 0 0 9px;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .meta-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+            }
+            .meta-card {
+                padding: 14px 16px;
+                border-radius: 18px;
+                background: #F8FAFC;
+                border: 1px solid var(--line);
+            }
+            .meta-card .label {
+                margin-bottom: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+            .meta-card .value {
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1.5;
+                color: var(--navy);
+                word-break: break-word;
+            }
+            .note-band {
+                display: flex;
+                align-items: flex-start;
+                gap: 14px;
+                padding: 18px 20px;
+                margin: 0 0 20px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%);
+                border: 1px solid #D7E6FF;
+            }
+            .note-band .icon-wrap {
+                width: 42px;
+                height: 42px;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                background: #FFFFFF;
+                color: var(--accent);
+                box-shadow: 0 10px 18px rgba(78, 123, 255, 0.12);
+            }
+            .note-band .icon-wrap svg,
+            .guide-icon svg { width: 22px; height: 22px; }
+            .note-band strong {
+                display: block;
+                margin-bottom: 4px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 15px;
+                color: var(--navy);
+            }
+            .note-band span {
+                display: block;
+                font-size: 13px;
+                line-height: 1.65;
+                color: #4B5563;
+            }
+            .id-card-showcase {
+                position: relative;
+                min-height: 292px;
+                padding: 24px;
+                border-radius: 28px;
+                background: linear-gradient(145deg, #16233B 0%, #203759 42%, #4E7BFF 100%);
+                color: #FFFFFF;
+                overflow: hidden;
+                box-shadow: 0 20px 38px rgba(15, 23, 42, 0.18);
+                break-inside: avoid;
+            }
+            .id-card-showcase::before {
+                content: '';
+                position: absolute;
+                right: -28px;
+                bottom: -60px;
+                width: 230px;
+                height: 230px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0%, transparent 72%);
+            }
+            .id-card-top {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .id-brand {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .id-brand-mark {
+                width: 44px;
+                height: 44px;
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.12);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 16px;
+                font-weight: 800;
+            }
+            .id-brand-copy .title {
+                margin: 0;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 18px;
+                font-weight: 800;
+                letter-spacing: -0.03em;
+            }
+            .id-brand-copy .sub {
+                margin: 4px 0 0;
+                font-size: 11px;
+                letter-spacing: 0.18em;
+                text-transform: uppercase;
+                color: rgba(255, 255, 255, 0.72);
+            }
+            .id-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.12);
+                border: 1px solid rgba(255, 255, 255, 0.16);
+                font-size: 11px;
+                font-weight: 700;
+            }
+            .id-card-main {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+            }
+            .id-avatar {
+                width: 96px;
+                height: 96px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.12);
+                border: 3px solid rgba(255, 255, 255, 0.18);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+            .id-avatar img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .id-avatar span {
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 28px;
+                font-weight: 800;
+                letter-spacing: -1px;
+            }
+            .id-identity h3 {
+                margin: 0 0 4px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 24px;
+                line-height: 1.1;
+            }
+            .id-identity p {
+                margin: 0 0 14px;
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.78);
+            }
+            .id-chip-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .id-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 9px 12px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.11);
+                border: 1px solid rgba(255, 255, 255, 0.16);
+                font-size: 12px;
+                font-weight: 700;
+            }
+            .id-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                gap: 16px;
+                margin-top: 24px;
+                padding-top: 18px;
+                border-top: 1px solid rgba(255, 255, 255, 0.16);
+            }
+            .id-footer small {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 10px;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                color: rgba(255, 255, 255, 0.62);
+            }
+            .id-footer strong {
+                font-size: 13px;
+                line-height: 1.5;
+            }
+            .id-qr {
+                width: 72px;
+                height: 72px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.96);
+                color: var(--navy);
+                display: grid;
+                place-items: center;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.18em;
+            }
+            .guide-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 16px;
+            }
+            .guide-card {
+                break-inside: avoid;
+                background: linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%);
+                border: 1px solid var(--line);
+                border-radius: 22px;
+                padding: 18px;
+                box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+            }
+            .guide-head {
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                margin-bottom: 10px;
+            }
+            .guide-icon {
+                width: 42px;
+                height: 42px;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                background: linear-gradient(135deg, #EDF3FF 0%, #FFFFFF 100%);
+                border: 1px solid #D5E2F7;
+                color: var(--accent);
+            }
+            .guide-card h3 {
+                margin: 2px 0 4px;
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 16px;
+                color: var(--navy);
+            }
+            .guide-card p {
+                margin: 0 0 12px;
+                font-size: 13px;
+                line-height: 1.7;
+                color: var(--muted-deep);
+            }
+            .guide-card ul {
+                margin: 0;
+                padding-left: 18px;
+            }
+            .guide-card li {
+                margin: 0 0 7px;
+                font-size: 12px;
+                line-height: 1.6;
+                color: var(--muted-deep);
+            }
+            .credentials-strip {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 12px;
+                margin: 18px 0 24px;
+            }
+            .credentials-box {
+                padding: 14px 16px;
+                border-radius: 18px;
+                background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+                border: 1px solid var(--line);
+            }
+            .credentials-box .label {
+                margin-bottom: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+            .credentials-box .value {
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1.6;
+                color: var(--navy);
+                word-break: break-word;
+            }
+            .credentials-box .mono {
+                font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+            }
+            .doc-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                gap: 16px;
+                margin-top: 26px;
+                padding-top: 18px;
+                border-top: 1px solid var(--line);
+                font-size: 12px;
+                color: #64748B;
+            }
+            .doc-footer strong {
+                display: block;
+                margin-bottom: 4px;
+                color: var(--navy);
+            }
+            .signature-block { padding-top: 12px; }
+            .signature-name {
+                font-family: 'Montserrat', Arial, sans-serif;
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--navy);
+            }
+            .signature-role {
+                margin-top: 4px;
+                font-size: 12px;
+                color: #64748B;
+            }
+            .muted { color: #64748B; }
+        </style>
+    `;
+}
+
+function buildOnboardingBrandLockupHtml() {
+    const logoSrc = getHtmlImageSrc(path.join('public', 'logo.webp'), 'VIBESPHERE_LOGO_URL');
+
+    return logoSrc
+        ? `<div class="logo-frame"><img src="${logoSrc}" alt="VibeSphere Logo"></div>`
+        : `<div class="logo-frame"><span class="logo-fallback">VS</span></div>`;
+}
+
+function buildOnboardingDocumentShell({
+    badgeLabel,
+    title,
+    subtitle,
+    issuedOn,
+    headerHint,
+    bodyHtml,
+    footerTitle,
+    footerText,
+    signName,
+    signRole
+}) {
+    const safeBadgeLabel = escapeHtml(badgeLabel || 'Onboarding Document');
+    const safeTitle = escapeHtml(title || 'VibeSphere Document');
+    const safeSubtitle = escapeHtml(subtitle || '');
+    const safeIssuedOn = escapeHtml(issuedOn || '');
+    const safeHeaderHint = escapeHtml(headerHint || '');
+    const safeFooterTitle = escapeHtml(footerTitle || 'VibeSphere Media');
+    const safeFooterText = escapeHtml(footerText || '');
+    const safeSignName = escapeHtml(signName || 'People & Culture');
+    const safeSignRole = escapeHtml(signRole || 'VibeSphere Media Pvt. Ltd.');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    ${buildOnboardingDocumentStyles()}
+</head>
+<body>
+    <div class="doc-shell">
+        <div class="doc-card">
+            <div class="doc-inner">
+                <div class="doc-header">
+                    <div class="brand-block">
+                        ${buildOnboardingBrandLockupHtml()}
+                        <div>
+                            <h1 class="brand-title">VibeSphere Media</h1>
+                            <div class="brand-subtitle">People, Performance, Precision</div>
+                            <div class="brand-meta">Official onboarding communication from the VibeSphere People &amp; Culture desk.</div>
+                        </div>
+                    </div>
+                    <div class="doc-header-meta">
+                        <div class="doc-chip">${safeBadgeLabel}</div>
+                        <div class="doc-header-label">Issued on</div>
+                        <div class="doc-header-value">${safeIssuedOn}</div>
+                        <div class="doc-header-hint">${safeHeaderHint}</div>
+                    </div>
+                </div>
+
+                <h2 class="doc-title">${safeTitle}</h2>
+                <p class="doc-subtitle">${safeSubtitle}</p>
+
+                ${bodyHtml}
+
+                <div class="doc-footer">
+                    <div>
+                        <strong>${safeFooterTitle}</strong>
+                        <div>${safeFooterText}</div>
+                    </div>
+                    <div class="signature-block">
+                        <div class="signature-name">${safeSignName}</div>
+                        <div class="signature-role">${safeSignRole}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+function getOnboardingRoleProfile(role) {
+    const normalizedRole = String(role || '').toLowerCase();
+
+    if (/(sales|business|lead|growth|closing|executive)/.test(normalizedRole)) {
+        return {
+            mission: 'Drive qualified opportunities through the staff CRM, maintain disciplined follow-ups, and convert conversations into measurable revenue outcomes.',
+            responsibilities: [
+                'Maintain accurate client records, follow-up notes, and lead stages inside the dashboard throughout the day.',
+                'Respond to assigned leads promptly, qualify needs clearly, and escalate warm opportunities without delay.',
+                'Submit bounty or project work on time with supporting links, context, and clean handover notes.',
+                'Coordinate with management on monthly targets, conversion pacing, and blockers that impact performance.'
+            ],
+            successMarkers: [
+                'Consistent follow-up cadence with complete notes',
+                'Timely closure updates for every active lead',
+                'Professional communication across calls, chat, and email',
+                'Reliable use of the wallet, payout, and attendance workflows'
+            ]
+        };
+    }
+
+    if (/(support|crm|helpdesk|customer|service)/.test(normalizedRole)) {
+        return {
+            mission: 'Deliver calm, structured, and timely client support while keeping tickets, responses, and follow-up commitments visible in the CRM.',
+            responsibilities: [
+                'Review assigned client tickets, confirm issue scope, and provide clear updates through the support workflow.',
+                'Document every client interaction with accurate notes, status changes, and next steps for internal visibility.',
+                'Escalate technical, billing, or service-critical issues to the correct owner before timelines are affected.',
+                'Protect service quality by keeping communication professional, empathetic, and policy aligned at all times.'
+            ],
+            successMarkers: [
+                'Fast first-response time on active tickets',
+                'Clean ticket histories with actionable notes',
+                'Clear escalation judgment and ownership discipline',
+                'Consistent use of team chat and knowledge-base references'
+            ]
+        };
+    }
+
+    if (/(developer|engineer|web|app|tech|it|software)/.test(normalizedRole)) {
+        return {
+            mission: 'Build and maintain dependable digital deliverables while coordinating progress, revisions, and delivery updates through the internal workspace.',
+            responsibilities: [
+                'Own assigned deliverables from intake through handover with clear milestone visibility and practical communication.',
+                'Maintain quality, testing discipline, and version control hygiene across ongoing technical work.',
+                'Submit work links, revision notes, and completion status inside the staff dashboard so approvals remain traceable.',
+                'Flag technical risks early and collaborate with project stakeholders before timelines drift.'
+            ],
+            successMarkers: [
+                'Stable delivery quality with low rework',
+                'Transparent progress reporting and handoffs',
+                'Disciplined documentation of blockers and revisions',
+                'Reliable coordination across chat, helpdesk, and approval workflows'
+            ]
+        };
+    }
+
+    if (/(designer|editor|video|content|social|marketing|creative)/.test(normalizedRole)) {
+        return {
+            mission: 'Create brand-aligned creative output with consistent quality, fast turnaround, and clean visibility for approvals and revisions.',
+            responsibilities: [
+                'Translate campaign or client briefs into polished creative deliverables that meet brand and performance standards.',
+                'Maintain version clarity by uploading review-ready links, revision notes, and final assets through the dashboard.',
+                'Coordinate with leads, support staff, and managers to keep timelines, feedback, and approvals synchronized.',
+                'Protect quality by checking copy, structure, and asset readiness before every submission.'
+            ],
+            successMarkers: [
+                'Consistent creative quality and brand alignment',
+                'Fast revision response with organized submissions',
+                'Clear asset naming, notes, and delivery hygiene',
+                'Reliable collaboration using team chat and knowledge resources'
+            ]
+        };
+    }
+
+    if (/(hr|people|admin|operations|manager|coordinator)/.test(normalizedRole)) {
+        return {
+            mission: 'Keep staff operations organized, timely, and professionally documented so onboarding, approvals, and daily execution remain dependable.',
+            responsibilities: [
+                'Maintain accurate staff records, process updates, and workflow visibility across core operational systems.',
+                'Coordinate approvals, escalations, and internal communication with strong attention to timing and completeness.',
+                'Support staff through structured guidance on attendance, leaves, documents, and internal processes.',
+                'Uphold confidentiality, process discipline, and professional communication across every internal touchpoint.'
+            ],
+            successMarkers: [
+                'Orderly records and dependable follow-through',
+                'Accurate coordination across approvals and staff requests',
+                'Calm handling of sensitive or urgent issues',
+                'Strong process compliance across the staff dashboard ecosystem'
+            ]
+        };
+    }
+
+    return {
+        mission: 'Contribute dependable, professional work that supports the VibeSphere delivery team and keeps internal operations visible, timely, and well documented.',
+        responsibilities: [
+            'Execute assigned work with ownership, communication clarity, and respect for delivery timelines.',
+            'Use the staff dashboard to maintain current status, submissions, approvals, and daily work records.',
+            'Collaborate professionally with team members, share blockers early, and respond to feedback constructively.',
+            'Represent the company well in all internal and external communication while following policy and process.'
+        ],
+        successMarkers: [
+            'Reliable daily execution and status visibility',
+            'Accurate use of the staff systems and tools',
+            'Professional communication and teamwork',
+            'Timely escalation of blockers or dependencies'
+        ]
+    };
+}
+
+function buildOnboardingGuideCard({ icon, title, body, bullets = [] }) {
+    const safeTitle = escapeHtml(title || '');
+    const safeBody = escapeHtml(body || '');
+
+    return `
+        <div class="guide-card">
+            <div class="guide-head">
+                <div class="guide-icon">${getOnboardingIconSvg(icon)}</div>
+                <div>
+                    <h3>${safeTitle}</h3>
+                </div>
+            </div>
+            <p>${safeBody}</p>
+            <ul>
+                ${bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+}
+
+function buildJoiningLetterHtml({
+    staffName,
+    staffRole,
+    staffEmail,
+    staffEmpId,
+    joinDate
+}) {
+    const safeStaffName = escapeHtml(staffName || 'Team Member');
+    const safeStaffRole = escapeHtml(staffRole || 'Staff');
+    const safeStaffEmail = escapeHtml(staffEmail || 'staff@vibespheremedia.in');
+    const safeStaffEmpId = escapeHtml(staffEmpId || 'VS-0000');
+    const safeJoinDate = escapeHtml(joinDate || '');
+
+    const bodyHtml = `
+        <div class="doc-grid">
+            <div class="section-card">
+                <h2>Letter of Appointment</h2>
+                <p>Dear <strong>${safeStaffName}</strong>,</p>
+                <p>We are pleased to formally welcome you to <strong>VibeSphere Media</strong>. Following the completion of the selection process, you are hereby appointed to the role of <strong>${safeStaffRole}</strong> with effect from <strong>${safeJoinDate}</strong>.</p>
+                <p>Your appointment reflects our confidence in your capability, professionalism, and potential contribution to the team. You are expected to carry out your responsibilities with diligence, integrity, and alignment with company policies, reporting instructions, and operational standards.</p>
+                <p>Please treat this document as your official joining communication and retain it for your records.</p>
+            </div>
+
+            <div class="section-card">
+                <h2>Appointment Details</h2>
+                <div class="meta-grid" style="margin-top:18px;">
+                    <div class="meta-card">
+                        <div class="label">Employee Name</div>
+                        <div class="value">${safeStaffName}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Designation</div>
+                        <div class="value">${safeStaffRole}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Employee ID</div>
+                        <div class="value">${safeStaffEmpId}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Official Email</div>
+                        <div class="value">${safeStaffEmail}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-grid" style="margin-top:18px;">
+            <div class="section-card">
+                <h2>Joining Instructions</h2>
+                <ul>
+                    <li>Use your official email address for all internal communication and platform access.</li>
+                    <li>Review the attached role description and welcome guide carefully before your first full working day.</li>
+                    <li>Complete your first login, profile review, and dashboard orientation as part of the onboarding process.</li>
+                    <li>Reach out to the People &amp; Culture desk immediately if any joining detail on this document needs correction.</li>
+                </ul>
+            </div>
+            <div class="section-card">
+                <h2>Professional Understanding</h2>
+                <p>This appointment is made subject to the policies, confidentiality expectations, and performance standards communicated by VibeSphere Media. Company systems, internal resources, and client information must be handled responsibly at all times.</p>
+                <p>We look forward to your contribution and wish you a successful start with the organization.</p>
+            </div>
+        </div>
+    `;
+
+    return buildOnboardingDocumentShell({
+        badgeLabel: 'Joining Letter',
+        title: 'Welcome to the VibeSphere Team',
+        subtitle: 'A formal confirmation of appointment, identity setup, and joining readiness for your first working day.',
+        issuedOn: joinDate,
+        headerHint: `Employee ID ${staffEmpId || 'VS-0000'}`,
+        bodyHtml,
+        footerTitle: 'VibeSphere Media Pvt. Ltd.',
+        footerText: 'This document is system generated and forms part of your official onboarding pack.',
+        signName: 'People & Culture',
+        signRole: 'VibeSphere Media Pvt. Ltd.'
+    });
+}
+
+function buildRoleDescriptionHtml({
+    staffName,
+    staffRole,
+    staffEmpId,
+    joinDate
+}) {
+    const safeStaffName = escapeHtml(staffName || 'Team Member');
+    const safeStaffRole = escapeHtml(staffRole || 'Staff');
+    const safeStaffEmpId = escapeHtml(staffEmpId || 'VS-0000');
+    const safeJoinDate = escapeHtml(joinDate || '');
+    const roleProfile = getOnboardingRoleProfile(staffRole);
+
+    const bodyHtml = `
+        <div class="note-band">
+            <div class="icon-wrap">${getOnboardingIconSvg('shield')}</div>
+            <div>
+                <strong>Role expectations and operating standards</strong>
+                <span>This document outlines the role mission, day-to-day expectations, and success standards attached to the position of ${safeStaffRole}.</span>
+            </div>
+        </div>
+
+        <div class="doc-grid two-col">
+            <div class="section-card">
+                <h2>Role Mission</h2>
+                <p>Dear <strong>${safeStaffName}</strong>,</p>
+                <p>You are joining VibeSphere Media as <strong>${safeStaffRole}</strong> from <strong>${safeJoinDate}</strong>. Your role exists to support dependable execution, strong collaboration, and measurable progress across the company workflow.</p>
+                <p>${escapeHtml(roleProfile.mission)}</p>
+                <div class="meta-grid" style="margin-top:18px;">
+                    <div class="meta-card">
+                        <div class="label">Assigned Role</div>
+                        <div class="value">${safeStaffRole}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Employee ID</div>
+                        <div class="value">${safeStaffEmpId}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Effective From</div>
+                        <div class="value">${safeJoinDate}</div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Reporting Flow</div>
+                        <div class="value">Team Lead / Admin Coordination</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h2>Key Responsibilities</h2>
+                <ul>
+                    ${roleProfile.responsibilities.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+
+        <div class="doc-grid" style="margin-top:18px;">
+            <div class="section-card">
+                <h2>Success Standards</h2>
+                <ul>
+                    ${roleProfile.successMarkers.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="section-card">
+                <h2>Operating Expectations</h2>
+                <p>Your daily execution should remain visible through the staff dashboard, task updates, attendance records, and official approval systems. Internal tools are considered part of the work process, not optional add-ons.</p>
+                <p>Professional conduct, responsiveness, confidentiality, and respectful collaboration are expected in every interaction with team members, leadership, and clients.</p>
+            </div>
+            <div class="section-card">
+                <h2>Primary Internal Tools</h2>
+                <ul>
+                    <li>Staff Dashboard for task status, submissions, documents, and approvals</li>
+                    <li>Attendance workspace for check-in, check-out, reports, and compliance records</li>
+                    <li>Team Chat and Customer Support CRM for collaboration and issue movement</li>
+                    <li>Knowledge Base for SOPs, scripts, reference links, and training material</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+    return buildOnboardingDocumentShell({
+        badgeLabel: 'Role Description',
+        title: `${staffRole || 'Staff'} Responsibilities`,
+        subtitle: 'A professional summary of the outcomes, accountability areas, and working standards expected in your role.',
+        issuedOn: joinDate,
+        headerHint: `Reference ${staffEmpId || 'VS-0000'}`,
+        bodyHtml,
+        footerTitle: 'Management Office',
+        footerText: 'Please review this role note carefully and use it as the baseline for your ongoing responsibilities.',
+        signName: 'Operations & Leadership',
+        signRole: 'VibeSphere Media Pvt. Ltd.'
+    });
+}
+
+function buildWelcomeGuideHtml({
+    staffName,
+    staffEmail,
+    staffEmpId,
+    joinDate
+}) {
+    const safeStaffName = escapeHtml(staffName || 'Team Member');
+    const safeStaffEmail = escapeHtml(staffEmail || 'staff@vibespheremedia.in');
+    const safeStaffEmpId = escapeHtml(staffEmpId || 'VS-0000');
+    const safeJoinDate = escapeHtml(joinDate || '');
+    const guideSections = [
+        {
+            icon: 'dashboard',
+            title: 'Dashboard Widgets',
+            body: 'Your home screen summarizes the numbers that matter first so you can see revenue progress, pending payouts, completed work, target movement, and active lead pressure at a glance.',
+            bullets: [
+                'Review earnings, wallet-ready amounts, and completed-task counts in one place.',
+                'Use the target progress card to understand monthly pacing without opening separate reports.',
+                'Check the lead activity snapshot before starting follow-ups so your priorities stay clear.'
+            ]
+        },
+        {
+            icon: 'tasks',
+            title: 'My Tasks',
+            body: 'This area is your live execution board for assigned leads and bounty work. It is where daily updates, status changes, notes, and work submissions should stay current.',
+            bullets: [
+                'Update task status after each meaningful follow-up so leadership can see progress without chasing updates.',
+                'Use the bounty submission flow to share completed work links, revisions, and final delivery evidence.',
+                'Refresh the panel regularly to catch new assignments or revision requests.'
+            ]
+        },
+        {
+            icon: 'attendance',
+            title: 'Attendance',
+            body: 'Attendance combines live shift actions and monthly visibility so your check-ins, break tracking, work hours, and reports remain accurate for payroll and compliance.',
+            bullets: [
+                'Use check-in, break, resume, and check-out controls from the dashboard toolbar.',
+                'Review the calendar and list views to verify exact day-wise attendance records.',
+                'Download or submit monthly attendance reports when approval or payroll documentation is required.'
+            ]
+        },
+        {
+            icon: 'wallet',
+            title: 'Payouts & Wallet',
+            body: 'The wallet workspace shows credited earnings, pending withdrawal requests, payout history, approvals, and payslip access in one organized financial view.',
+            bullets: [
+                'Track wallet balance, pending requests, and paid-out totals without manual reconciliation.',
+                'Use the earnings ledger to see which task or project generated each credited amount.',
+                'Open payslip and approval subtabs whenever you need formal monthly payment records.'
+            ]
+        },
+        {
+            icon: 'leave',
+            title: 'Leave Application',
+            body: 'This module is your official route for planned leave. Submit dates and reason once, then monitor the approval trail through the same dashboard instead of managing it over chat.',
+            bullets: [
+                'Enter start date, end date, and a clear reason before submitting.',
+                'Review leave history to confirm approval, rejection, or pending status.',
+                'Apply early whenever possible so scheduling and handovers can be managed smoothly.'
+            ]
+        },
+        {
+            icon: 'chat',
+            title: 'Team Chat',
+            body: 'Team Chat is the real-time communication layer for staff coordination. Use it for quick updates, internal collaboration, pinned notices, and work-context communication.',
+            bullets: [
+                'Send messages, attachments, and voice notes for faster team coordination.',
+                'Check pinned communication and live status indicators before asking repeat questions.',
+                'Keep conversations professional, brief, and relevant to execution or escalation.'
+            ]
+        },
+        {
+            icon: 'support',
+            title: 'Customer Support CRM',
+            body: 'The support workspace helps you review assigned client tickets, read issue context, add replies, and keep client communication moving through the correct internal process.',
+            bullets: [
+                'Read each ticket fully before responding so details are not missed.',
+                'Use status, reply, and escalation actions carefully because they shape the client experience.',
+                'Coordinate with internal teams quickly if the request involves billing, delivery, or technical dependencies.'
+            ]
+        },
+        {
+            icon: 'knowledge',
+            title: 'Knowledge Base',
+            body: 'The knowledge base stores the reusable information that keeps execution sharp: sales scripts, SOPs, pricing references, forms, links, and internal how-to material.',
+            bullets: [
+                'Search here first when you need policy, pitch, or process guidance.',
+                'Use official documents and links from this section instead of relying on outdated copies.',
+                'Return to this area during onboarding whenever a workflow or company term feels unfamiliar.'
+            ]
+        }
+    ];
+
+    const bodyHtml = `
+        <div class="note-band">
+            <div class="icon-wrap">${getOnboardingIconSvg('dashboard')}</div>
+            <div>
+                <strong>Welcome to your staff workspace</strong>
+                <span>Hello ${safeStaffName}. This guide walks you through every major area of the VibeSphere Staff Dashboard so your first login feels structured, not overwhelming.</span>
+            </div>
+        </div>
+
+        <div class="credentials-strip">
+            <div class="credentials-box">
+                <div class="label">Login Portal</div>
+                <div class="value">vibespheremedia.in/staff-login.html</div>
+            </div>
+            <div class="credentials-box">
+                <div class="label">Official Login ID</div>
+                <div class="value">${safeStaffEmail}</div>
+            </div>
+            <div class="credentials-box">
+                <div class="label">Employee Reference</div>
+                <div class="value">${safeStaffEmpId}</div>
+            </div>
+        </div>
+
+        <div class="section-card" style="margin-bottom:18px;">
+            <h2>First Login Orientation</h2>
+            <p>On your joining date of <strong>${safeJoinDate}</strong>, start by signing in with the credentials provided in your welcome email. After access is confirmed, review your dashboard widgets, verify your profile information, and understand where tasks, attendance, payouts, support items, and learning resources live.</p>
+            <p>If anything looks incorrect, contact the People &amp; Culture or Admin team immediately so your account record can be corrected before routine work begins.</p>
+        </div>
+
+        <div class="guide-grid">
+            ${guideSections.map((section) => buildOnboardingGuideCard(section)).join('')}
+        </div>
+
+        <div class="doc-grid" style="margin-top:18px;">
+            <div class="section-card">
+                <h2>Best Practices for Week One</h2>
+                <ul>
+                    <li>Keep your task statuses, notes, and submissions current so your work is never invisible.</li>
+                    <li>Use official dashboard modules instead of informal messages for attendance, leave, payouts, and approvals.</li>
+                    <li>Check the knowledge base before escalating routine process questions.</li>
+                    <li>Maintain a professional tone in team chat, support replies, and all internal records.</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+    return buildOnboardingDocumentShell({
+        badgeLabel: 'Welcome Guide',
+        title: 'VibeSphere Staff Dashboard Guide',
+        subtitle: 'A practical walkthrough of the tools, panels, and operating flows you will use every day inside the staff ecosystem.',
+        issuedOn: joinDate,
+        headerHint: 'Read before your first full work cycle',
+        bodyHtml,
+        footerTitle: 'People & Culture Support',
+        footerText: 'Use this guide as your reference during your first week and revisit it whenever you need a quick orientation.',
+        signName: 'Team VibeSphere',
+        signRole: 'People & Culture'
+    });
 }
 
 function buildAttendanceReportHtml({ staff, monthLabel, summary, rows, generatedAt, approvalStatus }) {
@@ -1337,16 +2505,24 @@ const transporter = {
         // 1. PDF Attachments ko Base64 mein convert karna (Brevo API ke liye)
         let formattedAttachments = [];
         if (mailOptions.attachments && mailOptions.attachments.length > 0) {
-            formattedAttachments = mailOptions.attachments.map(att => ({
-                content: att.content.toString('base64'), // Buffer to Base64
-                name: att.filename
-            }));
+            for (const att of mailOptions.attachments) {
+                try {
+                    if (!att.content) {
+                        console.error(`❌ Attachment "${att.filename}" has no content buffer — skipping.`);
+                        continue;
+                    }
+                    formattedAttachments.push({
+                        content: (typeof att.content === 'string') ? att.content : Buffer.from(att.content).toString('base64'),
+                        name: att.filename || 'attachment.pdf'
+                    });
+                } catch (attErr) {
+                    console.error(`❌ Failed to encode attachment "${att.filename}":`, attErr.message);
+                }
+            }
         }
 
         // 2. Data pack karna
-        // 2. Data pack karna
         const payload = {
-            // 🟢 NAYA FIX: Ab ye mailOptions se 'founder@' aur tera naam uthayega!
             sender: {
                 email: mailOptions.from || process.env.EMAIL_USER,
                 name: mailOptions.fromName || "VibeSphere Media"
@@ -1356,9 +2532,14 @@ const transporter = {
             textContent: mailOptions.text || "",
             htmlContent: mailOptions.html || "",
         };
-        // 🟢 THE GOD MODE FIX:
 
-        // 1. Set HTML Content
+        // 🟢 CRITICAL FIX: Add attachments to payload for Brevo API
+        if (formattedAttachments.length > 0) {
+            payload.attachment = formattedAttachments;
+            console.log(`📎 Attaching ${formattedAttachments.length} file(s): ${formattedAttachments.map(a => a.name).join(', ')}`);
+        }
+
+        // 3. Set HTML Content
         if (mailOptions.html) {
             payload.htmlContent = mailOptions.html;
         } else if (mailOptions.text) {
@@ -1367,16 +2548,16 @@ const transporter = {
             payload.htmlContent = "<p>Message from VibeSphere Media</p>";
         }
 
-        // 2. Set Plain Text Content (Spam filter bypass karne ke liye)
+        // 4. Set Plain Text Content (Spam filter bypass karne ke liye)
         if (mailOptions.text) {
             payload.textContent = mailOptions.text;
         } else if (mailOptions.html) {
-            // Agar sirf HTML aayi hai, toh tags (<p>, <div>) ko hata kar plain text bana do
             payload.textContent = mailOptions.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         } else {
             payload.textContent = "Message from VibeSphere Media";
         }
-        // 3. Render ke bahar API shoot karna!
+
+        // 5. Render ke bahar API shoot karna!
         return fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
@@ -1389,7 +2570,7 @@ const transporter = {
             .then(res => res.json())
             .then(data => {
                 if (data.messageId) console.log('✅ Email Fired Successfully via API:', data.messageId);
-                else console.log('⚠️ API Response:', data);
+                else console.error('⚠️ Brevo API Response (no messageId):', JSON.stringify(data));
             })
             .catch(err => console.error('❌ Brevo API Error:', err));
     }
@@ -2041,15 +3222,25 @@ async function markAbsentForDate(dateString) {
         const existing = await Attendance.find({ dateString }).select('staffEmail').lean();
         const existingSet = new Set(existing.map(r => r.staffEmail));
 
-        const absentDocs = [];
+        // Fetch all approved leaves that overlap with this date
+        const approvedLeaves = await Leave.find({
+            status: 'Approved',
+            dateFrom: { $lte: dateString },
+            dateTo: { $gte: dateString }
+        }).select('staffEmail').lean();
+        const onLeaveSet = new Set(approvedLeaves.map(l => l.staffEmail));
+
+        const bulkDocs = [];
         for (const staff of allStaff) {
             if (existingSet.has(staff.email)) continue;
-            absentDocs.push({
+
+            const isOnLeave = onLeaveSet.has(staff.email);
+            bulkDocs.push({
                 staffEmail: staff.email,
                 staffName: staff.name || '',
                 empId: staff.empId || '',
                 dateString,
-                status: 'Absent',
+                status: isOnLeave ? 'Leave' : 'Absent',
                 checkInTime: null,
                 checkOutTime: null,
                 breaks: [],
@@ -2057,19 +3248,66 @@ async function markAbsentForDate(dateString) {
             });
         }
 
-        if (absentDocs.length) {
-            await Attendance.insertMany(absentDocs, { ordered: false });
+        if (bulkDocs.length) {
+            await Attendance.insertMany(bulkDocs, { ordered: false });
         }
 
-        console.log(`🕒 Attendance Absent Job done for ${dateString} | inserted: ${absentDocs.length}`);
+        const leaveCount = bulkDocs.filter(d => d.status === 'Leave').length;
+        const absentCount = bulkDocs.filter(d => d.status === 'Absent').length;
+        console.log(`🕒 Attendance Job done for ${dateString} | absent: ${absentCount}, on-leave: ${leaveCount}`);
     } catch (e) {
         console.error('❌ Attendance Absent Job Error:', e.message);
     }
 }
 
+async function autoCheckoutForDate(dateString) {
+    try {
+        // Find all records that have a check-in but no check-out for this date
+        const openRecords = await Attendance.find({
+            dateString,
+            checkInTime: { $ne: null },
+            checkOutTime: null,
+            status: 'Present'
+        });
+
+        if (!openRecords.length) {
+            console.log(`⏰ Auto-Checkout: No open shifts found for ${dateString}.`);
+            return;
+        }
+
+        // Build the 23:59:00 IST timestamp for this date
+        const [year, month, day] = dateString.split('-').map(Number);
+        const autoCheckoutTime = new Date(Date.UTC(year, month - 1, day, 18, 29, 0)); // 23:59 IST = 18:29 UTC
+
+        let autoClosedCount = 0;
+        for (const record of openRecords) {
+            record.checkOutTime = autoCheckoutTime;
+
+            // Close any open break
+            if (Array.isArray(record.breaks) && record.breaks.length) {
+                const lastBreak = record.breaks[record.breaks.length - 1];
+                if (lastBreak && lastBreak.startTime && !lastBreak.endTime) {
+                    lastBreak.endTime = autoCheckoutTime;
+                }
+            }
+
+            // Calculate total working time
+            const metrics = calculateAttendanceMetrics(record, autoCheckoutTime);
+            record.totalWorkingMs = metrics.netWorkingMs;
+
+            await record.save();
+            autoClosedCount++;
+        }
+
+        console.log(`⏰ Auto-Checkout done for ${dateString} | auto-closed: ${autoClosedCount} shifts.`);
+    } catch (e) {
+        console.error('❌ Auto-Checkout Error:', e.message);
+    }
+}
+
 function scheduleDailyAbsentJob() {
     const runJob = async () => {
-        // At 00:05 IST, mark absent for previous IST day.
+        // At 00:05 IST, mark absent (or on-leave) for previous IST day.
         const targetDateString = getISTDateString(-1);
         await markAbsentForDate(targetDateString);
     };
@@ -2084,7 +3322,33 @@ function scheduleDailyAbsentJob() {
         setInterval(runJob, 24 * 60 * 60 * 1000);
     }, initialDelay);
 
-    console.log('🗓️ Daily Absent Job scheduled (00:05 IST).');
+    console.log('🗓️ Daily Absent Job scheduled (00:05 IST). Now checks approved leaves before marking absent.');
+}
+
+function scheduleAutoCheckoutJob() {
+    const runJob = async () => {
+        // At 23:59 IST, auto-checkout any open shifts for today.
+        const todayDateString = getISTDateString(0);
+        await autoCheckoutForDate(todayDateString);
+    };
+
+    const nowIST = getISTNow();
+    const nextRun = new Date(nowIST);
+    nextRun.setHours(23, 59, 0, 0);
+
+    // If it's already past 23:59 today, schedule for tomorrow
+    if (nextRun.getTime() <= nowIST.getTime()) {
+        nextRun.setDate(nextRun.getDate() + 1);
+    }
+
+    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
+
+    setTimeout(async () => {
+        await runJob();
+        setInterval(runJob, 24 * 60 * 60 * 1000);
+    }, initialDelay);
+
+    console.log('⏰ Auto-Checkout Job scheduled (23:59 IST). Will auto-close forgotten shifts.');
 }
 
 // ==========================================
@@ -2104,6 +3368,26 @@ const ticketSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now }
 });
 const Ticket = mongoose.model('Ticket', ticketSchema);
+
+// ==========================================
+// 🏢 STAFF INTERNAL TICKET SCHEMA
+// ==========================================
+const staffTicketSchema = new mongoose.Schema({
+    staffEmail: { type: String, required: true },
+    staffName: { type: String, default: 'Staff' },
+    category: { type: String, default: 'General' }, // IT Support, HR, Accounts, General
+    subject: { type: String, required: true },
+    issue: { type: String, required: true },
+    status: { type: String, default: 'Open' }, // Open, In Progress, Resolved
+    priority: { type: String, default: 'Normal' }, // Normal, Urgent
+    replies: [{
+        sender: String,
+        message: String,
+        date: { type: Date, default: Date.now }
+    }],
+    date: { type: Date, default: Date.now }
+});
+const StaffTicket = mongoose.model('StaffTicket', staffTicketSchema);
 
 // ==========================================
 // 💰 EXPENSE TRACKER SCHEMA (Admin Only)
@@ -2288,6 +3572,7 @@ app.post('/api/admin/update-leave', checkAuth, async (req, res) => {
 // 1. Staff Schema (Staff Login Ke Liye)
 const staffSchema = new mongoose.Schema({
     empId: { type: String, unique: true },
+    qrCodeString: { type: String, default: '' },
     name: String,
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
@@ -2311,6 +3596,7 @@ const staffSchema = new mongoose.Schema({
 });
 const Staff = mongoose.model('Staff', staffSchema);
 scheduleDailyAbsentJob();
+scheduleAutoCheckoutJob();
 // 2. Task/Lead Schema (Calling Data Ke Liye)
 const taskSchema = new mongoose.Schema({
     clientName: String,
@@ -2430,8 +3716,21 @@ app.post('/api/staff/login', async (req, res) => {
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
-            // 🟢 Naya code: empId bhi frontend ko bhejo
-            res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto, isOnline: staff.isOnline } });
+            // 🟢 Naya code: empId bhi frontend ko bhejo + token in body for mobile app
+            res.json({
+                success: true,
+                token,
+                staff: {
+                    empId: staff.empId,
+                    qrCodeString: staff.qrCodeString,
+                    name: staff.name,
+                    email: staff.email,
+                    role: staff.role,
+                    profilePhoto: staff.profilePhoto,
+                    joiningDate: staff.joiningDate,
+                    isOnline: staff.isOnline
+                }
+            });
         } else {
             res.json({ success: false, message: "Invalid Staff ID or Password" });
         }
@@ -2449,7 +3748,19 @@ app.get('/api/staff/me', (req, res) => {
             // Re-fetch robust UI context from DB if needed, or simply return decoded values
             Staff.findOne({ email: decoded.email }).then(staff => {
                 if (!staff) return res.status(401).json({ success: false });
-                res.json({ success: true, staff: { empId: staff.empId, name: staff.name, email: staff.email, role: staff.role, profilePhoto: staff.profilePhoto, isOnline: staff.isOnline } });
+                res.json({
+                    success: true,
+                    staff: {
+                        empId: staff.empId,
+                        qrCodeString: staff.qrCodeString,
+                        name: staff.name,
+                        email: staff.email,
+                        role: staff.role,
+                        profilePhoto: staff.profilePhoto,
+                        joiningDate: staff.joiningDate,
+                        isOnline: staff.isOnline
+                    }
+                });
             });
         } else {
             res.status(401).json({ success: false, message: "Role mismatch." });
@@ -3383,6 +4694,68 @@ app.get('/api/chat/history', async (req, res) => {
         const pinnedMessage = await Chat.findOne({ isPinned: true }).sort({ pinnedAt: -1, date: -1 });
         res.json({ success: true, messages, pinnedMessage });
     } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// 2.5 Mobile/API Send Message
+app.post('/api/chat/send', async (req, res) => {
+    try {
+        const role = req.body.role === 'Admin' ? 'Admin' : 'Staff';
+        const senderEmail = String(req.body.senderEmail || '').trim().toLowerCase();
+        const senderName = String(req.body.senderName || '').trim();
+        const message = String(req.body.message || '').trim();
+        const fileUrl = String(req.body.fileUrl || '').trim();
+        const fileType = String(req.body.fileType || '').trim();
+        const fileName = String(req.body.fileName || '').trim();
+
+        if (!message && !fileUrl) {
+            return res.status(400).json({ success: false, message: 'Message cannot be empty.' });
+        }
+
+        const settings = await AppSettings.findOne();
+        if (settings && settings.isChatBlocked && role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin has blocked the team chat.' });
+        }
+
+        let staffRecord = null;
+        if (role !== 'Admin') {
+            if (!senderEmail) {
+                return res.status(400).json({ success: false, message: 'Sender email is required.' });
+            }
+
+            staffRecord = await Staff.findOne({ email: senderEmail });
+            if (!staffRecord) {
+                return res.status(404).json({ success: false, message: 'Staff account not found.' });
+            }
+
+            if (staffRecord.isMuted) {
+                return res.status(403).json({ success: false, message: 'You have been muted by Admin.' });
+            }
+        }
+
+        const newMessage = new Chat({
+            senderName: senderName || staffRecord?.name || 'Staff Member',
+            senderEmail: senderEmail || staffRecord?.email || '',
+            role,
+            message,
+            fileUrl,
+            fileType,
+            fileName,
+            profilePhoto: String(req.body.profilePhoto || '').trim() || staffRecord?.profilePhoto || '',
+            replyTo: req.body.replyTo ? {
+                messageId: req.body.replyTo.messageId || null,
+                senderName: req.body.replyTo.senderName || '',
+                previewText: req.body.replyTo.previewText || ''
+            } : undefined
+        });
+
+        await newMessage.save();
+        io.emit('receive_message', newMessage);
+
+        res.json({ success: true, message: 'Message sent successfully.', chatMessage: newMessage });
+    } catch (e) {
+        console.error('Chat send API error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to send chat message.' });
+    }
 });
 
 // ==========================================
@@ -5177,6 +6550,9 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
 
         const existingStaff = await Staff.findOne({ email });
         if (existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
+        if (typeof password !== 'string' || !password.length) {
+            return res.status(400).json({ success: false, error: "Password is required!" });
+        }
 
         // 🟢 Naya code: Ek unique EMP ID generate karo (e.g., VS-4821)
         let newEmpId;
@@ -5187,20 +6563,178 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
             if (!checkId) isUnique = true; // Agar ID pehle se kisi ke paas nahi hai, toh confirm karo
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const rawEnteredPassword = password;
+        const hashedPassword = await bcrypt.hash(rawEnteredPassword, 10);
         const parsedJoiningDate = joiningDate ? new Date(joiningDate) : null;
+        const normalizedJoiningDate = parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime()) ? parsedJoiningDate : null;
+        const qrCodeString = getStaffVerificationUrl(newEmpId, req);
 
         const newStaff = new Staff({
             empId: newEmpId,
+            qrCodeString,
             name,
             email,
             password: hashedPassword,
             role: normalizeStaffRoleInput(role),
-            joiningDate: parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime()) ? parsedJoiningDate : null
+            joiningDate: normalizedJoiningDate
         });
         await newStaff.save();
+
+        // 🟢 ONBOARDING EMAIL: Generate PDFs and send welcome email (background — don't block response)
+        (async () => {
+            const staffName = newStaff.name || 'Team Member';
+            const staffRole = newStaff.role || 'Staff';
+            const staffEmail = newStaff.email;
+            const staffEmpId = newStaff.empId || 'N/A';
+            const joinDate = newStaff.joiningDate
+                ? new Date(newStaff.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+                : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+            const joiningLetterHtml = buildJoiningLetterHtml({
+                staffName,
+                staffRole,
+                staffEmail,
+                staffEmpId,
+                joinDate
+            });
+            const roleLetterHtml = buildRoleDescriptionHtml({
+                staffName,
+                staffRole,
+                staffEmpId,
+                joinDate
+            });
+            const welcomeGuideHtml = buildWelcomeGuideHtml({
+                staffName,
+                staffEmail,
+                staffEmpId,
+                joinDate
+            });
+
+            try {
+                const [joiningBuf, roleBuf, welcomeBuf] = await Promise.all([
+                    renderHtmlToPdfBuffer(joiningLetterHtml),
+                    renderHtmlToPdfBuffer(roleLetterHtml),
+                    renderHtmlToPdfBuffer(welcomeGuideHtml)
+                ]);
+
+                console.log(`📄 Onboarding PDFs generated for ${staffName} (${staffEmpId}).`);
+
+                const joiningPdfBase64 = Buffer.from(joiningBuf).toString('base64');
+                const rolePdfBase64 = Buffer.from(roleBuf).toString('base64');
+                const welcomePdfBase64 = Buffer.from(welcomeBuf).toString('base64');
+                const safeStaffName = escapeHtml(staffName);
+                const safeStaffRole = escapeHtml(staffRole);
+                const safeStaffEmail = escapeHtml(staffEmail);
+                const safeStaffEmpId = escapeHtml(staffEmpId);
+                const safeJoinDate = escapeHtml(joinDate);
+                const safeEnteredPassword = escapeHtml(rawEnteredPassword);
+                const loginPortal = 'https://vibespheremedia.in/staff-login.html';
+
+                const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    fromName: 'VibeSphere Media - HR',
+                    to: staffEmail,
+                    subject: `Welcome to VibeSphere Media, ${staffName}`,
+                    text: `Hello ${staffName},
+
+Welcome to VibeSphere Media. We are excited to have you join as ${staffRole}.
+
+Login ID: ${staffEmail}
+Password: ${rawEnteredPassword}
+Employee ID: ${staffEmpId}
+Login Portal: ${loginPortal}
+
+Your onboarding pack is attached:
+- Joining Letter
+- Role Description
+- Welcome Guide
+
+Joining Date: ${joinDate}
+
+Team VibeSphere
+People & Culture`,
+                    html: `
+                        <div style="font-family:'Lato','Segoe UI',Arial,sans-serif;max-width:640px;margin:0 auto;padding:28px 20px;background:linear-gradient(180deg,#edf4ff 0%,#f8fbff 42%,#ffffff 100%);">
+                            <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:28px;overflow:hidden;box-shadow:0 22px 54px rgba(15,23,42,0.10);">
+                                <div style="padding:30px 30px 22px;background:linear-gradient(135deg,#16233b 0%,#203759 48%,#4e7bff 100%);color:#ffffff;">
+                                    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+                                        <div style="width:52px;height:52px;border-radius:18px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;">VS</div>
+                                        <div>
+                                            <div style="font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.03em;">Welcome to VibeSphere</div>
+                                            <div style="margin-top:6px;font-size:13px;color:rgba(255,255,255,0.78);">Your staff account and onboarding documents are ready.</div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size:15px;line-height:1.75;color:rgba(255,255,255,0.92);">
+                                        Dear <strong>${safeStaffName}</strong>,<br>
+                                        We are pleased to welcome you to <strong>VibeSphere Media</strong> as <strong>${safeStaffRole}</strong>. Your official onboarding pack is attached below for reference.
+                                    </div>
+                                </div>
+
+                                <div style="padding:28px 30px 30px;">
+                                    <div style="background:linear-gradient(135deg,#eff6ff 0%,#f8fafc 100%);border:1px solid #d8e6fb;border-radius:22px;padding:20px 22px;margin-bottom:18px;">
+                                        <div style="font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:16px;font-weight:800;color:#16233b;margin-bottom:14px;">Your Login Details</div>
+                                        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                                            <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:16px;padding:14px 16px;">
+                                                <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6d7788;margin-bottom:6px;">Login ID</div>
+                                                <div style="font-size:14px;font-weight:700;color:#16233b;word-break:break-word;">${safeStaffEmail}</div>
+                                            </div>
+                                            <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:16px;padding:14px 16px;">
+                                                <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6d7788;margin-bottom:6px;">Password</div>
+                                                <div style="font-size:15px;font-weight:800;color:#16233b;font-family:'SFMono-Regular','Consolas','Liberation Mono',monospace;">${safeEnteredPassword}</div>
+                                            </div>
+                                            <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:16px;padding:14px 16px;">
+                                                <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6d7788;margin-bottom:6px;">Employee ID</div>
+                                                <div style="font-size:14px;font-weight:700;color:#16233b;">${safeStaffEmpId}</div>
+                                            </div>
+                                            <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:16px;padding:14px 16px;">
+                                                <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6d7788;margin-bottom:6px;">Login Portal</div>
+                                                <div style="font-size:14px;font-weight:700;color:#16233b;word-break:break-word;"><a href="${loginPortal}" style="color:#4e7bff;text-decoration:none;">${loginPortal}</a></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="background:#ffffff;border:1px solid #dce7f5;border-radius:22px;padding:20px 22px;margin-bottom:18px;">
+                                        <div style="font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:16px;font-weight:800;color:#16233b;margin-bottom:12px;">Attached Onboarding Pack</div>
+                                        <div style="font-size:14px;line-height:1.75;color:#334155;">
+                                            Three documents are attached for your onboarding:
+                                            <ul style="margin:10px 0 0;padding-left:18px;color:#334155;">
+                                                <li><strong>Joining Letter</strong> for your official appointment confirmation</li>
+                                                <li><strong>Role Description</strong> for your responsibilities and expectations</li>
+                                                <li><strong>Welcome Guide</strong> for a walkthrough of the VibeSphere Staff Dashboard</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size:14px;line-height:1.75;color:#334155;">
+                                        Your joining date is <strong>${safeJoinDate}</strong>. If you face any access issue on your first login, please contact the Admin or People &amp; Culture team promptly.
+                                    </div>
+
+                                    <div style="margin-top:22px;padding-top:18px;border-top:1px solid #e2e8f0;">
+                                        <div style="font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:15px;font-weight:800;color:#16233b;">Team VibeSphere</div>
+                                        <div style="margin-top:4px;font-size:13px;color:#64748b;">People &amp; Culture | VibeSphere Media</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    attachments: [
+                        { filename: `Joining_Letter_${staffEmpId}.pdf`, content: joiningPdfBase64 },
+                        { filename: `Role_Description_${staffEmpId}.pdf`, content: rolePdfBase64 },
+                        { filename: `Welcome_Guide_${staffEmpId}.pdf`, content: welcomePdfBase64 }
+                    ]
+                };
+
+                await transporter.sendMail(mailOptions);
+                console.log(`📧 Onboarding email sent to ${staffEmail} with 3 PDF attachments.`);
+            } catch (onboardErr) {
+                console.error(`❌ Onboarding email failed for ${staffEmail}:`, onboardErr.message);
+            }
+        })();
+
         res.json({ success: true, message: `Staff Added! ID is ${newEmpId}` });
-    } catch (e) { res.status(500).json({ success: false, error: "Server error!" }); }
+    } catch (e) {
+        console.error('Add staff error:', e.message);
+        res.status(500).json({ success: false, error: "Server error!" });
+    }
 });
 
 app.patch('/api/admin/staff/:id', checkAuth, async (req, res) => {
@@ -5612,6 +7146,130 @@ app.post('/api/admin/update-ticket', checkAuth, async (req, res) => {
         await ticket.save();
         res.json({ success: true, message: 'Ticket updated! ✅' });
     } catch (e) { res.status(500).json({ success: false, error: 'Failed to update ticket' }); }
+});
+
+// Staff mobile inbox: view all customer tickets
+app.get('/api/staff/customer-support/tickets', checkStaffSession, async (req, res) => {
+    try {
+        const tickets = await Ticket.find().sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to fetch customer tickets.' });
+    }
+});
+
+// Staff mobile inbox: reply to customer tickets or resolve them
+app.post('/api/staff/customer-support/reply', checkStaffSession, async (req, res) => {
+    try {
+        const { ticketId, reply, status } = req.body;
+        const ticket = await Ticket.findById(ticketId);
+
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+
+        if (status) {
+            ticket.status = status;
+        }
+
+        if (reply) {
+            ticket.replies.push({
+                sender: req.staff?.name || 'Staff',
+                message: String(reply).trim()
+            });
+        }
+
+        await ticket.save();
+
+        res.json({
+            success: true,
+            message: 'Customer ticket updated successfully.',
+            ticket
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to update customer ticket.' });
+    }
+});
+
+// ==========================================
+// 🏢 STAFF INTERNAL HELPDESK APIs
+// ==========================================
+
+// Staff creates an internal ticket (HR / IT / Accounts / General)
+app.post('/api/staff-helpdesk/create', checkStaffSession, async (req, res) => {
+    try {
+        const { category, subject, issue, priority } = req.body;
+        if (!subject || !issue) {
+            return res.status(400).json({ success: false, message: 'Subject and issue are required.' });
+        }
+        const staffEmail = req.staff?.email || req.body.email;
+        const staffName = req.staff?.name || req.body.name || 'Staff';
+        if (!staffEmail) {
+            return res.status(400).json({ success: false, message: 'Staff email is required.' });
+        }
+        const ticket = new StaffTicket({
+            staffEmail,
+            staffName,
+            category: category || 'General',
+            subject: subject.trim(),
+            issue: issue.trim(),
+            priority: priority || 'Normal'
+        });
+        await ticket.save();
+        res.json({ success: true, message: 'Internal ticket created successfully! 🎫' });
+    } catch (e) {
+        console.error('Staff helpdesk create error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to create internal ticket.' });
+    }
+});
+
+// Staff fetches their own internal tickets
+app.get('/api/staff-helpdesk/my-tickets', checkStaffSession, async (req, res) => {
+    try {
+        const email = req.query.email || req.staff?.email;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required.' });
+        }
+        const tickets = await StaffTicket.find({ staffEmail: email }).sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) {
+        console.error('Staff helpdesk fetch error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch internal tickets.' });
+    }
+});
+
+// Admin views all staff internal tickets
+app.get('/api/admin/staff-tickets', checkAuth, async (req, res) => {
+    try {
+        const tickets = await StaffTicket.find().sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) {
+        console.error('Admin staff tickets fetch error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch staff tickets.' });
+    }
+});
+
+// Admin replies to or updates status of a staff internal ticket
+app.post('/api/admin/update-staff-ticket', checkAuth, async (req, res) => {
+    try {
+        const { ticketId, status, reply, sender } = req.body;
+        const ticket = await StaffTicket.findById(ticketId);
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Staff ticket not found.' });
+        }
+        if (status) ticket.status = status;
+        if (reply) {
+            ticket.replies.push({
+                sender: sender || 'Admin',
+                message: String(reply).trim()
+            });
+        }
+        await ticket.save();
+        res.json({ success: true, message: 'Staff ticket updated! ✅', ticket });
+    } catch (e) {
+        console.error('Admin staff ticket update error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to update staff ticket.' });
+    }
 });
 
 // ==========================================
