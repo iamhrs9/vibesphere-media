@@ -691,6 +691,8 @@
                     <strong id="dispPrice">0</strong>
                 </div>
 
+                <p id="smm-checkout-error" style="display:none;margin:12px 0 0;color:#b91c1c;font-weight:600;"></p>
+
                 <p class="summary-footnote">Your payment is processed through a secure gateway, and your order is created only after successful verification.</p>
             </div>
         </aside>
@@ -718,6 +720,7 @@
         let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
         let insta = params.get('insta') || params.get('targetLink') || null;
         let currencyFromURL = params.get('currency') || "INR";
+        let validSmmService = !(smmServiceId && smmQty);
         let isCartCheckout = false;
         let isGuestCartCheckout = params.get('guest') === '1';
         let cartItems = [];
@@ -791,6 +794,38 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function setCheckoutSubmitState(disabled) {
+            const btn = document.querySelector('.btn-pay');
+            if (!btn) return;
+            btn.disabled = Boolean(disabled);
+            btn.setAttribute('aria-disabled', Boolean(disabled) ? 'true' : 'false');
+        }
+
+        function setSmmCheckoutError(message) {
+            const errorEl = document.getElementById('smm-checkout-error');
+            if (!errorEl) return;
+            if (message) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            } else {
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
+        }
+
+        function setSmmCheckoutState({ valid, pkgText, priceText, summaryTitle, summarySubtitle, summaryAmount, errorText }) {
+            validSmmService = Boolean(valid);
+            document.getElementById('dispPkg').innerText = pkgText;
+            document.getElementById('dispPrice').innerText = priceText;
+            setSmmCheckoutError(errorText || '');
+            setCheckoutSubmitState(!validSmmService);
+            renderSummaryItems([{
+                title: summaryTitle,
+                subtitle: summarySubtitle,
+                amount: summaryAmount
+            }]);
+        }
+
         function renderSummaryItems(items) {
             const container = document.getElementById('summaryItems');
             if (!container) return;
@@ -821,6 +856,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             if (smmServiceId && smmQty) {
                 // Single item SMM checkout flow
+                setCheckoutSubmitState(true);
                 document.getElementById('dispPkg').innerText = "Loading SMM package...";
                 document.getElementById('dispPrice').innerText = "...";
                 document.getElementById('dispInsta').innerText = insta || "Not Provided";
@@ -842,9 +878,12 @@
                             pkg = `${service.platform} ${service.serviceType} (${smmQty} units)`;
                             price = `₹${computedPrice}`;
                             
+                            validSmmService = true;
+                            setSmmCheckoutError('');
                             document.getElementById('dispPkg').innerText = pkg;
                             document.getElementById('dispPrice').innerText = price;
                             document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                            setCheckoutSubmitState(false);
                             
                             renderSummaryItems([{
                                 title: pkg,
@@ -853,14 +892,39 @@
                             }]);
                         } else {
                             console.error("SMM service not found in rates");
-                            document.getElementById('dispPkg').innerText = "Unknown SMM Service";
-                            document.getElementById('dispPrice').innerText = "₹0";
+                            setSmmCheckoutState({
+                                valid: false,
+                                pkgText: 'Invalid SMM Service',
+                                priceText: '₹0',
+                                summaryTitle: 'Invalid SMM Service',
+                                summarySubtitle: 'The selected SMM service could not be found. Please choose another service.',
+                                summaryAmount: '₹0',
+                                errorText: 'The selected SMM service is invalid or unavailable. Please go back and choose a valid service.'
+                            });
                         }
                     } else {
                         console.error("Failed to load SMM rates");
+                        setSmmCheckoutState({
+                            valid: false,
+                            pkgText: 'Invalid SMM Service',
+                            priceText: '₹0',
+                            summaryTitle: 'Invalid SMM Service',
+                            summarySubtitle: 'Unable to validate the selected SMM service right now.',
+                            summaryAmount: '₹0',
+                            errorText: 'Unable to validate the selected SMM service. Please refresh and try again.'
+                        });
                     }
                 } catch (err) {
                     console.error("Error fetching SMM rates:", err);
+                    setSmmCheckoutState({
+                        valid: false,
+                        pkgText: 'Invalid SMM Service',
+                        priceText: '₹0',
+                        summaryTitle: 'Invalid SMM Service',
+                        summarySubtitle: 'Unable to validate the selected SMM service right now.',
+                        summaryAmount: '₹0',
+                        errorText: 'Unable to validate the selected SMM service. Please refresh and try again.'
+                    });
                 }
 
                 // If targetLink/insta is missing or empty, append targetLink input dynamically
@@ -898,6 +962,7 @@
                 document.getElementById('dispPkg').innerText = pkg;
                 document.getElementById('dispPrice').innerText = price;
                 document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                setCheckoutSubmitState(false);
                 renderSummaryItems([{
                     title: pkg,
                     subtitle: insta ? `Instagram: ${insta}` : 'Direct package checkout',
@@ -984,6 +1049,11 @@
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            if (smmServiceId && smmQty && !validSmmService) {
+                alert('Invalid SMM service selected. Please choose a valid service before continuing.');
+                return;
+            }
+
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
@@ -1006,7 +1076,7 @@
             try {
                 const createPayload = {
                     currency: currencyFromURL,
-                    items: guestCheckoutItems
+                    items: isCartCheckout ? cartItems : []
                 };
 
                 if (smmServiceId && smmQty) {
@@ -1058,7 +1128,7 @@
                                 customerName: name,
                                 phone: phone,
                                 email: email,
-                                orderItems: guestCheckoutItems,
+                                orderItems: isCartCheckout ? cartItems : [],
                                 orderType: smmServiceId && smmQty ? 'smm' : 'agency'
                             }
                         };

@@ -701,28 +701,7 @@
             const totalPrice = (qty / 1000) * rate;
             const serviceTypeLabel = selectedOption.text.split(" (")[0];
 
-            // 1. Build custom package item details
-            const smmPackageId = `smm_${selectedPlatform.toLowerCase()}_${select.value}_${Date.now()}`;
-            const title = `${selectedPlatform} ${serviceTypeLabel} (${qty} units)`;
-
-            const payload = {
-                packageId: smmPackageId,
-                title: title,
-                serviceName: `${selectedPlatform} SMM Services`,
-                priceAtAdd: Number(totalPrice),
-                currency: "INR",
-                symbol: "₹"
-            };
-
-            // 2. Push custom calculated package item into localStorage Guest Cart context
-            if (window.VibeGuestCart && typeof window.VibeGuestCart.addItem === 'function') {
-                window.VibeGuestCart.addItem(payload);
-                if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
-                    window.VibeUI.updateCartCount();
-                }
-            }
-
-            // 3. Flow directly into the secure checkout page forwarding ONLY serviceId, quantity, and targetLink
+            // Flow directly into the secure checkout page forwarding ONLY serviceId, quantity, and targetLink
             window.location.href = `/checkout.html?serviceId=${encodeURIComponent(select.value)}&quantity=${qty}&targetLink=${encodeURIComponent(targetLink)}`;
         }
     </script>

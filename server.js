@@ -2243,7 +2243,7 @@ function buildPayslipHtml({ staff, monthLabel, summary, payoutData, generatedAt,
 // ==========================================
 // 🎨 PREMIUM INVOICE DESIGN (BUG FREE)
 // ==========================================
-function buildProfessionalInvoice(doc, order) {
+function buildAgencyInvoice(doc, order) {
     const logoPath = path.join(__dirname, 'public', 'icon.png');
     const displayPrice = order.price ? order.price.replace('₹', 'INR ') : 'INR 0';
 
@@ -2299,16 +2299,38 @@ function buildProfessionalInvoice(doc, order) {
         .text('Amount', 480, tableTop + 7);
 
     // --- 4. TABLE ROW ---
-    doc.fillColor('#333333').font('Helvetica').fontSize(10)
-        .text(`${order.package || 'VibeSphere Digital Service'}`, 60, tableTop + 35)
-        .text('1', 330, tableTop + 35)
+    let itemsList = [];
+    if (order.orderItems && order.orderItems.length > 0) {
+        itemsList = order.orderItems.map(item => {
+            return item.title || item.packageId?.title || item.serviceName || 'Package';
+        });
+    }
+
+    let descText = '';
+    if (itemsList.length > 0) {
+        descText = itemsList.map((item, idx) => `${idx + 1}. ${item}`).join('\n');
+    } else {
+        descText = order.package || 'VibeSphere Digital Service';
+    }
+
+    const descHeight = doc.heightOfString(descText, { width: 250 });
+
+    doc.fillColor('#333333').font('Helvetica').fontSize(10);
+    
+    // Render Description with wrapping width
+    doc.text(descText, 60, tableTop + 35, { width: 250, align: 'left' });
+
+    // Qty, Rate, and Amount rendered at the same Y coordinate
+    doc.text('1', 330, tableTop + 35)
         .text(displayPrice, 400, tableTop + 35)
         .text(displayPrice, 480, tableTop + 35);
 
-    doc.moveTo(50, tableTop + 60).lineTo(540, tableTop + 60).strokeColor('#e2e8f0').lineWidth(1).stroke();
+    // Draw the dividing line below the wrapped description text
+    const lineY = tableTop + 35 + descHeight + 15;
+    doc.moveTo(50, lineY).lineTo(540, lineY).strokeColor('#e2e8f0').lineWidth(1).stroke();
 
     // --- 5. TOTAL CALCULATION ---
-    const totalY = tableTop + 80;
+    const totalY = lineY + 20;
 
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
         .text('Subtotal', 400, totalY)
@@ -2350,6 +2372,195 @@ function buildProfessionalInvoice(doc, order) {
         .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
 
     doc.end();
+}
+
+function buildSmmInvoice(doc, order) {
+    const logoPath = path.join(__dirname, 'public', 'icon.png');
+    const displayPrice = order.price ? order.price.replace('₹', 'INR ') : 'INR 0';
+
+    // --- 1. HEADER ---
+    try {
+        if (fs.existsSync(logoPath)) {
+            doc.image(logoPath, 50, 40, { width: 140 });
+        }
+    } catch (e) { }
+
+    doc.font('Helvetica').fontSize(10).fillColor('#555555')
+        .text('Digital Growth & Web Agency', 50, 95)
+        .text('Tech Park, Jaipur, RJ 302001', 50, 110)
+        .text('support@vibespheremedia.in', 50, 125)
+        .text('www.vibespheremedia.in', 50, 140);
+
+    // Using purple accent for SMM SMM style
+    doc.fillColor('#7c3aed').font('Helvetica-Bold').fontSize(28).text('INVOICE', 380, 45, { align: 'right', width: 160 });
+
+    // --- 2. CLIENT & INVOICE DETAILS ---
+    const detailY = 185;
+
+    // Left Side
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11).text('Client Details', 50, detailY);
+    doc.font('Helvetica').fontSize(10).fillColor('#333333')
+        .text(`Name: ${order.customerName || 'Client'}`, 50, detailY + 18)
+        .text(`Email: ${order.email || 'N/A'}`, 50, detailY + 33)
+        .text(`Phone: ${order.phone || 'N/A'}`, 50, detailY + 48);
+
+    // Right Side
+    const rightLabelX = 330;
+    const rightValueX = 410;
+
+    doc.font('Helvetica-Bold').fillColor('#000000').text('Date of Issue:', rightLabelX, detailY);
+    doc.font('Helvetica').text(`${new Date(order.date).toLocaleDateString()}`, rightValueX, detailY);
+
+    doc.font('Helvetica-Bold').text('Invoice Code:', rightLabelX, detailY + 15);
+    doc.font('Helvetica').text(`${order.orderId}`, rightValueX, detailY + 15);
+
+    doc.font('Helvetica-Bold').text('Payment ID:', rightLabelX, detailY + 30);
+    doc.font('Helvetica').text(`${order.paymentId || 'N/A'}`, rightValueX, detailY + 30);
+
+    doc.font('Helvetica-Bold').text('Status:', rightLabelX, detailY + 45);
+    doc.font('Helvetica-Bold').fillColor('#16a34a').text('PAID', rightValueX, detailY + 45);
+
+    // --- 3. TABLE HEADER ---
+    const tableTop = 270;
+    doc.rect(50, tableTop, 490, 25).fill('#7c3aed');
+
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9)
+        .text('Platform', 60, tableTop + 7)
+        .text('Service Type', 140, tableTop + 7)
+        .text('Quantity', 220, tableTop + 7)
+        .text('Target Link', 290, tableTop + 7)
+        .text('Amount', 480, tableTop + 7);
+
+    // --- 4. DATA PARSING & TABLE ROWS ---
+    let currentY = tableTop + 35;
+
+    if (order.orderItems && order.orderItems.length > 0) {
+        for (const item of order.orderItems) {
+            const titleText = item.title || 'SMM Service';
+            let pName = 'Instagram';
+            if (item.packageId && String(item.packageId).includes('_')) {
+                const parts = String(item.packageId).split('_');
+                pName = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : 'Instagram';
+            } else {
+                const parts = titleText.split(' ');
+                pName = parts[0] || 'Instagram';
+            }
+
+            let sType = 'SMM Boost';
+            let cleanText = titleText.replace(new RegExp(`^${pName}\\s+`, 'i'), '');
+            cleanText = cleanText.replace(/\s*\([^)]*\)\s*$/, ''); // Remove "(1000 units)"
+            if (cleanText.trim()) sType = cleanText.trim();
+
+            let qty = 1000;
+            const qtyMatch = titleText.match(/\((\d+)\s*units\)/i);
+            if (qtyMatch && qtyMatch[1]) {
+                qty = Number(qtyMatch[1]);
+            }
+
+            const itemCurrency = item.currency || order.currency || 'INR';
+            const cleanCurrency = itemCurrency === 'INR' ? 'INR' : itemCurrency;
+            const itemPriceText = `${cleanCurrency} ${Number(item.priceAtAdd || 0).toLocaleString()}`;
+            const targetLink = order.targetLink || order.instaLink || 'N/A';
+
+            doc.fillColor('#333333').font('Helvetica').fontSize(9)
+                .text(pName, 60, currentY)
+                .text(sType, 140, currentY)
+                .text(Number(qty).toLocaleString(), 220, currentY);
+
+            doc.text(targetLink, 290, currentY, { width: 170, height: 35, ellipsis: true });
+            doc.text(itemPriceText, 480, currentY);
+
+            currentY += 45;
+            doc.moveTo(50, currentY - 5).lineTo(540, currentY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+            currentY += 10;
+        }
+    } else {
+        let platformName = 'Instagram';
+        if (order.serviceId) {
+            const parts = order.serviceId.split('_');
+            if (parts.length > 0) platformName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+        } else if (order.package) {
+            const parts = order.package.split(' ');
+            if (parts.length > 0) platformName = parts[0];
+        }
+
+        let serviceType = 'SMM Boost';
+        if (order.package) {
+            let cleanText = order.package.replace(new RegExp(`^${platformName}\\s+`, 'i'), '');
+            cleanText = cleanText.replace(/\s*\([^)]*\)\s*$/, '');
+            if (cleanText.trim()) serviceType = cleanText.trim();
+        }
+
+        const quantity = order.quantity || 1000;
+        const targetLink = order.targetLink || order.instaLink || 'N/A';
+
+        doc.fillColor('#333333').font('Helvetica').fontSize(9)
+            .text(platformName, 60, currentY)
+            .text(serviceType, 140, currentY)
+            .text(Number(quantity).toLocaleString(), 220, currentY);
+
+        doc.text(targetLink, 290, currentY, { width: 170, height: 35, ellipsis: true });
+        doc.text(displayPrice, 480, currentY);
+
+        currentY += 45;
+        doc.moveTo(50, currentY - 5).lineTo(540, currentY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+        currentY += 10;
+    }
+
+    // --- 5. TOTAL CALCULATION ---
+    const totalY = currentY;
+
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
+        .text('Subtotal', 400, totalY)
+        .text('Tax (0%)', 400, totalY + 20);
+
+    doc.font('Helvetica').fontSize(10)
+        .text(displayPrice, 480, totalY)
+        .text('INR 0.00', 480, totalY + 20);
+
+    doc.rect(380, totalY + 40, 160, 25).fill('#f1f5f9');
+
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(11)
+        .text('Total Paid', 390, totalY + 47)
+        .text(displayPrice, 480, totalY + 47);
+
+    // --- 6. TERMS & CONDITIONS (SMM Specific Shaded Box) ---
+    const termsY = totalY + 90;
+    
+    // Draw shaded box background
+    doc.rect(50, termsY, 490, 115).fill('#fffbeb'); // Shaded warm amber/light yellow background
+    doc.rect(50, termsY, 490, 115).strokeColor('#fef3c7').lineWidth(1).stroke(); // Subtle border
+    
+    doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(10)
+        .text('Important SMM Terms & Conditions:', 60, termsY + 10);
+
+    doc.font('Helvetica').fontSize(8.5).fillColor('#78350f')
+        .text('1. Delivery is fully automated. Your social media account/post MUST remain PUBLIC during delivery.', 60, termsY + 28)
+        .text('2. Please double-check target links. No refunds or redeliveries can be provided for incorrect or invalid links.', 60, termsY + 45)
+        .text('3. Once processing starts, orders are strictly non-refundable. For issues, contact support within 24 hours.', 60, termsY + 62)
+        .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 60, termsY + 79)
+        .text('5. This is a computer-generated invoice and does not require a physical signature.', 60, termsY + 96);
+
+    // SaaS note
+    doc.rect(50, termsY + 125, 490, 25).fill('#f8fafc'); // Light gray SaaS box
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9)
+        .text(' Track Order History & Progress at:', 60, termsY + 133);
+    doc.fillColor('#3b82f6').font('Helvetica-Bold').fontSize(9)
+        .text('vibespheremedia.in/dashboard', 260, termsY + 133);
+
+    // --- 7. FOOTER ---
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#383d46')
+        .text('Thank you for choosing VibeSphere Media.', 50, 750, { align: 'center', width: 490 });
+
+    doc.end();
+}
+
+function buildProfessionalInvoice(doc, order) {
+    if (order && order.orderType === 'smm') {
+        buildSmmInvoice(doc, order);
+    } else {
+        buildAgencyInvoice(doc, order);
+    }
 }
 // --- 1. Variables ---
 let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -5178,15 +5389,19 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
         if (!serviceId || !platform || !serviceType || ratePer1000 == null) {
             return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
+        const parsedRatePer1000 = Number(ratePer1000);
+        if (!Number.isFinite(parsedRatePer1000) || parsedRatePer1000 <= 0) {
+            return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
+        }
         const existing = await SmmService.findOne({ serviceId });
         if (existing) {
-            existing.ratePer1000 = Number(ratePer1000);
+            existing.ratePer1000 = parsedRatePer1000;
             existing.platform = platform;
             existing.serviceType = serviceType;
             await existing.save();
             return res.json({ success: true, message: 'SMM rate updated successfully.' });
         }
-        const newSmm = new SmmService({ serviceId, platform, serviceType, ratePer1000: Number(ratePer1000) });
+        const newSmm = new SmmService({ serviceId, platform, serviceType, ratePer1000: parsedRatePer1000 });
         await newSmm.save();
         res.json({ success: true, message: 'SMM rate created successfully.' });
     } catch (e) {
@@ -5858,22 +6073,31 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
         if (isSmm || orderType === 'smm') {
             // Secure SMM pricing calculation
-            if (!serviceId || !quantity) {
+            const parsedQuantity = Number(quantity);
+            if (!serviceId || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
                 return res.status(400).json({ success: false, error: 'serviceId and quantity required' });
             }
             const smmSvc = await SmmService.findOne({ serviceId });
             if (!smmSvc) {
                 return res.status(404).json({ success: false, error: 'SMM Service not found' });
             }
-            finalPrice = (Number(quantity) / 1000) * smmSvc.ratePer1000;
+            const ratePer1000 = Number(smmSvc.ratePer1000);
+            if (!Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
+                return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
+            }
+            finalPrice = (parsedQuantity / 1000) * ratePer1000;
+            cleanCurrency = "INR";
             console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${serviceId}`);
         } else {
             // Normal agency orders
-            if (!amount) {
+            if (amount == null) {
                 return res.status(400).json({ success: false, error: 'amount required' });
             }
-            let cleanAmount = amount.toString().replace(/[^\d.]/g, '');
-            finalPrice = parseFloat(cleanAmount);
+            const cleanAmount = Number(amount.toString().replace(/[^\d.]/g, ''));
+            if (!Number.isFinite(cleanAmount) || cleanAmount <= 0) {
+                return res.status(400).json({ success: false, error: 'Invalid amount, must be a positive number' });
+            }
+            finalPrice = cleanAmount;
         }
 
         const options = {
@@ -5964,7 +6188,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
         // 🟢 MAGIC: Generate PDF in memory & Send Email
         try {
-            const doc = new PDFDocument({ margin: 50 });
+            const doc = new PDFDocument({ margin: 0, size: 'A4' });
             let buffers = [];
             doc.on('data', buffers.push.bind(buffers));
             doc.on('end', async () => {
@@ -5986,19 +6210,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             });
 
             // Make the PDF content (Same as download logic)
-            doc.fontSize(25).fillColor('#6c63ff').text('VibeSphere Media.', { align: 'center' });
-            doc.moveDown();
-            doc.fontSize(12).fillColor('#333').text(`Invoice Number: ${newOrder.orderId}`, { align: 'right' });
-            doc.text(`Date: ${new Date(newOrder.date).toLocaleDateString()}`, { align: 'right' });
-            doc.moveDown();
-            doc.fontSize(16).fillColor('#000').text('Customer Details:');
-            doc.fontSize(12).fillColor('#444').text(`Name: ${newOrder.customerName}`);
-            doc.text(`Email: ${newOrder.email}`);
-            doc.moveDown();
-            doc.fontSize(16).fillColor('#000').text('Order Details:');
-            doc.fontSize(12).fillColor('#444').text(`Package: ${newOrder.package}`);
-            doc.text(`Amount Paid: ${newOrder.price}`);
-            doc.end();
+            buildProfessionalInvoice(doc, newOrder);
 
         } catch (emailErr) {
             console.log("Failed to process email", emailErr);

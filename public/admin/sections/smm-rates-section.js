@@ -12,6 +12,7 @@
 
                     <div class="staff-card" style="padding:24px;margin-bottom:24px;background:#ffffff;border-radius:18px;border:1px solid rgba(148,163,184,0.12);box-shadow:0 4px 20px rgba(0,0,0,0.02);">
                         <h3 id="smm-form-title" style="margin-bottom:16px;font-size:1.1rem;color:#1e293b;font-weight:700;">➕ Add / Update SMM Service Rate</h3>
+                        <p id="smm-form-error" style="display:none;margin:0 0 14px;color:#b91c1c;font-weight:600;"></p>
                         
                         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:16px;">
                             <div>
@@ -68,6 +69,15 @@
         `
     };
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
     function mountSections(sectionIds) {
         sectionIds.forEach((sectionId) => {
             const target = document.getElementById(sectionId);
@@ -94,7 +104,6 @@ async function fetchAdminSmmRates() {
             return;
         }
         tbody.innerHTML = data.rates.map((rate) => {
-            const safeRate = JSON.stringify(rate).replace(/"/g, '&quot;');
             return `
                 <tr style="border-bottom:1px solid #f1f5f9;">
                     <td style="padding:16px 20px;"><strong>${escapeHtml(rate.platform)}</strong></td>
@@ -103,21 +112,44 @@ async function fetchAdminSmmRates() {
                     <td style="padding:16px 20px;font-weight:700;color:#6b46c1;">₹${Number(rate.ratePer1000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td style="padding:16px 20px;text-align:right;">
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
-                            <button class="btn-publish" style="background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;" onclick="editSmmRate('${safeRate}')">✏️ Edit</button>
-                            <button class="delete-btn" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;" onclick="deleteSmmRate('${rate.serviceId}')">🗑️ Delete</button>
+                            <button type="button" class="btn-publish smm-edit-btn" data-rate="${escapeHtml(JSON.stringify(rate))}" style="background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">✏️ Edit</button>
+                            <button type="button" class="delete-btn smm-delete-btn" data-service-id="${escapeHtml(rate.serviceId)}" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">🗑️ Delete</button>
                         </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        tbody.querySelectorAll('.smm-edit-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                try {
+                    editSmmRate(JSON.parse(button.dataset.rate || '{}'));
+                } catch (err) {
+                    editSmmRate(null);
+                }
+            });
+        });
+
+        tbody.querySelectorAll('.smm-delete-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                deleteSmmRate(button.dataset.serviceId || '');
+            });
+        });
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:red;text-align:center;padding:24px;">Error loading SMM rates.</td></tr>';
     }
 }
 
-function editSmmRate(rateJsonStr) {
+function editSmmRate(rate) {
     try {
-        const rate = JSON.parse(rateJsonStr);
+        if (!rate || typeof rate !== 'object') {
+            throw new Error('Invalid SMM rate data');
+        }
+        const errorEl = document.getElementById('smm-form-error');
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.style.display = 'none';
+        }
         document.getElementById('smmPlatform').value = rate.platform || 'Instagram';
         document.getElementById('smmServiceType').value = rate.serviceType || '';
         document.getElementById('smmRatePer1000').value = rate.ratePer1000 || '';
@@ -126,6 +158,15 @@ function editSmmRate(rateJsonStr) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
         console.error("Failed to parse SMM rate", err);
+        const errorEl = document.getElementById('smm-form-error');
+        if (errorEl) {
+            errorEl.textContent = 'Invalid SMM rate data. Please try editing again or refresh the list.';
+            errorEl.style.display = 'block';
+        } else {
+            window.alert('Invalid SMM rate data. Please try again.');
+        }
+        document.getElementById('smm-form-title').textContent = '➕ Add / Update SMM Service Rate';
+        document.getElementById('smm-cancel-btn').style.display = 'none';
     }
 }
 
@@ -134,6 +175,11 @@ function resetSmmForm() {
     document.getElementById('smmRatePer1000').value = '';
     document.getElementById('smm-form-title').textContent = '➕ Add / Update SMM Service Rate';
     document.getElementById('smm-cancel-btn').style.display = 'none';
+    const errorEl = document.getElementById('smm-form-error');
+    if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.style.display = 'none';
+    }
 }
 
 async function saveSmmRate() {

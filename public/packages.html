@@ -263,6 +263,14 @@
                         const smmData = await smmRatesRes.json();
                         if (smmData.success) {
                             smmRates = smmData.rates || [];
+                        function escapeHtml(value) {
+                            return String(value ?? '')
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#39;');
+                        }
                         }
                     } catch (e) {
                         console.error("Error parsing SMM rates:", e);
@@ -493,6 +501,15 @@
                 return;
             }
 
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
             const hasExplicitPopular = packagesToRender.some(pkg => pkg.isPopular || pkg.isFeatured);
 
             const html = packagesToRender.map((pkg, index) => {
@@ -511,9 +528,9 @@
                     <article class="pricing-card popular">
                         <div class="pricing-card__badge">Social Boost</div>
                         <div class="pricing-card__header">
-                            <h3 class="pricing-card__title">${pkg.title}</h3>
+                            <h3 class="pricing-card__title">${escapeHtml(pkg.title)}</h3>
                             <p class="pricing-card__description">
-                                ${pkg.description}
+                                ${escapeHtml(pkg.description)}
                             </p>
                         </div>
 
@@ -539,9 +556,9 @@
                 <article class="pricing-card ${isPopular ? 'popular' : ''}">
                     ${isPopular ? '<div class="pricing-card__badge">Most Popular</div>' : ''}
                     <div class="pricing-card__header">
-                        <h3 class="pricing-card__title">${pkg.title}</h3>
+                        <h3 class="pricing-card__title">${escapeHtml(pkg.title)}</h3>
                         <p class="pricing-card__description">
-                            ${pkg.description || 'Elevate your brand with this professional package.'}
+                            ${escapeHtml(pkg.description || 'Elevate your brand with this professional package.')}
                         </p>
                     </div>
 

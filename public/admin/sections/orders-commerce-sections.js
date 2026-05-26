@@ -61,6 +61,18 @@
         `;
     }
 
+    function getOrderDescriptionMarkup(order) {
+        if (order.orderItems && order.orderItems.length > 0) {
+            const items = order.orderItems.map(item => {
+                return item.title || item.packageId?.title || item.serviceName || 'Package';
+            });
+            return `<ol style="margin: 0; padding-left: 15px; font-size: 0.9rem; line-height: 1.4;">
+                ${items.map(title => `<li style="font-weight: 700; color: #0f172a;">${escapeHtml(title)}</li>`).join('')}
+            </ol>`;
+        }
+        return `<div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || 'Custom Package')}</div>`;
+    }
+
     async function fetchOrders() {
         try {
             const [ordersRes, staffRes] = await Promise.all([
@@ -127,7 +139,7 @@
                             <div style="margin-top:4px;font-size:0.82rem;color:#64748b;">${escapeHtml(order.email || '—')}</div>
                         </td>
                         <td>
-                            <div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || 'Custom Package')}</div>
+                            ${getOrderDescriptionMarkup(order)}
                         </td>
                         <td>
                             <div style="font-weight:800;color:#0f172a;">${formatCurrency(rawAmount)}</div>
@@ -218,7 +230,7 @@
                             <div style="margin-top:4px;font-size:0.82rem;color:#64748b;">${escapeHtml(order.email || '—')}</div>
                         </td>
                         <td>
-                            <div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || order.serviceId || 'SMM Service')}</div>
+                            ${getOrderDescriptionMarkup(order)}
                         </td>
                         <td>
                             <div style="font-weight:700;color:#0f172a;">${Number(order.quantity || 0).toLocaleString()}</div>
