@@ -714,7 +714,9 @@
 
         let pkg = params.get('package');
         let price = params.get('price'); // e.g., "$19" or "640 NPR"
-        let insta = params.get('insta');
+        let smmServiceId = params.get('smmServiceId') || params.get('serviceId') || null;
+        let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
+        let insta = params.get('insta') || params.get('targetLink') || null;
         let currencyFromURL = params.get('currency') || "INR";
         let isCartCheckout = false;
         let isGuestCartCheckout = params.get('guest') === '1';
@@ -817,7 +819,81 @@
 
         // Screen par dikhao ya Cart Fetch karo
         document.addEventListener('DOMContentLoaded', async () => {
-            if (pkg && price) {
+            if (smmServiceId && smmQty) {
+                // Single item SMM checkout flow
+                document.getElementById('dispPkg').innerText = "Loading SMM package...";
+                document.getElementById('dispPrice').innerText = "...";
+                document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                renderSummaryItems([{
+                    title: "Loading SMM package...",
+                    subtitle: insta ? `Instagram: ${insta}` : 'Direct SMM checkout',
+                    amount: "..."
+                }]);
+
+                try {
+                    const res = await fetch('/api/smm/rates');
+                    const data = await res.json();
+                    if (data && data.success && Array.isArray(data.rates)) {
+                        const service = data.rates.find(r => String(r.serviceId) === String(smmServiceId));
+                        if (service) {
+                            const ratePer1000 = Number(service.ratePer1000);
+                            const computedPrice = (smmQty / 1000) * ratePer1000;
+                            
+                            pkg = `${service.platform} ${service.serviceType} (${smmQty} units)`;
+                            price = `₹${computedPrice}`;
+                            
+                            document.getElementById('dispPkg').innerText = pkg;
+                            document.getElementById('dispPrice').innerText = price;
+                            document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                            
+                            renderSummaryItems([{
+                                title: pkg,
+                                subtitle: insta ? `Instagram: ${insta}` : 'Direct SMM checkout',
+                                amount: price
+                            }]);
+                        } else {
+                            console.error("SMM service not found in rates");
+                            document.getElementById('dispPkg').innerText = "Unknown SMM Service";
+                            document.getElementById('dispPrice').innerText = "₹0";
+                        }
+                    } else {
+                        console.error("Failed to load SMM rates");
+                    }
+                } catch (err) {
+                    console.error("Error fetching SMM rates:", err);
+                }
+
+                // If targetLink/insta is missing or empty, append targetLink input dynamically
+                if (!insta || insta.trim() === '') {
+                    const formGrid = document.querySelector('.form-grid');
+                    if (formGrid) {
+                        const fieldLabel = document.createElement('label');
+                        fieldLabel.className = 'field';
+                        fieldLabel.setAttribute('for', 'smmTargetLink');
+                        
+                        fieldLabel.innerHTML = `
+                            <span class="field__label">Instagram Profile/Post Link</span>
+                            <input type="text" id="smmTargetLink" placeholder="Enter target profile or post link" required>
+                        `;
+                        formGrid.appendChild(fieldLabel);
+                        
+                        // Add listener to update UI reactively
+                        const targetInput = document.getElementById('smmTargetLink');
+                        targetInput.addEventListener('input', (e) => {
+                            const val = e.target.value.trim();
+                            insta = val; // update the global/outer 'insta' variable
+                            document.getElementById('dispInsta').innerText = val || "Not Provided";
+                            
+                            // Also update the summary list subtitle
+                            renderSummaryItems([{
+                                title: pkg,
+                                subtitle: val ? `Instagram: ${val}` : 'Direct SMM checkout',
+                                amount: price
+                            }]);
+                        });
+                    }
+                }
+            } else if (pkg && price) {
                 // Single item checkout flow
                 document.getElementById('dispPkg').innerText = pkg;
                 document.getElementById('dispPrice').innerText = price;
@@ -928,15 +1004,26 @@
             setPayButtonLoading(true);
 
             try {
+                const createPayload = {
+                    currency: currencyFromURL,
+                    items: guestCheckoutItems
+                };
+
+                if (smmServiceId && smmQty) {
+                    createPayload.isSmm = true;
+                    createPayload.serviceId = smmServiceId;
+                    createPayload.quantity = smmQty;
+                    createPayload.orderType = 'smm';
+                } else {
+                    createPayload.amount = finalAmount;
+                    createPayload.orderType = 'agency';
+                }
+
                 // Step A: Server ko Order Create karne bolo
                 const orderResponse = await fetch('/api/create-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        amount: finalAmount,
-                        currency: currencyFromURL, // ✅ Ab sahi currency jayegi (USD/INR/NPR)
-                        items: guestCheckoutItems
-                    }),
+                    body: JSON.stringify(createPayload),
                     credentials: 'include'
                 });
 
@@ -959,25 +1046,38 @@
                     "order_id": orderData.id, // Razorpay Order ID
                     "handler": async function (response) {
 
+                        const verifyPayload = {
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            orderDetails: {
+                                package: pkg,
+                                price: rawPrice, // Display price (e.g. $19)
+                                currency: currencyFromURL,
+                                instaLink: insta,
+                                customerName: name,
+                                phone: phone,
+                                email: email,
+                                orderItems: guestCheckoutItems,
+                                orderType: smmServiceId && smmQty ? 'smm' : 'agency'
+                            }
+                        };
+
+                        if (smmServiceId && smmQty) {
+                            verifyPayload.isSmm = true;
+                            verifyPayload.serviceId = smmServiceId;
+                            verifyPayload.quantity = smmQty;
+                            verifyPayload.targetLink = insta;
+                            verifyPayload.orderType = 'smm';
+                        } else {
+                            verifyPayload.orderType = 'agency';
+                        }
+
                         // Step C: Payment Success hone par Verify karo
                         const verifyResponse = await fetch('/api/verify-payment', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                razorpay_payment_id: response.razorpay_payment_id,
-                                razorpay_order_id: response.razorpay_order_id,
-                                razorpay_signature: response.razorpay_signature,
-                                orderDetails: {
-                                    package: pkg,
-                                    price: rawPrice, // Display price (e.g. $19)
-                                    currency: currencyFromURL,
-                                    instaLink: insta,
-                                    customerName: name,
-                                    phone: phone,
-                                    email: email,
-                                    orderItems: guestCheckoutItems
-                                }
-                            }),
+                            body: JSON.stringify(verifyPayload),
                             credentials: 'include'
                         });
 

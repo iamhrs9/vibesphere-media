@@ -3103,6 +3103,12 @@ const orderSchema = new mongoose.Schema({
     workStatus: { type: String, default: 'Work Pending' },
     status: { type: String, default: 'Work Pending' },
 
+    // SMM specific fields
+    orderType: { type: String, enum: ['agency', 'smm'], default: 'agency' },
+    targetLink: { type: String, default: '' },
+    quantity: { type: Number, default: 0 },
+    serviceId: { type: String, default: '' },
+
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
     assignedAt: { type: Date, default: null },
@@ -5112,6 +5118,96 @@ const cartSchema = new mongoose.Schema({
 });
 const Cart = mongoose.model('Cart', cartSchema);
 
+// ==========================================
+// 🚀 SMM SERVICE SCHEMA & MODEL
+// ==========================================
+const smmServiceSchema = new mongoose.Schema({
+    serviceId: { type: String, required: true, unique: true }, // e.g., 'ig-followers'
+    platform: { type: String, required: true },               // e.g., 'Instagram', 'YouTube'
+    serviceType: { type: String, required: true },            // e.g., 'Followers', 'Likes'
+    ratePer1000: { type: Number, required: true },            // Base price per 1000 units in INR
+}, { timestamps: true });
+const SmmService = mongoose.model('SmmService', smmServiceSchema);
+
+// Seeding Default SMM rates
+async function initSmmServices() {
+    try {
+        const count = await SmmService.countDocuments();
+        if (count === 0) {
+            const defaults = [
+                { serviceId: 'ig-followers', platform: 'Instagram', serviceType: 'Followers', ratePer1000: 150 },
+                { serviceId: 'ig-likes', platform: 'Instagram', serviceType: 'Likes', ratePer1000: 80 },
+                { serviceId: 'ig-comments', platform: 'Instagram', serviceType: 'Comments', ratePer1000: 350 },
+                { serviceId: 'ig-views', platform: 'Instagram', serviceType: 'Views', ratePer1000: 50 },
+                { serviceId: 'yt-subscribers', platform: 'YouTube', serviceType: 'Subscribers', ratePer1000: 800 },
+                { serviceId: 'yt-likes', platform: 'YouTube', serviceType: 'Likes', ratePer1000: 200 },
+                { serviceId: 'yt-views', platform: 'YouTube', serviceType: 'Views', ratePer1000: 300 },
+                { serviceId: 'fb-followers', platform: 'Facebook', serviceType: 'Followers', ratePer1000: 180 },
+                { serviceId: 'fb-likes', platform: 'Facebook', serviceType: 'Likes', ratePer1000: 100 }
+            ];
+            await SmmService.insertMany(defaults);
+            console.log("🚀 Default SMM rates initialized successfully.");
+        }
+    } catch (e) {
+        console.error("⚠️ Failed to initialize default SMM rates:", e);
+    }
+}
+initSmmServices();
+
+// ==========================================
+// 🚀 SMM RATE API ENDPOINTS
+// ==========================================
+
+// GET all SMM rates (Public)
+app.get('/api/smm/rates', async (req, res) => {
+    try {
+        const rates = await SmmService.find().sort({ platform: 1, serviceType: 1 });
+        res.json({ success: true, rates });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// POST/UPSERT SMM rate (Admin authenticated)
+app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { serviceId, platform, serviceType, ratePer1000 } = req.body;
+        if (!serviceId || !platform || !serviceType || ratePer1000 == null) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+        const existing = await SmmService.findOne({ serviceId });
+        if (existing) {
+            existing.ratePer1000 = Number(ratePer1000);
+            existing.platform = platform;
+            existing.serviceType = serviceType;
+            await existing.save();
+            return res.json({ success: true, message: 'SMM rate updated successfully.' });
+        }
+        const newSmm = new SmmService({ serviceId, platform, serviceType, ratePer1000: Number(ratePer1000) });
+        await newSmm.save();
+        res.json({ success: true, message: 'SMM rate created successfully.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// DELETE SMM rate (Admin authenticated)
+app.delete('/api/admin/smm/rates/:serviceId', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { serviceId } = req.params;
+        await SmmService.deleteOne({ serviceId });
+        res.json({ success: true, message: 'SMM rate deleted successfully.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 1. Get Reviews
 app.get('/api/reviews', async (req, res) => {
     try {
@@ -5750,25 +5846,38 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
-        let { amount, currency } = req.body;
+        let { amount, currency, isSmm, serviceId, quantity, orderType } = req.body;
         const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
 
         if (!razorpayKeyId) {
             return res.status(500).json({ success: false, error: 'Payment config missing' });
         }
 
-        console.log(`📝 Payment Request: ${amount} ${currency}`);
-
-        // 👇 YEH HAI MAGIC LINE:
-        // Agar amount "$19" hai, toh "$" hata kar "19" bana dega.
-        // Agar "₹399" hai, toh "399" bana dega.
-        let cleanAmount = amount.toString().replace(/[^\d.]/g, '');
-
-        // Currency validation
         let cleanCurrency = currency && currency.length === 3 ? currency : "INR";
+        let finalPrice = 0;
+
+        if (isSmm || orderType === 'smm') {
+            // Secure SMM pricing calculation
+            if (!serviceId || !quantity) {
+                return res.status(400).json({ success: false, error: 'serviceId and quantity required' });
+            }
+            const smmSvc = await SmmService.findOne({ serviceId });
+            if (!smmSvc) {
+                return res.status(404).json({ success: false, error: 'SMM Service not found' });
+            }
+            finalPrice = (Number(quantity) / 1000) * smmSvc.ratePer1000;
+            console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${serviceId}`);
+        } else {
+            // Normal agency orders
+            if (!amount) {
+                return res.status(400).json({ success: false, error: 'amount required' });
+            }
+            let cleanAmount = amount.toString().replace(/[^\d.]/g, '');
+            finalPrice = parseFloat(cleanAmount);
+        }
 
         const options = {
-            amount: Math.round(parseFloat(cleanAmount) * 100), // Paise conversion
+            amount: Math.round(finalPrice * 100), // Convert to paise
             currency: cleanCurrency,
             receipt: "rcpt_" + Date.now()
         };
@@ -5782,24 +5891,46 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 });
 
 app.post('/api/verify-payment', optionalAuth, async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
         .update(body.toString()).digest('hex');
 
     if (expectedSignature === razorpay_signature) {
         let normalizedOrderAmount = 0;
-        const amountCandidate = orderDetails?.price ?? orderDetails?.amount ?? 0;
+        let orderType = 'agency';
+        let resolvedServiceId = '';
+        let resolvedQuantity = 0;
+        let resolvedTargetLink = '';
+
+        if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
+            orderType = 'smm';
+            resolvedServiceId = serviceId || orderDetails?.serviceId || '';
+            resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
+            resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
+
+            // Secure recalculation on server side
+            try {
+                const smmSvc = await SmmService.findOne({ serviceId: resolvedServiceId });
+                if (smmSvc) {
+                    normalizedOrderAmount = (resolvedQuantity / 1000) * smmSvc.ratePer1000;
+                }
+            } catch (err) {
+                console.error("Server side recalculation error:", err);
+            }
+        } else {
+            const amountCandidate = orderDetails?.price ?? orderDetails?.amount ?? 0;
+            if (typeof amountCandidate === 'number') {
+                normalizedOrderAmount = Number.isFinite(amountCandidate) ? amountCandidate : 0;
+            } else if (typeof amountCandidate === 'string') {
+                const cleanedAmount = amountCandidate.replace(/,/g, '').replace(/[^\d.-]/g, '');
+                const parsedAmount = Number(cleanedAmount);
+                normalizedOrderAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+            }
+        }
+
         let resolvedUserId = req.user?._id || null;
         const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
-
-        if (typeof amountCandidate === 'number') {
-            normalizedOrderAmount = Number.isFinite(amountCandidate) ? amountCandidate : 0;
-        } else if (typeof amountCandidate === 'string') {
-            const cleanedAmount = amountCandidate.replace(/,/g, '').replace(/[^\d.-]/g, '');
-            const parsedAmount = Number(cleanedAmount);
-            normalizedOrderAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
-        }
 
         // If no active session is available, try to map to an existing user by checkout email.
         if (!resolvedUserId && orderDetails?.email) {
@@ -5821,6 +5952,11 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             ...orderDetails,
             orderAmount: normalizedOrderAmount,
             orderItems: resolvedOrderItems,
+            orderType: orderType,
+            serviceId: resolvedServiceId,
+            quantity: resolvedQuantity,
+            targetLink: resolvedTargetLink,
+            instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
             date: new Date().toLocaleString()
         });
 
@@ -5971,7 +6107,20 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
-        let orders = await Order.find().sort({ _id: -1 });
+        const type = String(req.query.type || '').trim().toLowerCase();
+        let query = {};
+        if (type === 'smm') {
+            query = { orderType: 'smm' };
+        } else if (type === 'agency') {
+            query = {
+                $or: [
+                    { orderType: 'agency' },
+                    { orderType: { $exists: false } },
+                    { orderType: null }
+                ]
+            };
+        }
+        let orders = await Order.find(query).sort({ _id: -1 });
         res.json(orders);
     } catch (err) { res.status(500).json({ error: "Fetch Failed" }); }
 });

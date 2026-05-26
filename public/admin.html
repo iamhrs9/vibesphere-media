@@ -1210,8 +1210,15 @@
                 onclick="navTo('services-section', this); fetchAdminServices();">
                 <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 13v.01"></path><path d="M9 17v.01"></path></svg></span><span class="nav-label"> Services</span>
             </button>
+            <button class="sidebar-link" data-label="SMM Rates"
+                onclick="navTo('smm-rates-section', this); fetchAdminSmmRates();">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;"><path d="M13 2L4 14h7l-1 8 10-13h-7l0-7z"></path></svg></span><span class="nav-label"> SMM Rates</span>
+            </button>
             <button class="sidebar-link" data-label="Orders" onclick="navTo('orders', this);">
                 <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path></svg></span><span class="nav-label"> Orders</span>
+            </button>
+            <button class="sidebar-link" data-label="SMM Orders" onclick="navTo('smm-orders-section', this); fetchSmmOrders();">
+                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path><path d="M12 2v6M9 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></span><span class="nav-label"> SMM Orders</span>
             </button>
 
             <div class="sidebar-group-label">Client Ops</div>
@@ -1422,6 +1429,7 @@
             </div>
 
             <div id="orders" class="section"></div>
+            <div id="smm-orders-section" class="section"></div>
 
             <div id="blogs" class="section"></div>
 
@@ -1682,13 +1690,16 @@
                         'staff-section': 'Staff Management',
                         'attendance-section': 'Attendance & Shifts',
                         'document-approvals-section': 'Pending Document Approvals',
-                        'staff-tickets-section': 'Staff Internal Tickets'
+                        'staff-tickets-section': 'Staff Internal Tickets',
+                        'smm-rates-section': 'SMM Rate Manager',
+                        'smm-orders-section': 'SMM Orders'
                     };
                     updateTopbarStatus(labels[tabName] || 'Admin Workspace');
 
                     if (tabName === 'dashboard-section') fetchDashboardSummary();
                     if (tabName === 'reviews') fetchReviews();
                     if (tabName === 'orders') fetchOrders();
+                    if (tabName === 'smm-orders-section') fetchSmmOrders();
                     if (tabName === 'blogs') fetchBlogs();
                     if (tabName === 'staff-section') fetchStaffData();
                     if (tabName === 'attendance-section') fetchAdminAttendance();
@@ -1696,6 +1707,7 @@
                     if (tabName === 'finance-section') fetchFinanceData();
                     if (tabName === 'resources-section') fetchAdminResources();
                     if (tabName === 'chat-section') fetchAdminChat();
+                    if (tabName === 'smm-rates-section') fetchAdminSmmRates();
                 }
 
                 // Legacy alias — some inline calls may still use switchTab
@@ -1938,6 +1950,10 @@
                         // Row mil gaya toh refresh
                         fetchOrders();
                     }
+                    const smmTr = document.getElementById(`smm-order-row-${updatedOrder.orderId}`);
+                    if (smmTr) {
+                        fetchSmmOrders();
+                    }
                 });
 
                 socket.on('order_assigned', (updatedOrder) => {
@@ -1948,6 +1964,9 @@
                         window.location.href
                     );
                     fetchOrders();
+                    if (window.fetchSmmOrders) {
+                        fetchSmmOrders();
+                    }
                 });
 
                 // Secure Session Init
@@ -2010,6 +2029,11 @@
              ========================================== -->
             <div id="packages-section" class="section"></div>
 
+            <!-- ==========================================
+             🚀 SMM RATES SECTION
+             ========================================== -->
+            <div id="smm-rates-section" class="section"></div>
+
             <!-- ADMIN SECTION MODULES -->
             <script src="/admin/sections/team-chat-section.js"></script>
             <script src="/admin/sections/client-ops-sections.js"></script>
@@ -2018,6 +2042,7 @@
             <script src="/admin/sections/staff-attendance-sections.js"></script>
             <script src="/admin/sections/finance-section.js"></script>
             <script src="/admin/sections/document-approvals-section.js"></script>
+            <script src="/admin/sections/smm-rates-section.js"></script>
             <script>
                 window.mountAdminTeamChatSection?.();
                 window.mountAdminClientOpsSections?.();
@@ -2026,6 +2051,7 @@
                 window.mountAdminStaffAttendanceSections?.();
                 window.mountAdminFinanceSection?.('finance-section');
                 window.mountAdminDocumentApprovalsSection?.();
+                window.mountAdminSmmRatesSection?.();
             </script>
             <!-- END ADMIN SECTION MODULES -->
 

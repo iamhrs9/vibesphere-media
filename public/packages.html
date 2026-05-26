@@ -71,6 +71,7 @@
                 <li><a href="/packages.html" class="active">Packages</a></li>
                 <li><a href="/contact.html">Contact</a></li>
                 <li><a href="/blog.html">Blog</a></li>
+                <li class="smm-mobile-li"><a href="/smm" class="btn-smm"><i class="ri-rocket-line"></i> Boost Socials</a></li>
             </ul>
 
             <div class="nav-actions">
@@ -246,23 +247,62 @@
                 }
                 setupCartAuthModal();
 
-                // Fetch Services & Packages concurrently
-                const [servicesRes, packagesRes] = await Promise.all([
+                // Fetch Services, Packages & SMM rates concurrently
+                const [servicesRes, packagesRes, smmRatesRes] = await Promise.all([
                     fetch('/api/services'),
-                    fetch('/api/packages')
+                    fetch('/api/packages'),
+                    fetch('/api/smm/rates').catch(() => null)
                 ]);
 
                 const servicesData = await servicesRes.json();
                 const packagesData = await packagesRes.json();
+                let smmRates = [];
+
+                if (smmRatesRes && smmRatesRes.ok) {
+                    try {
+                        const smmData = await smmRatesRes.json();
+                        if (smmData.success) {
+                            smmRates = smmData.rates || [];
+                        }
+                    } catch (e) {
+                        console.error("Error parsing SMM rates:", e);
+                    }
+                }
 
                 if (servicesData.success) {
                     allServices = servicesData.services;
+                    if (smmRates.length > 0) {
+                        allServices.push({
+                            _id: 'smm-services',
+                            title: 'Social Boost',
+                            isActive: true
+                        });
+                    }
                     renderFilters(allServices);
                 }
 
                 if (packagesData.success) {
                     allPackages = packagesData.packages;
                     currentCountryCode = packagesData.countryCode || 'IN';
+
+                    if (smmRates.length > 0) {
+                        const smmPackages = smmRates.map(rate => ({
+                            _id: `smm_${rate.serviceId}`,
+                            title: `${rate.platform} ${rate.serviceType}`,
+                            description: `Boost your ${rate.platform} presence instantly. Professional, fast delivery.`,
+                            geo: {
+                                price: rate.ratePer1000,
+                                currency: 'INR'
+                            },
+                            pricing: {
+                                isOneTime: true
+                            },
+                            serviceId: 'smm-services',
+                            isSmm: true,
+                            smmServiceId: rate.serviceId
+                        }));
+                        allPackages = [...allPackages, ...smmPackages];
+                    }
 
                     renderPackages(allPackages);
                 } else {
@@ -371,6 +411,32 @@
             window.location.href = url;
         }
 
+        function buySmmNow(serviceId, title, pricePer1k) {
+            const qty = 1000;
+            const totalPrice = pricePer1k;
+            const smmPackageId = `smm_${serviceId}_${Date.now()}`;
+
+            const payload = {
+                packageId: smmPackageId,
+                title: `${title} (${qty} units)`,
+                serviceName: `Social Boost SMM Services`,
+                priceAtAdd: Number(totalPrice),
+                currency: "INR",
+                symbol: "₹"
+            };
+
+            // Update Guest Cart context in localStorage
+            if (window.VibeGuestCart && typeof window.VibeGuestCart.addItem === 'function') {
+                window.VibeGuestCart.addItem(payload);
+                if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
+                    window.VibeUI.updateCartCount();
+                }
+            }
+
+            // Redirect forwarding ONLY serviceId, quantity, and empty targetLink (since packages.html doesn't collect targetLink)
+            window.location.href = `/checkout.html?serviceId=${encodeURIComponent(serviceId)}&quantity=${qty}&targetLink=`;
+        }
+
         // ==========================================
         // UI RENDERING
         // ==========================================
@@ -439,6 +505,35 @@
                 const currency = pkg.geo?.currency || 'INR';
                 const symbol = currency === 'INR' ? '₹' : '$';
                 const pricingSuffix = pkg.pricing?.isOneTime ? 'one-time' : '/mo';
+
+                if (pkg.isSmm) {
+                    return `
+                    <article class="pricing-card popular">
+                        <div class="pricing-card__badge">Social Boost</div>
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__title">${pkg.title}</h3>
+                            <p class="pricing-card__description">
+                                ${pkg.description}
+                            </p>
+                        </div>
+
+                        <div class="pricing-card__price-block">
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">₹</span>
+                                <span class="pricing-card__amount">${pkg.geo.price.toLocaleString()}</span>
+                                <span class="pricing-card__suffix">per 1k</span>
+                            </div>
+                        </div>
+
+                        <div class="pricing-card__actions" style="grid-template-columns: 1fr;">
+                            <a href="/smm?service=${encodeURIComponent(pkg.smmServiceId)}" class="btn-pkg btn-pkg--primary" style="display: flex; align-items: center; justify-content: center; text-decoration: none; text-align: center;">
+                                <i class="ri-flashlight-line"></i>
+                                <span>Customize & Buy</span>
+                            </a>
+                        </div>
+                    </article>
+                    `;
+                }
 
                 return `
                 <article class="pricing-card ${isPopular ? 'popular' : ''}">
