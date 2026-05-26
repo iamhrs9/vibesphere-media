@@ -1,4 +1,6 @@
 (function () {
+    let orderStaffOptionsCache = [];
+
     const SECTION_HTML = {
         "reviews": "<div id=\"reviews\" class=\"section\" data-module-mounted=\"true\">\n                <h3>Manage General Reviews</h3>\n                <div class=\"table-responsive\" style=\"overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;\">\n                    <table>\n                        <thead>\n                            <tr>\n                                <th>Date</th>\n                                <th>User</th>\n                                <th>Rating</th>\n                                <th>Message</th>\n                                <th>Action</th>\n                            </tr>\n                        </thead>\n                        <tbody id=\"reviewsTable\"></tbody>\n                    </table>\n                </div>\n            </div>",
         "review-moderation": "<div id=\"review-moderation\" class=\"section\" data-module-mounted=\"true\">\n                <h3>🛡️ Package Review Moderation</h3>\n                <p style=\"color:#64748b; font-size:0.9rem; margin-bottom:15px;\">Approve or reject customer reviews for\n                    specific packages.</p>\n                <div class=\"table-responsive\" style=\"overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;\">\n                    <table>\n                        <thead>\n                            <tr>\n                                <th>Package</th>\n                                <th>User</th>\n                                <th>Rating</th>\n                                <th>Comment</th>\n                                <th>Actions</th>\n                            </tr>\n                        </thead>\n                        <tbody id=\"pendingReviewsTable\">\n                            <tr>\n                                <td colspan=\"5\" style=\"text-align:center;\">Loading pending reviews...</td>\n                            </tr>\n                        </tbody>\n                    </table>\n                </div>\n            </div>",
@@ -17,12 +19,62 @@
         });
     }
 
+    function makeOrderSelectId(orderId) {
+        return `orderAssign_${String(orderId || '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    }
+
+    function buildOrderStaffOptions(selectedEmail = '') {
+        const normalizedSelected = String(selectedEmail || '').trim().toLowerCase();
+        if (!orderStaffOptionsCache.length) {
+            return '<option value="">No staff available</option>';
+        }
+
+        return orderStaffOptionsCache.map((staff) => {
+            const email = String(staff.email || '').trim().toLowerCase();
+            const selected = email && email === normalizedSelected ? 'selected' : '';
+            return `<option value="${escapeHtml(email)}" ${selected}>${escapeHtml(staff.name || 'Staff Member')}</option>`;
+        }).join('');
+    }
+
+    function resolveOrderStaffName(staffEmail = '') {
+        const normalizedEmail = String(staffEmail || '').trim().toLowerCase();
+        const staff = orderStaffOptionsCache.find((item) => String(item.email || '').trim().toLowerCase() === normalizedEmail);
+        return staff?.name || 'Staff Member';
+    }
+
+    function getOrderAssignmentMarkup(order) {
+        const selectId = makeOrderSelectId(order.orderId);
+        const buttonLabel = order.assignedStaff ? 'Reassign' : 'Assign Staff';
+
+        return `
+            ${order.assignedStaff
+                ? `<div style="margin-top:8px;font-size:0.78rem;color:#0f766e;font-weight:700;">Assigned to ${escapeHtml(resolveOrderStaffName(order.assignedStaff))}</div>`
+                : '<div style="margin-top:8px;font-size:0.78rem;color:#94a3b8;">Not assigned yet</div>'}
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+                <select id="${selectId}" style="min-width:220px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:#0f172a;font-weight:600;" ${orderStaffOptionsCache.length ? '' : 'disabled'}>
+                    <option value="">Select staff member</option>
+                    ${buildOrderStaffOptions(order.assignedStaff || '')}
+                </select>
+                <button onclick="assignStaffFromDropdown('${order.orderId}', '${selectId}')" class="modern-action-btn" ${orderStaffOptionsCache.length ? '' : 'disabled'}>${buttonLabel}</button>
+            </div>
+        `;
+    }
+
     async function fetchOrders() {
         try {
-            const res = await fetch(`${API_URL}/admin/orders`, { credentials: 'include' });
-            if (res.status === 401 || res.status === 403) return logout();
+            const [ordersRes, staffRes] = await Promise.all([
+                fetch(`${API_URL}/admin/orders`, { credentials: 'include' }),
+                fetch('/api/admin/staff-list', { credentials: 'include' }).catch(() => null)
+            ]);
 
-            const orders = await res.json();
+            if (ordersRes.status === 401 || ordersRes.status === 403) return logout();
+
+            const orders = await ordersRes.json();
+            if (staffRes?.ok) {
+                const staffPayload = await staffRes.json();
+                orderStaffOptionsCache = Array.isArray(staffPayload.staff) ? staffPayload.staff : [];
+            }
+
             const tbody = document.getElementById('ordersTable');
             const searchTerm = String(document.getElementById('orderSearch')?.value || '').trim().toLowerCase();
             if (!tbody) return;
@@ -41,11 +93,18 @@
 
             tbody.innerHTML = orderList.map((order) => {
                 const safeOrderId = escapeHtml(order.orderId || 'Order');
-                const statusLabel = order.status === 'Review' ? 'Client Review' : (order.status || 'Pending');
-                const price = Number(order.price || 0);
-                const assignmentMarkup = order.assignedStaff
-                    ? `<div style="margin-top:8px;font-size:0.78rem;color:#0f766e;font-weight:700;">Assigned to ${escapeHtml(order.assignedStaff)}</div>`
-                    : `<button onclick="assignStaffManual('${order.orderId}')" class="modern-action-btn" style="margin-top:8px;">Assign Staff</button>`;
+                const workStatus = order.workStatus || order.status || 'Work Pending';
+                const paymentStatus = order.paymentStatus || (String(order.status || '').toLowerCase() === 'pending' ? 'Pending' : 'Paid');
+                const workStatusLabel = workStatus === 'Review' ? 'Client Review' : workStatus;
+                const paymentStatusLabel = paymentStatus;
+                const isInProgress = ['Processing', 'In Progress'].includes(workStatus);
+                const rawAmount = order.price
+                    ?? order.amount
+                    ?? order.value
+                    ?? order.orderAmount
+                    ?? (order.orderDetails && order.orderDetails.price)
+                    ?? 0;
+                const assignmentMarkup = getOrderAssignmentMarkup(order);
 
                 return `
                     <tr id="order-row-${escapeHtml(order.orderId || '')}">
@@ -70,17 +129,20 @@
                             <div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || 'Custom Package')}</div>
                         </td>
                         <td>
-                            <div style="font-weight:800;color:#0f172a;">${formatCurrency(price)}</div>
+                            <div style="font-weight:800;color:#0f172a;">${formatCurrency(rawAmount)}</div>
                             ${assignmentMarkup}
                         </td>
                         <td>
                             <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;">
-                                ${renderModernStatusBadge(order.status, statusLabel)}
-                                <select onchange="updateStatus('${order.orderId}', this.value)" style="min-width:140px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#0f172a;font-weight:600;">
-                                    <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
-                                    <option value="Review" ${order.status === 'Review' ? 'selected' : ''}>Client Review</option>
-                                    <option value="Done" ${order.status === 'Done' ? 'selected' : ''}>Completed</option>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                    ${renderModernStatusBadge(paymentStatus, `Payment: ${paymentStatusLabel}`)}
+                                    ${renderModernStatusBadge(workStatus, `Work: ${workStatusLabel}`)}
+                                </div>
+                                <select onchange="updateStatus('${order.orderId}', this.value)" style="min-width:160px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#0f172a;font-weight:600;">
+                                    <option value="Work Pending" ${workStatus === 'Work Pending' ? 'selected' : ''}>Work Pending</option>
+                                    <option value="In Progress" ${isInProgress ? 'selected' : ''}>In Progress</option>
+                                    <option value="Completed" ${workStatus === 'Completed' ? 'selected' : ''}>Completed</option>
+                                    <option value="Review" ${workStatus === 'Review' ? 'selected' : ''}>Client Review</option>
                                 </select>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                                     <button onclick="window.open('/api/download-invoice/${encodeURIComponent(order.orderId)}')" class="modern-action-btn" title="Download Invoice"><i class="ri-download-2-line"></i> Invoice</button>
@@ -100,15 +162,24 @@
         await fetch(`${API_URL}/admin/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, status: newStatus }),
+            body: JSON.stringify({ id, workStatus: newStatus }),
             credentials: 'include'
         });
         fetchOrders();
     }
 
     async function assignStaffManual(orderId) {
-        const staffEmail = prompt('✍️ Commission ke liye Staff ka exact Email type karo:');
-        if (!staffEmail) return;
+        const selectId = makeOrderSelectId(orderId);
+        return assignStaffFromDropdown(orderId, selectId);
+    }
+
+    async function assignStaffFromDropdown(orderId, selectId) {
+        const selectNode = document.getElementById(selectId);
+        const staffEmail = String(selectNode?.value || '').trim().toLowerCase();
+        if (!staffEmail) {
+            alert('⚠️ Please select a staff member first.');
+            return;
+        }
 
         try {
             const res = await fetch('/api/admin/assign-order', {
@@ -499,6 +570,7 @@
     window.fetchOrders = fetchOrders;
     window.updateStatus = updateStatus;
     window.assignStaffManual = assignStaffManual;
+    window.assignStaffFromDropdown = assignStaffFromDropdown;
     window.resendInvoice = resendInvoice;
     window.fetchAdminServices = fetchAdminServices;
     window.addBenefitField = addBenefitField;

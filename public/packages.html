@@ -56,7 +56,7 @@
     <link rel="apple-touch-icon" href="vibeicon.png">
 </head>
 
-<body>
+<body class="packages-page">
 
     <nav class="global-nav">
         <div class="nav-container">
@@ -103,28 +103,77 @@
         </div>
     </nav>
     <section class="packages-dashboard">
-        <!-- Dynamic Filter Buttons -->
         <div class="filter-controls" id="category-filters">
             <button class="filter-btn active" data-id="all">All Packages</button>
             <!-- Categories will be injected here -->
         </div>
 
-        <div style="text-align: center; margin-bottom: 30px;">
-            <span id="currency-label"
-                style="font-weight: 500; color: #6B46C1; font-size: 0.95rem; background: rgba(107, 70, 193, 0.1); padding: 8px 16px; border-radius: 20px;">
-                <i class="ri-global-line"></i> Detecting Location & Pricing...
-            </span>
-        </div>
-
-        <!-- Dynamic Packages Grid -->
         <div class="packages-grid" id="packages-container">
-            <!-- Loading Skeletons -->
-            <div class="loading-state" style="grid-column: 1/-1; text-align: center; padding: 50px;">
-                <div class="spinner" style="margin: 0 auto 20px;"></div>
-                <p style="color: #666;">Loading latest packages...</p>
-            </div>
+            <article class="pricing-skeleton-card" aria-hidden="true">
+                <span class="pricing-skeleton-chip"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--title"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <div class="pricing-skeleton-price"></div>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <div class="pricing-skeleton-actions">
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button pricing-skeleton-button--primary"></span>
+                </div>
+            </article>
+            <article class="pricing-skeleton-card" aria-hidden="true">
+                <span class="pricing-skeleton-chip"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--title"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <div class="pricing-skeleton-price"></div>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <div class="pricing-skeleton-actions">
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button pricing-skeleton-button--primary"></span>
+                </div>
+            </article>
+            <article class="pricing-skeleton-card" aria-hidden="true">
+                <span class="pricing-skeleton-chip"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--title"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--body"></span>
+                <div class="pricing-skeleton-price"></div>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <span class="pricing-skeleton-line pricing-skeleton-line--feature"></span>
+                <div class="pricing-skeleton-actions">
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button"></span>
+                    <span class="pricing-skeleton-button pricing-skeleton-button--primary"></span>
+                </div>
+            </article>
         </div>
     </section>
+
+    <div id="cart-auth-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(10, 10, 20, 0.55); align-items:center; justify-content:center; padding:16px;">
+        <div style="width:min(460px, 100%); background:#fff; border-radius:16px; padding:24px; box-shadow:0 24px 60px rgba(20,20,40,0.2);">
+            <h3 style="margin:0 0 8px; color:#1a0533;">Add To Cart</h3>
+            <p style="margin:0 0 18px; color:#555; line-height:1.5;">Choose how you want to continue with this package.</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="guest-cart-btn" class="modal-choice-btn">
+                    Continue as Guest
+                </button>
+                <button type="button" id="login-cart-btn" class="modal-choice-btn modal-choice-btn--outline">
+                    Login To Save Cart
+                </button>
+                <button type="button" id="close-cart-modal" class="modal-choice-btn modal-choice-btn--ghost">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
 
     <footer
         style="background: #ffffff; color: #333; padding: 40px 5%; text-align: center; border-top: 1px solid #eaeaea; margin-top: 60px;">
@@ -153,6 +202,27 @@
         footer a:hover {
             color: #6c63ff !important;
         }
+
+        .modal-choice-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #6B46C1;
+            color: #fff;
+        }
+
+        .modal-choice-btn--outline {
+            background: #fff;
+            color: #6B46C1;
+            border: 1px solid #6B46C1;
+        }
+
+        .modal-choice-btn--ghost {
+            background: #f6f2ff;
+            color: #6B46C1;
+        }
     </style>
 
     <script src="script.js"></script>
@@ -165,11 +235,17 @@
         let allPackages = [];
         let allServices = [];
         let currentCountryCode = 'IN'; // Default Fallback
+        let pendingGuestPackageId = null;
 
         document.addEventListener('DOMContentLoaded', initDynamicPackages);
 
         async function initDynamicPackages() {
             try {
+                if (window.VibeAuth && typeof window.VibeAuth.init === 'function') {
+                    await window.VibeAuth.init();
+                }
+                setupCartAuthModal();
+
                 // Fetch Services & Packages concurrently
                 const [servicesRes, packagesRes] = await Promise.all([
                     fetch('/api/services'),
@@ -188,12 +264,6 @@
                     allPackages = packagesData.packages;
                     currentCountryCode = packagesData.countryCode || 'IN';
 
-                    const curLabel = document.getElementById('currency-label');
-                    if (curLabel) {
-                        const currencyName = currentCountryCode === 'IN' || currentCountryCode === 'NP' || currentCountryCode === 'BD' || currentCountryCode === 'LK' || currentCountryCode === 'PK' ? 'INR (₹)' : 'USD ($)';
-                        curLabel.innerHTML = `<i class="ri-global-line"></i> Pricing Optimized for <b>${currentCountryCode}</b> (${currencyName})`;
-                    }
-
                     renderPackages(allPackages);
                 } else {
                     showError("Failed to load packages.");
@@ -203,6 +273,102 @@
                 console.error("Initialization Error:", error);
                 showError("Network error. Please try again later.");
             }
+        }
+
+        function setupCartAuthModal() {
+            const modal = document.getElementById('cart-auth-modal');
+            const guestBtn = document.getElementById('guest-cart-btn');
+            const loginBtn = document.getElementById('login-cart-btn');
+            const closeBtn = document.getElementById('close-cart-modal');
+
+            if (!modal || !guestBtn || !loginBtn || !closeBtn) return;
+
+            guestBtn.addEventListener('click', () => {
+                if (!pendingGuestPackageId) return;
+                const pkg = allPackages.find((x) => x._id === pendingGuestPackageId);
+                if (!pkg) return;
+
+                const added = addToGuestCart(pkg);
+                closeCartAuthModal();
+                if (added) {
+                    alert('Added to guest cart. You can checkout without login.');
+                } else {
+                    alert('This package is already in your guest cart.');
+                }
+            });
+
+            loginBtn.addEventListener('click', () => {
+                const redirectUrl = `/login.html?redirect=${encodeURIComponent('/packages.html')}`;
+                window.location.href = redirectUrl;
+            });
+
+            closeBtn.addEventListener('click', closeCartAuthModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeCartAuthModal();
+            });
+        }
+
+        function openCartAuthModal(packageId) {
+            const modal = document.getElementById('cart-auth-modal');
+            if (!modal) return;
+            pendingGuestPackageId = packageId;
+            modal.style.display = 'flex';
+        }
+
+        function closeCartAuthModal() {
+            const modal = document.getElementById('cart-auth-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            pendingGuestPackageId = null;
+        }
+
+        function getPackageCurrency(pkg) {
+            return pkg?.geo?.currency || (currentCountryCode === 'IN' ? 'INR' : 'USD');
+        }
+
+        function getPackageSymbol(currency) {
+            return currency === 'INR' ? '₹' : '$';
+        }
+
+        function addToGuestCart(pkg) {
+            const currency = getPackageCurrency(pkg);
+            const symbol = getPackageSymbol(currency);
+            const payload = {
+                packageId: pkg._id,
+                title: pkg.title || 'Package',
+                serviceName: pkg.serviceId?.title || 'VibeSphere Service',
+                priceAtAdd: Number(pkg.geo?.price || 0),
+                currency,
+                symbol
+            };
+
+            if (window.VibeGuestCart && typeof window.VibeGuestCart.addItem === 'function') {
+                const result = window.VibeGuestCart.addItem(payload);
+                if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
+                    window.VibeUI.updateCartCount();
+                }
+                return result.added;
+            }
+
+            return false;
+        }
+
+        async function addPackageToCart(packageId) {
+            const pkg = allPackages.find((x) => x._id === packageId);
+            if (!pkg) return;
+            // Add to Cart click should always open choice modal first.
+            openCartAuthModal(packageId);
+        }
+
+        function buyNow(packageId) {
+            const pkg = allPackages.find((x) => x._id === packageId);
+            if (!pkg) return;
+
+            const currency = getPackageCurrency(pkg);
+            const symbol = getPackageSymbol(currency);
+            const price = `${symbol}${Number(pkg.geo?.price || 0)}`;
+            const url = `/checkout?package=${encodeURIComponent(pkg.title || 'Package')}&price=${encodeURIComponent(price)}&currency=${encodeURIComponent(currency)}`;
+            window.location.href = url;
         }
 
         // ==========================================
@@ -253,60 +419,83 @@
 
             if (packagesToRender.length === 0) {
                 container.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-                        <i class="ri-box-3-line" style="font-size: 3rem; color: #ccc; margin-bottom: 15px; display: block;"></i>
-                        <h3 style="color: #666; font-size: 1.2rem;">No packages available in this category yet.</h3>
+                    <div class="packages-empty-state">
+                        <i class="ri-box-3-line"></i>
+                        <h3>No packages available in this category yet.</h3>
+                        <p>Please try another service category or check back shortly for newly launched plans.</p>
                     </div>`;
                 return;
             }
 
-            // Map and Generate HTML
-            const html = packagesToRender.map(pkg => {
-                // Geo-Pricing Resolution
-                const priceValue = pkg.geo?.price || 0;
+            const hasExplicitPopular = packagesToRender.some(pkg => pkg.isPopular || pkg.isFeatured);
+
+            const html = packagesToRender.map((pkg, index) => {
+                const isPopular = Boolean(
+                    pkg.isPopular ||
+                    pkg.isFeatured ||
+                    (!hasExplicitPopular && packagesToRender.length === 3 && index === 1)
+                );
+                const priceValue = Number(pkg.geo?.price || 0);
                 const currency = pkg.geo?.currency || 'INR';
                 const symbol = currency === 'INR' ? '₹' : '$';
-
-                // Features List
-                const featuresHtml = (pkg.features && Array.isArray(pkg.features))
-                    ? pkg.features.map(f => `<li><i class="ri-check-line" style="color: #00E5FF; margin-right: 8px;"></i>${f}</li>`).join('')
-                    : `<li><i class="ri-check-line" style="color: #00E5FF; margin-right: 8px;"></i>Premium Features Included</li>`;
+                const pricingSuffix = pkg.pricing?.isOneTime ? 'one-time' : '/mo';
 
                 return `
-                <div class="dynamic-pkg-card ${pkg.isPopular ? 'popular' : ''}">
-                    ${pkg.isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}
-                    <div class="pkg-header">
-                        <h4>${pkg.title}</h4>
-                        <p class="service-name">${pkg.serviceId?.title || 'Premium Service'}</p>
-                    </div>
-                    
-                    <div class="pkg-price-box">
-                        <span class="symbol">${symbol}</span>
-                        <span class="amount">${priceValue.toLocaleString()}</span>
+                <article class="pricing-card ${isPopular ? 'popular' : ''}">
+                    ${isPopular ? '<div class="pricing-card__badge">Most Popular</div>' : ''}
+                    <div class="pricing-card__header">
+                        <h3 class="pricing-card__title">${pkg.title}</h3>
+                        <p class="pricing-card__description">
+                            ${pkg.description || 'Elevate your brand with this professional package.'}
+                        </p>
                     </div>
 
-                    <div class="pkg-description">
-                        ${pkg.description || 'Elevate your brand with this professional package.'}
+                    <div class="pricing-card__price-block">
+                        <div class="pricing-card__price">
+                            <span class="pricing-card__currency">${symbol}</span>
+                            <span class="pricing-card__amount">${priceValue.toLocaleString()}</span>
+                            <span class="pricing-card__suffix">${pricingSuffix}</span>
+                        </div>
                     </div>
 
-                    <ul class="pkg-features">
-                        ${featuresHtml}
-                    </ul>
-
-                    <a href="/package-detail.html?packageId=${pkg._id}" class="btn-pkg ${pkg.isPopular ? 'filled' : 'outline'}">
-                        View Details & Buy
-                    </a>
-                </div>
+                    <div class="pricing-card__actions">
+                        <a href="/package-detail.html?packageId=${pkg._id}" class="btn-pkg btn-pkg--ghost">
+                            <i class="ri-arrow-right-up-line"></i>
+                            <span>View Details</span>
+                        </a>
+                        <button class="btn-pkg btn-pkg--secondary" type="button" data-add-to-cart="${pkg._id}">
+                            <i class="ri-shopping-cart-line"></i>
+                            <span>Add To Cart</span>
+                        </button>
+                        <button class="btn-pkg btn-pkg--primary" type="button" data-buy-now="${pkg._id}">
+                            <i class="ri-flashlight-line"></i>
+                            <span>Buy Now</span>
+                        </button>
+                    </div>
+                </article>
                 `;
             }).join('');
 
             container.innerHTML = html;
+
+            container.querySelectorAll('[data-add-to-cart]').forEach((btn) => {
+                btn.addEventListener('click', () => addPackageToCart(btn.getAttribute('data-add-to-cart')));
+            });
+
+            container.querySelectorAll('[data-buy-now]').forEach((btn) => {
+                btn.addEventListener('click', () => buyNow(btn.getAttribute('data-buy-now')));
+            });
         }
 
         function showError(msg) {
             const container = document.getElementById('packages-container');
             if (container) {
-                container.innerHTML = `<div style="grid-column: 1/-1; color: red; text-align: center; padding: 40px;">${msg}</div>`;
+                container.innerHTML = `
+                    <div class="packages-error-state">
+                        <i class="ri-error-warning-line"></i>
+                        <h3>Unable to load packages</h3>
+                        <p>${msg}</p>
+                    </div>`;
             }
         }
     </script>

@@ -341,6 +341,15 @@
     <script src="/js/utils/auth.js"></script>
     <script src="/js/utils/global-ui.js"></script>
     <script>
+        let isGuestCartMode = false;
+
+        function getGuestItems() {
+            if (window.VibeGuestCart && typeof window.VibeGuestCart.getItems === 'function') {
+                return window.VibeGuestCart.getItems();
+            }
+            return [];
+        }
+
         async function loadCart() {
             const content = document.getElementById('cart-content');
 
@@ -351,15 +360,25 @@
                 }
 
                 if (!VibeAuth.isLoggedIn()) {
-                    content.innerHTML = `
-                <div class="login-state">
-                    <i class="ri-lock-line" style="font-size:3rem;color:#6B46C1;display:block;margin-bottom:16px"></i>
-                    <p style="font-size:1.1rem;font-weight:600;color:#1a0533">Please login to view your cart</p>
-                    <p>Your cart is saved securely on our servers — just login to access it.</p>
-                    <a href="/login.html" class="btn-browse">Login Now</a>
+                    isGuestCartMode = true;
+                    const guestItems = getGuestItems();
+
+                    if (!guestItems.length) {
+                        content.innerHTML = `
+                <div class="empty-state">
+                    <i class="ri-shopping-cart-line"></i>
+                    <p style="font-size:1.1rem;font-weight:600;color:#1a0533">Your guest cart is empty!</p>
+                    <p>Add packages now and checkout without creating an account.</p>
+                    <a href="/services.html" class="btn-browse">Browse Services</a>
                 </div>`;
+                        return;
+                    }
+
+                    renderCart(guestItems, true);
                     return;
                 }
+
+                isGuestCartMode = false;
 
                 const res = await fetch('/api/cart', { credentials: 'include' });
                 const data = await res.json();
@@ -375,31 +394,39 @@
                     return;
                 }
 
-                renderCart(data.cart);
+                const normalizedItems = data.cart.items.map(item => ({
+                    id: item._id,
+                    packageId: item.packageId?._id,
+                    title: item.packageId?.title || 'Package',
+                    serviceName: item.packageId?.serviceId?.title || 'VibeSphere Service',
+                    priceAtAdd: Number(item.priceAtAdd || 0),
+                    currency: item.currency || data.cart.currency || 'INR',
+                    symbol: (item.currency || data.cart.currency || 'INR') === 'INR' ? '₹' : '$'
+                }));
+
+                renderCart(normalizedItems, false);
             } catch (e) {
                 console.error("Cart Load Error:", e);
                 content.innerHTML = `<div class="empty-state"><p>Error loading cart. Please try again.</p></div>`;
             }
         }
 
-        function renderCart(cart) {
-            const items = cart.items;
+        function renderCart(items, isGuestMode) {
             const total = items.reduce((sum, item) => sum + (item.priceAtAdd || 0), 0);
             const currency = items[0]?.currency || 'INR';
             const symbol = currency === 'INR' ? '₹' : '$';
 
             const itemsHtml = items.map(item => {
-                const pkg = item.packageId;
-                const name = pkg?.title || 'Package';
+                const name = item.title || 'Package';
                 const price = item.priceAtAdd || 0;
                 return `
-            <div class="cart-item" id="item-${item._id}">
+            <div class="cart-item" id="item-${item.packageId}">
                 <div class="cart-item-info">
                     <div class="cart-item-title">${name}</div>
-                    <div class="cart-item-service">${pkg?.serviceId?.title || 'VibeSphere Service'}</div>
+                    <div class="cart-item-service">${item.serviceName || 'VibeSphere Service'}</div>
                 </div>
                 <div class="cart-item-price">${symbol}${price.toLocaleString()}</div>
-                <button class="btn-remove" onclick="removeItem('${pkg?._id}')">
+                <button class="btn-remove" onclick="removeItem('${item.packageId}')">
                     <i class="ri-delete-bin-line"></i>
                 </button>
             </div>`;
@@ -410,7 +437,7 @@
             <h2>Order Summary</h2>
             ${items.map(item => `
                 <div class="summary-row">
-                    <span>${item.packageId?.title || 'Package'}</span>
+                    <span>${item.title || 'Package'}</span>
                     <span>${symbol}${(item.priceAtAdd || 0).toLocaleString()}</span>
                 </div>`).join('')}
             <div class="summary-row total">
@@ -421,6 +448,7 @@
                 Proceed to Checkout →
             </button>
             <button class="btn-clear" onclick="clearCart()">Clear Cart</button>
+            ${isGuestMode ? '<p style="margin-top:10px;font-size:0.85rem;color:#666">Guest cart will stay on this device only.</p>' : ''}
         </div>`;
 
             document.getElementById('cart-content').innerHTML = `
@@ -431,6 +459,17 @@
         }
 
         async function removeItem(packageId) {
+            if (isGuestCartMode) {
+                if (window.VibeGuestCart && typeof window.VibeGuestCart.removeItem === 'function') {
+                    window.VibeGuestCart.removeItem(packageId);
+                    if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
+                        window.VibeUI.updateCartCount();
+                    }
+                }
+                loadCart();
+                return;
+            }
+
             try {
                 const res = await fetch(`/api/cart/${packageId}`, {
                     method: 'DELETE',
@@ -443,6 +482,18 @@
 
         async function clearCart() {
             if (!confirm('Clear all items from cart?')) return;
+
+            if (isGuestCartMode) {
+                if (window.VibeGuestCart && typeof window.VibeGuestCart.clear === 'function') {
+                    window.VibeGuestCart.clear();
+                    if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
+                        window.VibeUI.updateCartCount();
+                    }
+                }
+                loadCart();
+                return;
+            }
+
             try {
                 await fetch('/api/cart', { method: 'DELETE', credentials: 'include' });
                 loadCart();
@@ -450,7 +501,10 @@
         }
 
         function proceedToCheckout() {
-            // Route to existing checkout page — passes cart info via sessionStorage
+            if (isGuestCartMode) {
+                window.location.href = '/checkout?guest=1';
+                return;
+            }
             window.location.href = '/checkout';
         }
 

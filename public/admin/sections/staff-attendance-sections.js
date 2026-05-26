@@ -693,9 +693,15 @@
                     btn.innerText = "Assign Lead 🚀";
                 };
 
-                window.viewStaffWork = function (email) {
+                window.viewStaffWork = async function (email) {
                     const data = globalPerformanceData[email];
                     if (!data || !data.details) return;
+
+                    if ((!adminUiState.staffAssignOptions || !adminUiState.staffAssignOptions.length) && typeof populateStaffAssignDropdown === 'function') {
+                        await populateStaffAssignDropdown(true);
+                    }
+
+                    const staffAssignOptions = Array.isArray(adminUiState.staffAssignOptions) ? adminUiState.staffAssignOptions : [];
 
                     document.getElementById('workModalTitle').innerText = `Work Details: ${email}`;
                     const tbody = document.getElementById('workModalBody');
@@ -710,14 +716,35 @@
                             if (task.status === 'interested') statusColor = 'green';
                             if (task.status === 'rejected' || task.status === 'not-answering') statusColor = 'red';
 
+                            const currentAssignedTo = String(task.assignedTo || email || '').trim().toLowerCase();
+                            const staffOptionsMarkup = staffAssignOptions.map((staff) => {
+                                const optionEmail = String(staff.email || '').trim().toLowerCase();
+                                const selected = optionEmail === currentAssignedTo ? 'selected' : '';
+                                return `<option value="${escapeHtml(optionEmail)}" ${selected}>${escapeHtml(staff.name || 'Staff Member')}</option>`;
+                            }).join('');
+                            const reassignSelectId = `task-reassign-${task._id}`;
+
                             tbody.innerHTML += `
                     <tr>
                         <td><strong>${task.clientName}</strong><br><small>${task.contactNumber}</small></td>
                         <td>${task.servicePitch}</td>
                         <td style="color:${statusColor}; font-weight:bold; text-transform:uppercase; font-size:12px;">${task.status}</td>
-                        <td>${task.aiScore ? `<span style="font-size:13px;font-weight:bold;background:${task.aiScore.includes('Hot') ? '#fef2f2' : task.aiScore.includes('Cold') ? '#eff6ff' : '#fffbeb'};padding:4px 10px;border-radius:20px;">${task.aiScore}</span>` : '<span style="color:#999;font-size:12px;">Scoring...</span>'}</td>
-                        <td style="background: #f9f9f9; font-style: italic;">${task.notes || '<span style="color:#999;">No review yet</span>'}</td>
-                        <td><button onclick="deleteLead('${task._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">🗑️ Delete</button></td>
+                        <td style="background:#f9f9f9; font-style:italic;">
+                            ${task.aiScore ? `<div style="margin-bottom:6px;"><span style="font-size:13px;font-weight:bold;background:${task.aiScore.includes('Hot') ? '#fef2f2' : task.aiScore.includes('Cold') ? '#eff6ff' : '#fffbeb'};padding:4px 10px;border-radius:20px;">${task.aiScore}</span></div>` : '<div style="margin-bottom:6px;"><span style="color:#999;font-size:12px;">Scoring...</span></div>'}
+                            ${task.notes || '<span style="color:#999;">No review yet</span>'}
+                        </td>
+                        <td>
+                            <div style="display:flex;flex-direction:column;gap:8px;min-width:220px;">
+                                <select id="${reassignSelectId}" data-current-assigned="${escapeHtml(currentAssignedTo)}" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;" ${staffAssignOptions.length ? '' : 'disabled'}>
+                                    <option value="">-- Select staff --</option>
+                                    ${staffOptionsMarkup}
+                                </select>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                    <button onclick="reassignLeadTask('${task._id}', '${reassignSelectId}')" class="btn-publish" style="padding:6px 10px; font-size:12px;">Reassign</button>
+                                    <button onclick="deleteLead('${task._id}')" class="delete-btn" style="padding:6px 10px; font-size:12px;">🗑️ Delete</button>
+                                </div>
+                            </div>
+                        </td>
                     </tr>`;
                         });
                     }
@@ -736,6 +763,43 @@
                             fetchStaffData();
                         } else { alert("❌ Error: " + result.error); }
                     } catch (e) { alert("Failed to connect to server"); }
+                };
+
+                window.reassignLeadTask = async function (taskId, selectId) {
+                    const selectNode = document.getElementById(selectId);
+                    const newAssignedTo = String(selectNode?.value || '').trim().toLowerCase();
+                    const currentAssignedTo = String(selectNode?.dataset?.currentAssigned || '').trim().toLowerCase();
+
+                    if (!newAssignedTo) {
+                        alert('⚠️ Please select a staff member to reassign this task.');
+                        return;
+                    }
+
+                    if (currentAssignedTo && newAssignedTo === currentAssignedTo) {
+                        alert('ℹ️ Task is already assigned to this staff member.');
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch('/api/admin/reassign-task', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ taskId, assignedTo: newAssignedTo })
+                        });
+                        const result = await res.json();
+
+                        if (result.success) {
+                            alert('✅ ' + (result.message || 'Task reassigned successfully.'));
+                            await fetchStaffData();
+                            await viewStaffWork(newAssignedTo);
+                            return;
+                        }
+
+                        alert('⚠️ ' + (result.message || result.error || 'Could not reassign task.'));
+                    } catch (e) {
+                        alert('Server connection failed');
+                    }
                 };
 
                 // --- NOTICES ---
@@ -965,13 +1029,13 @@
                     if (!select) return;
 
                     try {
-                        const res = await fetch('/api/admin/staff-directory?all=1', { credentials: 'include' });
+                        const res = await fetch('/api/admin/staff-list', { credentials: 'include' });
                         const data = await res.json();
                         if (!data.success) throw new Error(data.message || 'Failed to load staff list.');
 
                         select.innerHTML = '<option value="">Select staff member</option>';
                         (data.staff || []).forEach((staff) => {
-                            select.innerHTML += `<option value="${staff.email}">${escapeHtml(staff.name)} (${escapeHtml(staff.email)})</option>`;
+                            select.innerHTML += `<option value="${staff.email}">${escapeHtml(staff.name || 'Staff Member')}</option>`;
                         });
                         adminBountyStaffOptionsLoaded = true;
                     } catch (e) {

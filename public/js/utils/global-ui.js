@@ -23,27 +23,89 @@ document.addEventListener('DOMContentLoaded', async () => {
     VibeUI.initAccountDropdown();
 });
 
+const GUEST_CART_KEY = 'vibeGuestCart';
+const LEGACY_GUEST_CART_KEY = 'vibeCart';
+
+function readGuestCart() {
+    try {
+        const raw = localStorage.getItem(GUEST_CART_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed) && parsed.length) {
+            return parsed;
+        }
+
+        // Backward compatibility for older guest cart key.
+        const legacyRaw = localStorage.getItem(LEGACY_GUEST_CART_KEY);
+        const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : [];
+        if (Array.isArray(legacyParsed) && legacyParsed.length) {
+            // Migrate once to the new key and clean up legacy storage.
+            localStorage.setItem(GUEST_CART_KEY, JSON.stringify(legacyParsed));
+            localStorage.removeItem(LEGACY_GUEST_CART_KEY);
+            return legacyParsed;
+        }
+
+        return [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeGuestCart(items) {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+    localStorage.removeItem(LEGACY_GUEST_CART_KEY);
+}
+
+const VibeGuestCart = {
+    key: GUEST_CART_KEY,
+    getItems: () => readGuestCart(),
+    setItems: (items) => writeGuestCart(Array.isArray(items) ? items : []),
+    getCount: () => readGuestCart().length,
+    addItem: (item) => {
+        if (!item || !item.packageId) return { added: false, reason: 'invalid' };
+        const items = readGuestCart();
+        const exists = items.some((x) => x.packageId === item.packageId);
+        if (exists) return { added: false, reason: 'exists' };
+        items.push(item);
+        writeGuestCart(items);
+        return { added: true };
+    },
+    removeItem: (packageId) => {
+        const items = readGuestCart().filter((x) => x.packageId !== packageId);
+        writeGuestCart(items);
+    },
+    clear: () => writeGuestCart([])
+};
+
 const VibeUI = {
     updateCartCount: async () => {
         const badge = document.getElementById('cart-count');
         if (!badge) return;
 
-        try {
-            const res = await fetch('/api/cart', { credentials: 'include' });
-            if (!res.ok) {
-                badge.style.display = 'none';
-                return;
-            }
-            const data = await res.json();
-            const count = data.cart?.items?.length || 0;
+        const setBadge = (count) => {
             if (count > 0) {
-                badge.textContent = count;
+                badge.textContent = String(count);
                 badge.style.display = 'flex';
             } else {
                 badge.style.display = 'none';
             }
+        };
+
+        try {
+            if (!VibeAuth.isLoggedIn()) {
+                setBadge(VibeGuestCart.getCount());
+                return;
+            }
+
+            const res = await fetch('/api/cart', { credentials: 'include' });
+            if (!res.ok) {
+                setBadge(VibeGuestCart.getCount());
+                return;
+            }
+            const data = await res.json();
+            const count = data.cart?.items?.length || 0;
+            setBadge(count);
         } catch (e) {
-            badge.style.display = 'none';
+            setBadge(VibeGuestCart.getCount());
         }
     },
     updateNavAuth: () => {
@@ -108,3 +170,4 @@ const VibeUI = {
     }
 };
 window.VibeUI = VibeUI;
+window.VibeGuestCart = VibeGuestCart;

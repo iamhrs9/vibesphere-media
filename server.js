@@ -194,6 +194,33 @@ async function checkAuth(req, res, next) {
     }
 }
 
+async function optionalAuth(req, _res, next) {
+    const token = req.cookies?.token;
+    req.user = null;
+
+    if (!token) return next();
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+
+        // Keep admin payload lightweight for optional context use.
+        if (decoded.role === 'Admin') {
+            req.user = { role: 'Admin', email: decoded.email || null };
+            return next();
+        }
+
+        const user = await User.findOne({ email: decoded.email }).select('-password').lean();
+        if (user && !user.isBanned) {
+            req.user = user;
+        }
+    } catch (_err) {
+        // For optional auth flows, ignore invalid/expired tokens and continue as guest.
+        req.user = null;
+    }
+
+    next();
+}
+
 async function checkStaffSession(req, res, next) {
     const authHeader = String(req.headers.authorization || '');
     const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
@@ -434,7 +461,7 @@ async function getMonthlyApprovedCommissionSummary(staffEmail, month, year) {
     const [orders, bountyTasks] = await Promise.all([
         Order.find({
             assignedStaff: normalizedEmail,
-            status: 'Done',
+            workStatus: 'Completed',
             commissionValue: { $gt: 0 }
         })
             .select('orderId customerName package date commissionValue')
@@ -3062,17 +3089,23 @@ app.post('/api/client/check-onboarding', async (req, res) => {
 const orderSchema = new mongoose.Schema({
     orderId: String,
     paymentId: String,
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     customerName: String,
     email: String,
     phone: String,
     package: String,
     price: String,
+    orderAmount: { type: Number, default: 0 },
+    orderItems: { type: Array, default: [] },
     instaLink: String,
     date: String,
-    status: { type: String, default: 'Pending' },
+    paymentStatus: { type: String, default: 'Pending' },
+    workStatus: { type: String, default: 'Work Pending' },
+    status: { type: String, default: 'Work Pending' },
 
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
+    assignedAt: { type: Date, default: null },
     commissionValue: { type: Number, default: 0 }, // 20% cut kitna bana
     payoutStatus: { type: String, default: 'Unpaid' } // Unpaid ya Paid
 });
@@ -4068,6 +4101,33 @@ app.get('/api/staff/download-payslip', async (req, res) => {
     } catch (e) {
         console.error('Staff payslip PDF error:', e.message);
         res.status(500).json({ success: false, message: 'Failed to generate payslip PDF.' });
+    }
+});
+
+app.post('/api/staff/download-id-card', async (req, res) => {
+    try {
+        const decoded = parseTokenFromRequest(req);
+        if (!decoded || decoded.role !== 'Staff') {
+            return res.status(401).json({ success: false, message: 'Unauthorized access.' });
+        }
+
+        const { htmlContent, cardType } = req.body;
+        if (!htmlContent) {
+            return res.status(400).json({ success: false, message: 'HTML payload missing.' });
+        }
+
+        // Generate the PDF directly from the styled HTML
+        const pdfBuffer = await renderHtmlToPdfBuffer(htmlContent);
+
+        const safeCardType = String(cardType || 'Card').charAt(0).toUpperCase() + String(cardType || 'Card').slice(1);
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=VibeSphere_${safeCardType}_ID.pdf`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+    } catch (e) {
+        console.error('ID Card PDF Generation error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to generate ID card PDF.' });
     }
 });
 
@@ -5688,9 +5748,14 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ==========================================
 
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
-app.post('/api/create-payment', async (req, res) => {
+app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
         let { amount, currency } = req.body;
+        const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+
+        if (!razorpayKeyId) {
+            return res.status(500).json({ success: false, error: 'Payment config missing' });
+        }
 
         console.log(`📝 Payment Request: ${amount} ${currency}`);
 
@@ -5709,25 +5774,53 @@ app.post('/api/create-payment', async (req, res) => {
         };
 
         const order = await razorpay.orders.create(options);
-        res.json(order);
+        res.json({ ...order, razorpayKeyId });
     } catch (error) {
         console.error("❌ Payment Error:", error);
         res.status(500).send(error);
     }
 });
 
-app.post('/api/verify-payment', async (req, res) => {
+app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails } = req.body;
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
         .update(body.toString()).digest('hex');
 
     if (expectedSignature === razorpay_signature) {
+        let normalizedOrderAmount = 0;
+        const amountCandidate = orderDetails?.price ?? orderDetails?.amount ?? 0;
+        let resolvedUserId = req.user?._id || null;
+        const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
+
+        if (typeof amountCandidate === 'number') {
+            normalizedOrderAmount = Number.isFinite(amountCandidate) ? amountCandidate : 0;
+        } else if (typeof amountCandidate === 'string') {
+            const cleanedAmount = amountCandidate.replace(/,/g, '').replace(/[^\d.-]/g, '');
+            const parsedAmount = Number(cleanedAmount);
+            normalizedOrderAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+        }
+
+        // If no active session is available, try to map to an existing user by checkout email.
+        if (!resolvedUserId && orderDetails?.email) {
+            try {
+                const existingUser = await User.findOne({ email: String(orderDetails.email).toLowerCase().trim() }).select('_id').lean();
+                resolvedUserId = existingUser?._id || null;
+            } catch (_err) {
+                resolvedUserId = null;
+            }
+        }
+
         const newOrder = new Order({
             orderId: "#ORD-" + Math.floor(100000 + Math.random() * 900000),
             paymentId: razorpay_payment_id,
-            status: 'Done',
+            paymentStatus: 'Paid',
+            workStatus: 'Work Pending',
+            status: 'Work Pending',
+            userId: resolvedUserId,
             ...orderDetails,
+            orderAmount: normalizedOrderAmount,
+            orderItems: resolvedOrderItems,
             date: new Date().toLocaleString()
         });
 
@@ -5812,13 +5905,18 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // GET Current Session Info (Replacement for /api/client/me)
-app.get('/api/auth/me', checkAuth, (req, res) => {
+// Guest-safe: return success=false instead of 401 when no valid session exists.
+app.get('/api/auth/me', optionalAuth, (req, res) => {
+    if (!req.user) {
+        return res.json({ success: false, user: null });
+    }
+
     res.json({
         success: true,
         user: {
-            _id: req.user._id,
-            name: req.user.name,
-            email: req.user.email,
+            _id: req.user._id || null,
+            name: req.user.name || null,
+            email: req.user.email || null,
             role: req.user.role || 'Client'
         }
     });
@@ -5904,14 +6002,16 @@ app.get('/api/download-invoice/:orderId', async (req, res) => {
 });
 // 🟢 1. UPDATE STATUS API (SMART COMMISSION ENGINE)
 app.post('/api/admin/update-status', checkAuth, async (req, res) => {
-    const { id, status } = req.body;
+    const { id, status, workStatus } = req.body;
+    const rawWorkStatus = String(workStatus || status || '').trim() || 'Work Pending';
+    const nextWorkStatus = rawWorkStatus === 'Processing' ? 'In Progress' : rawWorkStatus;
 
     try {
         const order = await Order.findOne({ orderId: id });
         if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
         // 🟢 COMMISSION ENGINE LOGIC
-        if (status === 'Done' && order.status !== 'Done' && order.assignedStaff) {
+        if (nextWorkStatus === 'Completed' && String(order.workStatus || order.status || '').trim() !== 'Completed' && order.assignedStaff) {
             // Price ko safely clean karo (Agar blank ho toh 0 maan lo)
             let rawPrice = order.price ? order.price.toString() : "0";
             let cleanPrice = parseFloat(rawPrice.replace(/[^\d.]/g, '')) || 0;
@@ -5926,14 +6026,16 @@ app.post('/api/admin/update-status', checkAuth, async (req, res) => {
             }
         }
 
-        order.status = status;
+        order.workStatus = nextWorkStatus;
+        order.status = nextWorkStatus; // compatibility alias for legacy UI/code paths
         const updatedOrder = await order.save();
 
         // Client dashboard live signal
         if (updatedOrder && updatedOrder.email) {
             io.to(updatedOrder.email).emit('status_updated', {
                 orderId: updatedOrder.orderId,
-                status: updatedOrder.status,
+                status: updatedOrder.workStatus,
+                paymentStatus: updatedOrder.paymentStatus,
                 package: updatedOrder.package
             });
         }
@@ -5956,6 +6058,8 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
         if (!order) return res.json({ success: false, message: "Order not found" });
 
         const cleanEmail = staffEmail.toLowerCase().trim();
+        const now = Date.now();
+        const reassignmentWindowMs = 24 * 60 * 60 * 1000;
 
         // 🛡️ NAYA FIX: Pehle check karo ki ye email exist bhi karta hai ya nahi?
         const staffExists = await Staff.findOne({ email: cleanEmail });
@@ -5963,10 +6067,23 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
             return res.json({ success: false, message: "Staff account not found! Email ki spelling check karo." });
         }
 
-        order.assignedStaff = cleanEmail;
+        if (order.assignedStaff === cleanEmail) {
+            return res.json({ success: true, message: 'Order is already assigned to this staff member.' });
+        }
 
-        // 🚀 SUPER FIX: Agar order pehle se 'Done' hai, toh assignment ke waqt hi commission de do!
-        if (order.status === 'Done' && (!order.commissionValue || order.commissionValue === 0)) {
+        const isReassignment = Boolean(order.assignedStaff && order.assignedStaff !== cleanEmail);
+        if (isReassignment && order.assignedAt) {
+            const assignedAtMs = new Date(order.assignedAt).getTime();
+            if (Number.isFinite(assignedAtMs) && (now - assignedAtMs) > reassignmentWindowMs) {
+                return res.status(400).json({ success: false, message: 'Cannot reassign after 24 hours' });
+            }
+        }
+
+        order.assignedStaff = cleanEmail;
+        order.assignedAt = new Date(now);
+
+        // 🚀 SUPER FIX: Agar order pehle se Completed hai, toh assignment ke waqt hi commission de do!
+        if ((order.workStatus === 'Completed' || order.status === 'Completed') && (!order.commissionValue || order.commissionValue === 0)) {
             let rawPrice = order.price ? order.price.toString() : "0";
             let cleanPrice = parseFloat(rawPrice.replace(/[^\d.]/g, '')) || 0;
             let commission = cleanPrice * 0.20;
@@ -5985,7 +6102,12 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
         // 🟢 REAL-TIME SYNC
         io.emit('order_assigned', updatedOrder);
 
-        res.json({ success: true, message: "Staff Assigned & Commission Logic Applied!" });
+        res.json({
+            success: true,
+            message: isReassignment
+                ? 'Order reassigned successfully. Assignment timer reset.'
+                : 'Staff assigned successfully.'
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, error: "Error assigning staff" });
@@ -6243,6 +6365,23 @@ app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
     } catch (e) {
         console.error('Admin staff directory error:', e.message);
         res.status(500).json({ success: false, message: 'Failed to fetch staff directory.' });
+    }
+});
+
+app.get('/api/admin/staff-list', checkAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Admin access required.' });
+        }
+
+        const staff = await Staff.find({}, 'name email role')
+            .sort({ name: 1, email: 1 })
+            .lean();
+
+        res.json({ success: true, staff });
+    } catch (e) {
+        console.error('Admin staff list error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to fetch staff list.' });
     }
 });
 
@@ -6844,18 +6983,28 @@ app.get('/api/admin/staff-performance', checkAuth, async (req, res) => {
 app.post('/api/admin/add-task', checkAuth, async (req, res) => {
     try {
         const { clientName, contactNumber, servicePitch, assignedTo } = req.body;
+        const normalizedAssignedTo = String(assignedTo || '').trim().toLowerCase();
+
+        if (!normalizedAssignedTo) {
+            return res.status(400).json({ success: false, error: 'Assigned staff is required.' });
+        }
+
+        const staffExists = await Staff.findOne({ email: normalizedAssignedTo }).select('_id').lean();
+        if (!staffExists) {
+            return res.status(404).json({ success: false, error: 'Assigned staff member not found.' });
+        }
 
         const newTask = new Task({
             clientName,
             contactNumber,
             servicePitch,
-            assignedTo,
+            assignedTo: normalizedAssignedTo,
             status: 'pending'
         });
         await newTask.save();
 
         // 🟢 REAL-TIME: Notify assigned staff and Admin
-        io.to(assignedTo).emit('lead_assigned', { clientName, servicePitch });
+        io.to(normalizedAssignedTo).emit('lead_assigned', { clientName, servicePitch });
         io.emit('staff_list_updated'); // Refresh Admin's staffView if needed
 
         // 🧠 AI Lead Scoring (Background - Non-blocking)
@@ -6863,6 +7012,57 @@ app.post('/api/admin/add-task', checkAuth, async (req, res) => {
 
         res.json({ success: true, message: "Lead Assigned Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to assign lead" }); }
+});
+
+app.post('/api/admin/reassign-task', checkAuth, async (req, res) => {
+    try {
+        const { taskId, assignedTo } = req.body;
+        const task = await Task.findById(taskId);
+
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found.' });
+        }
+
+        const normalizedAssignedTo = String(assignedTo || '').trim().toLowerCase();
+        if (!normalizedAssignedTo) {
+            return res.status(400).json({ success: false, message: 'Assigned staff is required.' });
+        }
+
+        const staffExists = await Staff.findOne({ email: normalizedAssignedTo }).select('_id').lean();
+        if (!staffExists) {
+            return res.status(404).json({ success: false, message: 'Assigned staff member not found.' });
+        }
+
+        const currentAssignedTo = String(task.assignedTo || '').trim().toLowerCase();
+        if (currentAssignedTo && currentAssignedTo === normalizedAssignedTo) {
+            return res.json({ success: true, message: 'Task is already assigned to this staff member.' });
+        }
+
+        if (currentAssignedTo && currentAssignedTo !== normalizedAssignedTo) {
+            const assignedAtMs = new Date(task.dateAssigned).getTime();
+            const reassignmentWindowMs = 24 * 60 * 60 * 1000;
+
+            if (Number.isFinite(assignedAtMs) && (Date.now() - assignedAtMs) > reassignmentWindowMs) {
+                return res.status(400).json({ success: false, message: 'Cannot reassign after 24 hours' });
+            }
+        }
+
+        task.assignedTo = normalizedAssignedTo;
+        task.dateAssigned = new Date();
+        await task.save();
+
+        io.to(normalizedAssignedTo).emit('lead_assigned', {
+            clientName: task.clientName,
+            servicePitch: task.servicePitch
+        });
+        io.emit('task_updated', task);
+        io.emit('staff_list_updated');
+
+        res.json({ success: true, message: 'Task reassigned successfully.' });
+    } catch (e) {
+        console.error('Task reassign error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to reassign task.' });
+    }
 });
 
 // 6. Post a Notice (Notification)

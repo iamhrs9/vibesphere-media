@@ -12,13 +12,19 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.iamhrs9.staffmobileapp"
     },
     "plugins": [
       "expo-asset",
       "expo-secure-store",
       "expo-font",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "676c0783-9058-410c-bd1a-14d9ed94c2b8"
+      }
+    }
   }
 }

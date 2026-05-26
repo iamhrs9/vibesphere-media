@@ -16,15 +16,17 @@ import { DrawerActions, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import QRCode from 'react-native-qrcode-svg';
 
 import apiClient from '../api/client';
 import { COLORS, SHADOWS, SIZES } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../utils/staffWorkspace';
-import QRCode from 'react-native-qrcode-svg';
 
-const CARD_PATTERN_ROWS = 8;
-const CARD_PATTERN_COLUMNS = 12;
+const CARD_ASPECT_RATIO = 85.6 / 54;
+const COMPANY_ADDRESS = 'VibeSphere Media HQ, Jaipur, Rajasthan, India';
+const RETURN_NOTE = 'Property of VibeSphere Media. If found, please return.';
+const FALLBACK_EMAIL = 'staff@vibespheremedia.in';
 
 function getApiErrorMessage(error, fallback) {
   return (
@@ -49,7 +51,35 @@ function getVerificationUrl(empId) {
   return `https://vibespheremedia.in/verify-staff?id=${encodeURIComponent(empId)}`;
 }
 
+function getVerificationSeed(profile) {
+  return profile?.qrCodeString || getVerificationUrl(profile?.empId);
+}
 
+function getStaffPhoneValue(profile) {
+  const phone =
+    profile?.phone ||
+    profile?.mobile ||
+    profile?.phoneNumber ||
+    profile?.contactNumber ||
+    profile?.contactNo;
+
+  return phone ? String(phone) : 'Not available';
+}
+
+function getBrandLogoUrl() {
+  const origin = getServerOrigin(apiClient?.defaults?.baseURL);
+  return origin ? `${origin}/logo.webp` : '';
+}
+
+function getQrImageUrl(value) {
+  if (!value) {
+    return '';
+  }
+
+  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=16&data=${encodeURIComponent(
+    value
+  )}`;
+}
 
 function formatJoiningDate(value) {
   if (!value) {
@@ -78,10 +108,14 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function buildIdCardExportHtml(profile, verificationUrl) {
+function buildIdCardExportHtml(profile, verificationSeed) {
   const employeeId = profile?.empId || 'PENDING-ID';
-  const joiningDate = formatJoiningDate(profile?.joiningDate);
   const initials = getInitials(profile?.name || 'VibeSphere');
+  const phoneLabel = getStaffPhoneValue(profile);
+  const emailLabel = profile?.email || FALLBACK_EMAIL;
+  const roleLabel = profile?.role || 'Sales Executive';
+  const qrImageUrl = getQrImageUrl(verificationSeed || employeeId);
+  const logoUrl = getBrandLogoUrl();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -91,234 +125,439 @@ function buildIdCardExportHtml(profile, verificationUrl) {
   <title>VibeSphere Staff ID Card</title>
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --card-width: 85.6mm;
+      --card-height: 54mm;
+      --card-radius: 10px;
+      --surface: #08111d;
+      --surface-soft: #102033;
+      --surface-deep: #0c1725;
+      --line: rgba(255,255,255,0.14);
+      --text-soft: rgba(255,255,255,0.72);
+    }
     body {
       margin: 0;
       min-height: 100vh;
+      padding: 32px 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      background:
+        radial-gradient(circle at top right, rgba(82, 120, 220, 0.18), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(255,255,255,0.06), transparent 22%),
+        linear-gradient(180deg, #08111d 0%, #0d1725 100%);
       font-family: Arial, sans-serif;
-      background: linear-gradient(180deg, #091321 0%, #13233b 55%, #0b1728 100%);
-      color: #f8fbff;
+      color: #ffffff;
+    }
+    .sheet {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 880px;
+    }
+    .panel {
+      width: min(100%, 360px);
+    }
+    .side-label {
+      margin: 0 0 8px;
+      color: rgba(255,255,255,0.62);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      text-align: center;
     }
     .card {
-      width: 100%;
-      max-width: 420px;
-      padding: 28px;
-      border-radius: 34px;
-      background: linear-gradient(145deg, #10233d 0%, #182c48 48%, #273446 100%);
-      border: 1px solid rgba(255,255,255,0.10);
-      box-shadow: 0 32px 70px rgba(0,0,0,0.35);
       position: relative;
+      width: 100%;
+      aspect-ratio: 85.6 / 54;
+      min-height: 224px;
+      padding: 16px;
+      border-radius: var(--card-radius);
       overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.32);
+      background: linear-gradient(145deg, #102033 0%, #162a44 46%, #0c1725 100%);
     }
-    .card:before,
-    .card:after {
+    .card.back {
+      background: linear-gradient(145deg, #11253a 0%, #15304b 48%, #0d1929 100%);
+    }
+    .card::before,
+    .card::after {
       content: '';
       position: absolute;
       border-radius: 999px;
-      filter: blur(0px);
+      pointer-events: none;
     }
-    .card:before {
-      width: 240px;
-      height: 240px;
-      right: -90px;
-      top: -110px;
-      background: rgba(84, 128, 255, 0.22);
+    .card::before {
+      width: 170px;
+      height: 170px;
+      top: -92px;
+      right: -50px;
+      background: rgba(76, 121, 232, 0.26);
     }
-    .card:after {
-      width: 180px;
-      height: 180px;
-      left: -70px;
-      bottom: -80px;
-      background: rgba(255, 255, 255, 0.08);
+    .card::after {
+      width: 120px;
+      height: 120px;
+      bottom: -65px;
+      left: -38px;
+      background: rgba(255,255,255,0.10);
     }
-    .top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .card > * {
       position: relative;
       z-index: 1;
     }
-    .chip {
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.08);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      text-align: right;
+      min-width: 0;
     }
     .brand-mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.16);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      padding: 6px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
+      overflow: hidden;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .brand-mark span {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .brand-copy {
+      min-width: 0;
+    }
+    .brand-copy strong,
+    .brand-copy span {
+      display: block;
+    }
+    .brand-copy strong {
+      font-size: 14px;
       font-weight: 800;
     }
-    .brand small {
-      display: block;
-      color: rgba(255,255,255,0.72);
-      font-size: 11px;
-      letter-spacing: 0.10em;
+    .brand-copy span {
+      margin-top: 2px;
+      color: var(--text-soft);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
     }
-    .brand strong {
-      display: block;
-      font-size: 14px;
-      margin-top: 2px;
+    .front-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: calc(100% - 50px);
     }
-    .avatar-wrap {
-      width: 126px;
-      height: 126px;
-      padding: 6px;
+    .identity {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+    .photo-shell {
+      width: 84px;
+      height: 84px;
+      padding: 5px;
       border-radius: 999px;
-      margin: 26px auto 16px;
       background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 22px 36px rgba(0,0,0,0.26);
-      position: relative;
-      z-index: 1;
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.22);
     }
-    .avatar {
+    .photo-shell img,
+    .photo-fallback {
       width: 100%;
       height: 100%;
       border-radius: 999px;
-      background: radial-gradient(circle at top, #2f4c72 0%, #16263b 70%);
+    }
+    .photo-shell img {
+      object-fit: cover;
+      display: block;
+      background: rgba(255,255,255,0.1);
+    }
+    .photo-fallback {
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
-      font-size: 34px;
+      background: #223750;
+      color: #ffffff;
+      font-size: 26px;
       font-weight: 800;
-    }
-    .avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      letter-spacing: -0.04em;
     }
     .name {
       margin: 0;
-      text-align: center;
-      font-size: 28px;
+      font-size: 20px;
+      line-height: 1.05;
       font-weight: 800;
-      position: relative;
-      z-index: 1;
     }
     .role {
-      margin: 6px 0 18px;
-      text-align: center;
-      color: rgba(255,255,255,0.72);
-      font-size: 15px;
-      position: relative;
-      z-index: 1;
-    }
-    .details {
-      display: grid;
-      gap: 10px;
-      position: relative;
-      z-index: 1;
-    }
-    .detail {
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.12);
-    }
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: rgba(255,255,255,0.62);
-      margin-bottom: 4px;
-    }
-    .value {
-      font-size: 15px;
-      font-weight: 700;
-      word-break: break-word;
-    }
-    .scan {
-      margin-top: 20px;
-      padding: 18px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.10);
-      position: relative;
-      z-index: 1;
-    }
-    .scan h3 {
-      margin: 0 0 8px;
-      font-size: 14px;
-    }
-    .scan p {
       margin: 0;
-      color: rgba(255,255,255,0.70);
-      line-height: 1.6;
+      color: var(--text-soft);
       font-size: 12px;
-      word-break: break-word;
+      font-weight: 600;
+    }
+    .info-list {
+      display: grid;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .info-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      color: #ffffff;
+      background: rgba(81, 118, 204, 0.8);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .info-copy {
+      min-width: 0;
+    }
+    .info-copy span,
+    .info-copy strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .info-copy span {
+      color: rgba(255,255,255,0.58);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .info-copy strong {
+      margin-top: 2px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .back-body {
+      height: calc(100% - 50px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+    .qr-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .qr-shell {
+      width: 144px;
+      height: 144px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 0 1px rgba(16, 35, 61, 0.08);
+    }
+    .qr-shell img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .qr-fallback {
+      color: #10233d;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .qr-caption {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.68);
+    }
+    .back-footer {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+    }
+    .back-footer p {
+      margin: 0;
+      text-align: center;
+    }
+    .back-address {
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .back-note {
+      font-size: 10px;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.72);
+    }
+    @media print {
+      @page {
+        margin: 12mm;
+      }
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+      .sheet {
+        justify-content: flex-start;
+        gap: 6mm;
+      }
+      .panel {
+        width: var(--card-width);
+      }
+      .side-label {
+        display: none;
+      }
+      .card {
+        width: var(--card-width);
+        height: var(--card-height);
+        min-height: 0;
+        box-shadow: none;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="top">
-      <div class="chip">Virtual Staff ID</div>
-      <div class="brand">
-        <div>
-          <small>VibeSphere Staff</small>
-          <strong>Digital Wallet Pass</strong>
+  <div class="sheet">
+    <section class="panel">
+      <p class="side-label">Front</p>
+      <article class="card front">
+        <div class="header">
+          <div class="brand">
+            <div class="brand-mark">
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="VibeSphere Media logo">`
+                  : `<span>VS</span>`
+              }
+            </div>
+            <div class="brand-copy">
+              <strong>VibeSphere Media</strong>
+              <span>Staff ID Card</span>
+            </div>
+          </div>
         </div>
-        <div class="brand-mark">VS</div>
-      </div>
-    </div>
-    <div class="avatar-wrap">
-      <div class="avatar">
-        ${
-          profile?.profilePhoto
-            ? `<img src="${escapeHtml(profile.profilePhoto)}" alt="${escapeHtml(
-                profile?.name || 'Staff Member'
-              )}">`
-            : escapeHtml(initials)
-        }
-      </div>
-    </div>
-    <h1 class="name">${escapeHtml(profile?.name || 'Staff Member')}</h1>
-    <div class="role">${escapeHtml(profile?.role || 'Sales Executive')}</div>
-    <div class="details">
-      <div class="detail">
-        <div class="label">Employee Name</div>
-        <div class="value">${escapeHtml(profile?.name || 'Staff Member')}</div>
-      </div>
-      <div class="detail">
-        <div class="label">Designation</div>
-        <div class="value">${escapeHtml(profile?.role || 'Sales Executive')}</div>
-      </div>
-      <div class="detail">
-        <div class="label">Employee ID</div>
-        <div class="value">${escapeHtml(employeeId)}</div>
-      </div>
-      <div class="detail">
-        <div class="label">Date of Joining</div>
-        <div class="value">${escapeHtml(joiningDate)}</div>
-      </div>
-    </div>
-    <div class="scan">
-      <h3>Scan and Verify</h3>
-      <p>${escapeHtml(
-        verificationUrl || 'Verification route becomes available once employee ID sync is complete.'
-      )}</p>
-    </div>
+        <div class="front-body">
+          <div class="identity">
+            <div class="photo-shell">
+              ${
+                profile?.profilePhoto
+                  ? `<img src="${escapeHtml(profile.profilePhoto)}" alt="${escapeHtml(
+                      profile?.name || 'Staff Member'
+                    )}">`
+                  : `<div class="photo-fallback">${escapeHtml(initials)}</div>`
+              }
+            </div>
+            <div>
+              <h1 class="name">${escapeHtml(profile?.name || 'Staff Member')}</h1>
+              <p class="role">${escapeHtml(roleLabel)}</p>
+            </div>
+          </div>
+          <div class="info-list">
+            <div class="info-row">
+              <div class="info-icon">ID</div>
+              <div class="info-copy">
+                <span>Employee ID</span>
+                <strong>${escapeHtml(employeeId)}</strong>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-icon">PH</div>
+              <div class="info-copy">
+                <span>Phone</span>
+                <strong>${escapeHtml(phoneLabel)}</strong>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-icon">@</div>
+              <div class="info-copy">
+                <span>Email</span>
+                <strong>${escapeHtml(emailLabel)}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+    <section class="panel">
+      <p class="side-label">Back</p>
+      <article class="card back">
+        <div class="header">
+          <div class="brand">
+            <div class="brand-mark">
+              ${
+                logoUrl
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="VibeSphere Media logo">`
+                  : `<span>VS</span>`
+              }
+            </div>
+            <div class="brand-copy">
+              <strong>VibeSphere Media</strong>
+              <span>Staff ID Card</span>
+            </div>
+          </div>
+        </div>
+        <div class="back-body">
+          <div class="qr-wrap">
+            <div class="qr-shell">
+              ${
+                qrImageUrl
+                  ? `<img src="${escapeHtml(qrImageUrl)}" alt="Verification QR code">`
+                  : `<span class="qr-fallback">QR unavailable</span>`
+              }
+            </div>
+            <div class="qr-caption">Scan to verify</div>
+          </div>
+          <div class="back-footer">
+            <p class="back-address">${escapeHtml(COMPANY_ADDRESS)}</p>
+            <p class="back-note">${escapeHtml(RETURN_NOTE)}</p>
+          </div>
+        </div>
+      </article>
+    </section>
   </div>
 </body>
 </html>`;
@@ -338,12 +577,43 @@ function HeaderButton({ icon, onPress }) {
   );
 }
 
+function BrandLogo({ uri, size = 40 }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [uri]);
+
+  return (
+    <View
+      style={[
+        styles.brandLogoBadge,
+        {
+          width: size,
+          height: size,
+        },
+      ]}
+    >
+      {uri && !hasError ? (
+        <Image
+          source={{ uri }}
+          resizeMode="contain"
+          style={styles.brandLogoImage}
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <Text style={styles.brandLogoBadgeText}>VS</Text>
+      )}
+    </View>
+  );
+}
+
 function QrBlock({ seed }) {
   return (
     <View style={styles.qrShell}>
       <QRCode
         value={seed || 'VIBESPHERE-STAFF'}
-        size={200}
+        size={118}
         color="#000000"
         backgroundColor="#ffffff"
         quietZone={10}
@@ -352,25 +622,18 @@ function QrBlock({ seed }) {
   );
 }
 
-function DetailItem({ icon, label, value, tone = 'blue' }) {
-  const toneStyles =
-    tone === 'gold'
-      ? styles.detailIconGold
-      : tone === 'slate'
-      ? styles.detailIconSlate
-      : tone === 'mint'
-      ? styles.detailIconMint
-      : styles.detailIconBlue;
-
+function DetailItem({ icon, label, value }) {
   return (
     <View style={styles.detailItem}>
-      <View style={[styles.detailIconWrap, toneStyles]}>
-        <Ionicons name={icon} size={16} color={COLORS.white} />
+      <View style={styles.detailIconWrap}>
+        <Ionicons name={icon} size={15} color={COLORS.white} />
       </View>
 
       <View style={styles.detailCopy}>
         <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue}>{value}</Text>
+        <Text style={styles.detailValue} numberOfLines={1}>
+          {value}
+        </Text>
       </View>
     </View>
   );
@@ -383,7 +646,9 @@ function ActionButton({ icon, label, onPress, variant = 'primary', disabled }) {
       disabled={disabled}
       style={({ pressed }) => [
         styles.actionButton,
-        variant === 'secondary' ? styles.actionButtonSecondary : styles.actionButtonPrimary,
+        variant === 'secondary'
+          ? styles.actionButtonSecondary
+          : styles.actionButtonPrimary,
         pressed && !disabled && styles.actionButtonPressed,
         disabled && styles.actionButtonDisabled,
       ]}
@@ -496,8 +761,9 @@ export default function IdCardsScreen({ navigation }) {
     }
 
     const employeeId = profile.empId || 'PENDING-ID';
-    const verificationUrl = profile.qrCodeString || getVerificationUrl(profile.empId);
+    const verificationUrl = getVerificationSeed(profile);
     const joiningDate = formatJoiningDate(profile.joiningDate);
+    const phoneLabel = getStaffPhoneValue(profile);
 
     setSharing(true);
 
@@ -507,8 +773,9 @@ export default function IdCardsScreen({ navigation }) {
         `Name: ${profile.name || 'Staff Member'}`,
         `Role: ${profile.role || 'Sales Executive'}`,
         `Employee ID: ${employeeId}`,
+        `Phone: ${phoneLabel}`,
+        `Email: ${profile.email || FALLBACK_EMAIL}`,
         `Date of Joining: ${joiningDate}`,
-        `Email: ${profile.email || 'staff@vibespheremedia.in'}`,
         verificationUrl ? `Verify: ${verificationUrl}` : null,
       ]
         .filter(Boolean)
@@ -538,7 +805,7 @@ export default function IdCardsScreen({ navigation }) {
 
     try {
       const employeeId = profile.empId || 'PENDING-ID';
-      const verificationUrl = getVerificationUrl(profile.empId);
+      const verificationSeed = getVerificationSeed(profile);
       const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
 
       if (!targetDir) {
@@ -547,7 +814,7 @@ export default function IdCardsScreen({ navigation }) {
 
       const sanitizedEmployeeId = employeeId.replace(/[^a-z0-9_-]/gi, '_');
       const fileUri = `${targetDir}VibeSphere_ID_${sanitizedEmployeeId}.html`;
-      const html = buildIdCardExportHtml(profile, verificationUrl);
+      const html = buildIdCardExportHtml(profile, verificationSeed);
 
       await FileSystem.writeAsStringAsync(fileUri, html, {
         encoding: FileSystem.EncodingType.UTF8,
@@ -577,10 +844,32 @@ export default function IdCardsScreen({ navigation }) {
 
   const employeeId = profile?.empId || 'PENDING-ID';
   const roleLabel = profile?.role || 'Sales Executive';
-  const verificationUrl = getVerificationUrl(profile?.empId);
-  const joiningDateLabel = formatJoiningDate(profile?.joiningDate);
-  const statusLabel = profile?.isOnline ? 'Online Staff' : 'Verified Staff';
+  const phoneLabel = getStaffPhoneValue(profile);
+  const emailLabel = profile?.email || FALLBACK_EMAIL;
+  const verificationUrl = getVerificationSeed(profile);
   const qrSeed = verificationUrl || employeeId;
+  const brandLogoUri = useMemo(() => getBrandLogoUrl(), []);
+
+  const detailRows = useMemo(
+    () => [
+      {
+        icon: 'card-outline',
+        label: 'Employee ID',
+        value: employeeId,
+      },
+      {
+        icon: 'call-outline',
+        label: 'Phone',
+        value: phoneLabel,
+      },
+      {
+        icon: 'mail-outline',
+        label: 'Email',
+        value: emailLabel,
+      },
+    ],
+    [employeeId, phoneLabel, emailLabel]
+  );
 
   return (
     <View style={styles.screen}>
@@ -595,16 +884,13 @@ export default function IdCardsScreen({ navigation }) {
         />
 
         <View style={styles.topBarCopy}>
-          <Text style={styles.topBarTitle}>Virtual ID Card</Text>
+          <Text style={styles.topBarTitle}>Staff ID Cards</Text>
           <Text style={styles.topBarSubtitle}>
-            Premium wallet-style access pass synced from your live staff profile
+            Front and back CR80-style identity cards synced from your live staff profile
           </Text>
         </View>
 
-        <HeaderButton
-          icon="refresh-outline"
-          onPress={() => hydrateProfile(true)}
-        />
+        <HeaderButton icon="refresh-outline" onPress={() => hydrateProfile(true)} />
       </View>
 
       <ScrollView
@@ -625,7 +911,7 @@ export default function IdCardsScreen({ navigation }) {
         {loading && !profile ? (
           <View style={styles.loadingCard}>
             <ActivityIndicator size="small" color={COLORS.white} />
-            <Text style={styles.loadingText}>Loading your virtual ID card...</Text>
+            <Text style={styles.loadingText}>Loading your staff ID cards...</Text>
           </View>
         ) : null}
 
@@ -633,127 +919,96 @@ export default function IdCardsScreen({ navigation }) {
 
         {profile ? (
           <>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>Digital Wallet Identity</Text>
-              <Text style={styles.heroTitle}>Carry your VibeSphere staff pass in a premium mobile format.</Text>
-              <Text style={styles.heroBody}>
-                This screen stays linked to your `apiClient` profile refresh so the card reflects your current company identity record.
-              </Text>
-            </View>
+            <View style={styles.cardDeck}>
+              <View style={styles.cardPanel}>
+                <Text style={styles.sideLabel}>Front</Text>
+                <View style={[styles.idCard, styles.idCardFront]}>
+                  <View style={[styles.cardOrb, styles.cardOrbBlue]} />
+                  <View style={[styles.cardOrb, styles.cardOrbSlate]} />
+                  <View style={[styles.cardOrb, styles.cardOrbGlow]} />
+                  <View style={styles.cardEdge} />
 
-            <View style={styles.walletStack}>
-              <View style={styles.walletShadowPlate} />
-              <View style={styles.walletShadowPlateSecondary} />
+                  <View style={styles.cardHeader}>
+                    <View style={styles.brandRow}>
+                      <BrandLogo uri={brandLogoUri} size={42} />
+                      <View style={styles.brandCopy}>
+                        <Text style={styles.brandTitle}>VibeSphere Media</Text>
+                        <Text style={styles.brandSubtitle}>STAFF ID CARD</Text>
+                      </View>
+                    </View>
+                  </View>
 
-              <View style={styles.walletCard}>
-                <View style={styles.walletOrbBlue} />
-                <View style={styles.walletOrbSlate} />
-                <View style={styles.walletOrbGlow} />
+                  <View style={styles.frontBody}>
+                    <View style={styles.identityBlock}>
+                      <View style={styles.photoShell}>
+                        <View style={styles.photoFrame}>
+                          {profile.profilePhoto ? (
+                            <Image
+                              source={{ uri: profile.profilePhoto }}
+                              style={styles.avatarImage}
+                            />
+                          ) : (
+                            <View style={styles.avatarFallback}>
+                              <Text style={styles.avatarFallbackText}>
+                                {getInitials(profile.name)}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
 
-                <View style={styles.cardPattern}>
-                  {Array.from({ length: CARD_PATTERN_ROWS }).map((_, rowIndex) => (
-                    <View key={`pattern-row-${rowIndex}`} style={styles.patternRow}>
-                      {Array.from({ length: CARD_PATTERN_COLUMNS }).map((_, columnIndex) => (
-                        <View
-                          key={`pattern-dot-${rowIndex}-${columnIndex}`}
-                          style={[
-                            styles.patternDot,
-                            (rowIndex + columnIndex) % 3 === 0 && styles.patternDotStrong,
-                          ]}
+                      <View style={styles.identityTextWrap}>
+                        <Text style={styles.staffName} numberOfLines={2}>
+                          {profile.name || 'Staff Member'}
+                        </Text>
+                        <Text style={styles.staffRole} numberOfLines={1}>
+                          {roleLabel}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailsPanel}>
+                      {detailRows.map((item) => (
+                        <DetailItem
+                          key={item.label}
+                          icon={item.icon}
+                          label={item.label}
+                          value={item.value}
                         />
                       ))}
                     </View>
-                  ))}
-                </View>
-
-                <View style={styles.walletTopRow}>
-                  <View style={styles.passChip}>
-                    <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.white} />
-                    <Text style={styles.passChipText}>{statusLabel}</Text>
-                  </View>
-
-                  <View style={styles.brandWrap}>
-                    <View style={styles.brandTextWrap}>
-                      <Text style={styles.brandOverline}>VibeSphere Staff</Text>
-                      <Text style={styles.brandSubline}>Digital Wallet Pass</Text>
-                    </View>
-                    <View style={styles.brandLogo}>
-                      <Text style={styles.brandLogoText}>VS</Text>
-                    </View>
                   </View>
                 </View>
+              </View>
 
-                <View style={styles.avatarHalo}>
-                  <View style={styles.avatarHaloMiddle}>
-                    <View style={styles.avatarFrame}>
-                      {profile.profilePhoto ? (
-                        <Image
-                          source={{ uri: profile.profilePhoto }}
-                          style={styles.avatarImage}
-                        />
-                      ) : (
-                        <View style={styles.avatarFallback}>
-                          <Text style={styles.avatarFallbackText}>
-                            {getInitials(profile.name)}
-                          </Text>
-                        </View>
-                      )}
+              <View style={styles.cardPanel}>
+                <Text style={styles.sideLabel}>Back</Text>
+                <View style={[styles.idCard, styles.idCardBack]}>
+                  <View style={[styles.cardOrb, styles.cardOrbBlue]} />
+                  <View style={[styles.cardOrb, styles.cardOrbSlate]} />
+                  <View style={[styles.cardOrb, styles.cardOrbGlow]} />
+                  <View style={styles.cardEdge} />
+
+                  <View style={styles.cardHeader}>
+                    <View style={styles.brandRow}>
+                      <BrandLogo uri={brandLogoUri} size={40} />
+                      <View style={styles.brandCopy}>
+                        <Text style={styles.brandTitle}>VibeSphere Media</Text>
+                        <Text style={styles.brandSubtitle}>STAFF ID CARD</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View style={styles.identityBlock}>
-                  <Text style={styles.staffName}>{profile.name || 'Staff Member'}</Text>
-                  <Text style={styles.staffRole}>{roleLabel}</Text>
-
-                  <View style={styles.identityMetaRow}>
-                    <View style={styles.identityMetaPill}>
-                      <Ionicons name="key-outline" size={13} color={COLORS.white} />
-                      <Text style={styles.identityMetaText}>{employeeId}</Text>
+                  <View style={styles.backBody}>
+                    <View style={styles.qrPanel}>
+                      <QrBlock seed={qrSeed} />
+                      <Text style={styles.qrCaption}>Scan to verify</Text>
                     </View>
-                    <View style={styles.identityMetaPill}>
-                      <Ionicons name="mail-outline" size={13} color={COLORS.white} />
-                      <Text style={styles.identityMetaText} numberOfLines={1}>
-                        {profile.email || 'staff@vibespheremedia.in'}
-                      </Text>
+
+                    <View style={styles.backFooter}>
+                      <Text style={styles.backAddress}>{COMPANY_ADDRESS}</Text>
+                      <Text style={styles.backNote}>{RETURN_NOTE}</Text>
                     </View>
-                  </View>
-                </View>
-
-                <View style={styles.detailsPanel}>
-                  <DetailItem
-                    icon="person-outline"
-                    label="Employee Name"
-                    value={profile.name || 'Staff Member'}
-                    tone="blue"
-                  />
-                  <DetailItem
-                    icon="briefcase-outline"
-                    label="Designation"
-                    value={roleLabel}
-                    tone="gold"
-                  />
-                  <DetailItem
-                    icon="key-outline"
-                    label="Employee ID"
-                    value={employeeId}
-                    tone="slate"
-                  />
-                  <DetailItem
-                    icon="calendar-outline"
-                    label="Date of Joining"
-                    value={joiningDateLabel}
-                    tone="mint"
-                  />
-                </View>
-
-                <View style={styles.scanPanel}>
-                  <View style={styles.qrPanel}>
-                    <QrBlock seed={qrSeed} />
-                    <Text style={styles.qrCaption}>Scan to verify</Text>
-                    <Text style={styles.qrHint}>
-                      {verificationUrl || 'Verification route unlocks when employee ID sync is complete.'}
-                    </Text>
                   </View>
                 </View>
               </View>
@@ -773,19 +1028,6 @@ export default function IdCardsScreen({ navigation }) {
                 onPress={handleShareCard}
                 disabled={sharing || downloading}
               />
-            </View>
-
-            <View style={styles.syncCard}>
-              <View style={styles.syncCardHeader}>
-                <View style={styles.syncBadge}>
-                  <Ionicons name="sync-outline" size={14} color={COLORS.accent} />
-                  <Text style={styles.syncBadgeText}>Live Profile Sync</Text>
-                </View>
-              </View>
-              <Text style={styles.syncTitle}>Identity details stay linked to your staff profile.</Text>
-              <Text style={styles.syncBody}>
-                Employee name, role, employee ID, avatar, and verification route are refreshed through `apiClient.get('staff/me')`. Joining date appears here automatically as soon as it is available in the synced profile payload.
-              </Text>
             </View>
           </>
         ) : null}
@@ -925,207 +1167,150 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  heroCard: {
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    padding: SIZES.xxl,
-    gap: SIZES.sm,
+  cardDeck: {
+    gap: 18,
   },
-  heroEyebrow: {
-    fontSize: 12,
+  cardPanel: {
+    gap: 8,
+  },
+  sideLabel: {
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.56)',
+    textAlign: 'center',
   },
-  heroTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
-    color: COLORS.white,
-    letterSpacing: -0.8,
-  },
-  heroBody: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.66)',
-  },
-  walletStack: {
+  idCard: {
     position: 'relative',
-    paddingTop: 22,
-    paddingBottom: 10,
-  },
-  walletShadowPlate: {
-    position: 'absolute',
-    top: 32,
-    left: 16,
-    right: 16,
-    bottom: 18,
-    borderRadius: 38,
-    backgroundColor: 'rgba(85, 113, 163, 0.34)',
-    transform: [{ rotate: '-5deg' }],
-  },
-  walletShadowPlateSecondary: {
-    position: 'absolute',
-    top: 20,
-    left: 10,
-    right: 24,
-    bottom: 26,
-    borderRadius: 38,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    transform: [{ rotate: '4deg' }],
-  },
-  walletCard: {
-    position: 'relative',
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    aspectRatio: CARD_ASPECT_RATIO,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     overflow: 'hidden',
-    borderRadius: 38,
-    paddingTop: 22,
-    paddingHorizontal: 22,
-    paddingBottom: 22,
-    backgroundColor: '#111F31',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    ...SHADOWS.strong,
     shadowColor: '#000000',
-    shadowOpacity: 0.28,
-    shadowRadius: 34,
+    shadowOpacity: 0.26,
+    shadowRadius: 22,
     shadowOffset: {
       width: 0,
-      height: 20,
+      height: 14,
     },
-    elevation: 16,
+    elevation: 12,
   },
-  walletOrbBlue: {
+  idCardFront: {
+    backgroundColor: '#102033',
+  },
+  idCardBack: {
+    backgroundColor: '#12263B',
+  },
+  cardEdge: {
     position: 'absolute',
-    width: 250,
-    height: 250,
+    top: 8,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  cardOrb: {
+    position: 'absolute',
     borderRadius: 999,
-    backgroundColor: 'rgba(69, 111, 225, 0.30)',
-    top: -120,
-    right: -70,
   },
-  walletOrbSlate: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    bottom: -120,
-    left: -70,
-  },
-  walletOrbGlow: {
-    position: 'absolute',
+  cardOrbBlue: {
     width: 170,
     height: 170,
-    borderRadius: 999,
-    backgroundColor: 'rgba(122, 141, 160, 0.16)',
-    top: 140,
-    right: -80,
+    top: -92,
+    right: -46,
+    backgroundColor: 'rgba(73, 116, 228, 0.30)',
   },
-  cardPattern: {
-    position: 'absolute',
-    top: 18,
-    right: 18,
-    gap: 8,
-    opacity: 0.24,
-  },
-  patternRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  patternDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  patternDotStrong: {
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  walletTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: SIZES.md,
-  },
-  passChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
+  cardOrbSlate: {
+    width: 126,
+    height: 126,
+    bottom: -64,
+    left: -36,
     backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
   },
-  passChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.white,
+  cardOrbGlow: {
+    width: 110,
+    height: 110,
+    top: 84,
+    right: -36,
+    backgroundColor: 'rgba(142, 164, 193, 0.12)',
   },
-  brandWrap: {
+  cardHeader: {
+    zIndex: 1,
+  },
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginLeft: 'auto',
   },
-  brandTextWrap: {
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  brandOverline: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.72)',
-  },
-  brandSubline: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  brandLogo: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+  brandLogoBadge: {
+    borderRadius: 10,
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
   },
-  brandLogoText: {
-    fontSize: 16,
+  brandLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  brandLogoBadgeText: {
+    fontSize: 14,
     fontWeight: '800',
     color: COLORS.white,
-    letterSpacing: -0.5,
+    letterSpacing: -0.2,
   },
-  avatarHalo: {
+  brandCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  brandTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.white,
+  },
+  brandSubtitle: {
+    marginTop: 2,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.68)',
+  },
+  frontBody: {
+    flex: 1,
+    marginTop: 10,
+    justifyContent: 'space-between',
+  },
+  identityBlock: {
     alignItems: 'center',
-    marginTop: 26,
+    gap: 8,
   },
-  avatarHaloMiddle: {
-    width: 144,
-    height: 144,
+  photoShell: {
+    width: 88,
+    height: 88,
+    padding: 5,
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  avatarFrame: {
-    width: 124,
-    height: 124,
+  photoFrame: {
+    flex: 1,
     borderRadius: 999,
-    padding: 6,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   avatarImage: {
     width: '100%',
@@ -1141,138 +1326,118 @@ const styles = StyleSheet.create({
     backgroundColor: '#223750',
   },
   avatarFallbackText: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.white,
     letterSpacing: -1,
   },
-  identityBlock: {
+  identityTextWrap: {
     alignItems: 'center',
-    marginTop: 18,
-    gap: 8,
+    gap: 4,
   },
   staffName: {
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 20,
+    lineHeight: 22,
     fontWeight: '800',
     color: COLORS.white,
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
     textAlign: 'center',
+    maxWidth: '92%',
   },
   staffRole: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.70)',
     textAlign: 'center',
   },
-  identityMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  identityMetaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    maxWidth: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  identityMetaText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.white,
-    maxWidth: 200,
-  },
   detailsPanel: {
-    marginTop: 22,
-    gap: 12,
+    gap: 8,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 20,
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
   detailIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  detailIconBlue: {
-    backgroundColor: '#3D5F9B',
-  },
-  detailIconGold: {
-    backgroundColor: '#8D6A2B',
-  },
-  detailIconSlate: {
-    backgroundColor: '#3D4B61',
-  },
-  detailIconMint: {
-    backgroundColor: '#265E64',
+    backgroundColor: 'rgba(81, 118, 204, 0.78)',
   },
   detailCopy: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
   },
   detailLabel: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.56)',
   },
   detailValue: {
-    fontSize: 15,
-    lineHeight: 21,
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: '700',
     color: COLORS.white,
   },
-  scanPanel: {
-    marginTop: 22,
+  backBody: {
+    flex: 1,
+    marginTop: 10,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   qrPanel: {
-    width: '100%',
-    maxWidth: 220,
     alignItems: 'center',
-    gap: 10,
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    gap: 8,
   },
   qrShell: {
-    padding: 16,
-    borderRadius: 22,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#10233D',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
   },
   qrCaption: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.70)',
+    textAlign: 'center',
+  },
+  backFooter: {
+    width: '100%',
+    gap: 6,
+    alignItems: 'center',
+  },
+  backAddress: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
     color: COLORS.white,
     textAlign: 'center',
   },
-  qrHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: 'rgba(255,255,255,0.70)',
+  backNote: {
+    fontSize: 10,
+    lineHeight: 15,
+    color: 'rgba(255,255,255,0.72)',
     textAlign: 'center',
   },
   actionRow: {
@@ -1312,45 +1477,5 @@ const styles = StyleSheet.create({
   },
   actionButtonTextSecondary: {
     color: COLORS.text,
-  },
-  syncCard: {
-    borderRadius: 26,
-    padding: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    gap: 10,
-  },
-  syncCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  syncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-  },
-  syncBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.accent,
-  },
-  syncTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-    color: COLORS.white,
-  },
-  syncBody: {
-    fontSize: 13,
-    lineHeight: 21,
-    color: 'rgba(255,255,255,0.66)',
   },
 });

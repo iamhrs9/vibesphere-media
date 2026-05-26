@@ -1461,6 +1461,7 @@
                     financeTransactions: [],
                     financeTransactionFilter: 'all',
                     staffOptionsLoaded: false,
+                    staffAssignOptions: [],
                     staffDirectory: [],
                     chatMessages: [],
                     chatContacts: [],
@@ -1568,7 +1569,26 @@
                 }
 
                 function formatCurrency(value) {
-                    return `₹${Number(value || 0).toLocaleString('en-IN')}`;
+                    let symbol = '₹';
+                    let numericValue = 0;
+
+                    if (typeof value === 'number') {
+                        numericValue = Number.isFinite(value) ? value : 0;
+                    } else if (typeof value === 'string') {
+                        const raw = value.trim();
+                        if (/\$/i.test(raw) || /\bUSD\b/i.test(raw)) symbol = '$';
+                        else if (/\bNPR\b/i.test(raw)) symbol = 'NPR ';
+                        else if (/₹/i.test(raw) || /\bINR\b/i.test(raw)) symbol = '₹';
+
+                        const cleaned = raw.replace(/,/g, '').replace(/[^\d.-]/g, '');
+                        const parsed = Number(cleaned);
+                        numericValue = Number.isFinite(parsed) ? parsed : 0;
+                    } else if (value != null) {
+                        const parsed = Number(value);
+                        numericValue = Number.isFinite(parsed) ? parsed : 0;
+                    }
+
+                    return `${symbol}${numericValue.toLocaleString('en-IN')}`;
                 }
 
                 function escapeHtml(value) {
@@ -1591,8 +1611,8 @@
 
                 function getModernStatusClass(status) {
                     const normalized = String(status || '').toLowerCase();
-                    if (['approved', 'published', 'active', 'done', 'completed'].includes(normalized)) return 'completed';
-                    if (['processing', 'in progress', 'review'].includes(normalized)) return 'processing';
+                    if (['approved', 'published', 'active', 'paid', 'done', 'completed'].includes(normalized)) return 'completed';
+                    if (['processing', 'in progress', 'review', 'work pending', 'pending'].includes(normalized)) return 'processing';
                     if (['banned', 'rejected', 'denied', 'inactive'].includes(normalized)) return 'banned';
                     if (['draft'].includes(normalized)) return 'draft';
                     return 'pending';
@@ -1843,14 +1863,19 @@
                 async function populateStaffAssignDropdown(force = false) {
                     if (adminUiState.staffOptionsLoaded && !force) return;
                     try {
-                        const res = await fetch('/api/admin/staff-directory?all=1', { credentials: 'include' });
+                        const res = await fetch('/api/admin/staff-list', { credentials: 'include' });
                         const data = await res.json();
                         const assignDropdown = document.getElementById('leadAssignTo');
+                        const staffOptions = Array.isArray(data.staff) ? data.staff : [];
+
+                        adminUiState.staffAssignOptions = staffOptions;
                         if (!assignDropdown) return;
+
                         assignDropdown.innerHTML = '<option value="">-- Assign to Staff --</option>';
-                        (data.staff || []).forEach((staff) => {
-                            assignDropdown.innerHTML += `<option value="${staff.email}">${staff.name} (${staff.role})</option>`;
+                        staffOptions.forEach((staff) => {
+                            assignDropdown.innerHTML += `<option value="${staff.email}">${staff.name || 'Staff Member'}</option>`;
                         });
+
                         adminUiState.staffOptionsLoaded = true;
                     } catch (e) {
                         showToast('Could not load staff assignment options.', 'error');

@@ -748,6 +748,18 @@
         style="position:fixed; bottom:30px; right:30px; background:#1e293b; color:white; padding:14px 22px; border-radius:12px; font-weight:600; display:none; z-index:9999; animation: slideUp 0.3s ease;">
         ✅ Added to cart!</div>
 
+    <div id="cart-auth-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(10, 10, 20, 0.55); align-items:center; justify-content:center; padding:16px;">
+        <div style="width:min(460px, 100%); background:#fff; border-radius:16px; padding:24px; box-shadow:0 24px 60px rgba(20,20,40,0.2);">
+            <h3 style="margin:0 0 8px; color:#1a0533;">Add To Cart</h3>
+            <p style="margin:0 0 18px; color:#555; line-height:1.5;">Choose how you want to continue with this package.</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="guest-cart-btn" style="border:none; border-radius:10px; padding:12px 14px; cursor:pointer; font-weight:600; background:#6B46C1; color:#fff;">Continue without Login</button>
+                <button type="button" id="login-cart-btn" style="border-radius:10px; padding:12px 14px; cursor:pointer; font-weight:600; background:#fff; color:#6B46C1; border:1px solid #6B46C1;">Login to Save Cart</button>
+                <button type="button" id="close-cart-modal" style="border:none; border-radius:10px; padding:12px 14px; cursor:pointer; font-weight:600; background:#f6f2ff; color:#6B46C1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <style>
         @keyframes slideUp {
             from {
@@ -775,6 +787,65 @@
         // 2. Dynamic Fetching Logic
         const urlParams = new URLSearchParams(window.location.search);
         const serviceId = urlParams.get('serviceId');
+        const packageMap = new Map();
+        let pendingGuestPackageId = null;
+
+        function setupCartAuthModal() {
+            const modal = document.getElementById('cart-auth-modal');
+            const guestBtn = document.getElementById('guest-cart-btn');
+            const loginBtn = document.getElementById('login-cart-btn');
+            const closeBtn = document.getElementById('close-cart-modal');
+            if (!modal || !guestBtn || !loginBtn || !closeBtn) return;
+
+            guestBtn.addEventListener('click', () => {
+                if (!pendingGuestPackageId) return;
+                const pkg = packageMap.get(pendingGuestPackageId);
+                if (!pkg) return;
+
+                const payload = {
+                    packageId: pkg._id,
+                    title: pkg.title || 'Package',
+                    serviceName: pkg.serviceId?.title || 'VibeSphere Service',
+                    priceAtAdd: Number(pkg.geo?.price || 0),
+                    currency: pkg.geo?.currency || 'INR',
+                    symbol: pkg.geo?.symbol || (pkg.geo?.currency === 'INR' ? '₹' : '$')
+                };
+
+                const result = window.VibeGuestCart?.addItem?.(payload);
+                if (result?.added) {
+                    VibeUI?.showToast?.('✅ Added to guest cart!');
+                } else {
+                    alert('This package is already in your guest cart.');
+                }
+
+                VibeUI?.updateCartCount?.();
+                closeCartAuthModal();
+            });
+
+            loginBtn.addEventListener('click', () => {
+                const redirectTarget = `${window.location.pathname}${window.location.search}`;
+                window.location.href = `/login.html?redirect=${encodeURIComponent(redirectTarget)}`;
+            });
+
+            closeBtn.addEventListener('click', closeCartAuthModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeCartAuthModal();
+            });
+        }
+
+        function openCartAuthModal(packageId) {
+            const modal = document.getElementById('cart-auth-modal');
+            if (!modal) return;
+            pendingGuestPackageId = packageId;
+            modal.style.display = 'flex';
+        }
+
+        function closeCartAuthModal() {
+            const modal = document.getElementById('cart-auth-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            pendingGuestPackageId = null;
+        }
 
         async function loadServiceData() {
             const grid = document.getElementById('packages-grid');
@@ -886,6 +957,8 @@
 
                 // --- 3. DYNAMIC PACKAGES ---
                 const packages = data.packages || [];
+                packageMap.clear();
+                packages.forEach((pkg) => packageMap.set(pkg._id, pkg));
 
                 if (packages.length === 0) {
                     grid.innerHTML = `
@@ -942,49 +1015,11 @@
         }
 
         async function addToCart(packageId) {
-            try {
-                // Wait for auth to initialize
-                if (typeof VibeAuth !== 'undefined' && !VibeAuth.isInitialized()) {
-                    await VibeAuth.init();
-                }
-
-                if (!VibeAuth.isLoggedIn()) {
-                    alert('Please login to add items to cart');
-                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
-                    return;
-                }
-
-                const btn = document.getElementById(`add-to-cart-btn-${packageId}`); // Use specific ID for the button
-                if (btn) {
-                    btn.disabled = true;
-                    btn.innerText = 'Adding...';
-                }
-
-                const res = await fetch('/api/cart', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ packageId }),
-                    credentials: 'include'
-                });
-                const data = await res.json();
-
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="ri-shopping-cart-line"></i> Add to Cart'; // Reset button text
-                }
-
-                if (data.success) {
-                    VibeUI.showToast('✅ Added to cart!');
-                    if (window.VibeUI) VibeUI.updateCartBadge();
-                } else {
-                    alert(data.message || 'Error adding to cart');
-                }
-            } catch (e) {
-                console.error("Add to Cart Error:", e);
-                alert('Connection error. Please try again.');
-            }
+            // Add to Cart click should always open choice modal first.
+            openCartAuthModal(packageId);
         }
 
+        setupCartAuthModal();
         loadServiceData();
     </script>
 </body>
