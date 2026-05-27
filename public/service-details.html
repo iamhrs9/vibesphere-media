@@ -1016,6 +1016,32 @@
         }
 
         async function addToCart(packageId) {
+            if (window.VibeAuth && window.VibeAuth.isLoggedIn()) {
+                try {
+                    const res = await fetch('/api/cart', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ packageId }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (window.VibeUI && typeof window.VibeUI.showToast === 'function') {
+                            window.VibeUI.showToast('Your package is added to cart');
+                        }
+                        if (window.VibeUI && typeof window.VibeUI.updateCartCount === 'function') {
+                            window.VibeUI.updateCartCount();
+                        }
+                    } else {
+                        alert(data.error || 'Failed to add package to cart.');
+                    }
+                } catch (e) {
+                    console.error('Error adding to cart:', e);
+                    alert('Connection error. Please try again.');
+                }
+                return;
+            }
+
             // Add to Cart click should always open choice modal first.
             openCartAuthModal(packageId);
         }

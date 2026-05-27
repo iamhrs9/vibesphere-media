@@ -178,7 +178,9 @@
                                 <button onclick="adminResetPassword('${client._id}', '${safeName}')" class="modern-action-btn" title="Create Temporary Password"><i class="ri-key-2-line"></i> Password</button>
                                 <button onclick="toggleBan('${client._id}', '${safeName}', ${newBanStatus})" class="modern-action-btn"><i class="ri-forbid-2-line"></i> ${banBtnText}</button>
                                 <button onclick="deleteClient('${client._id}', '${safeName}')" class="modern-action-btn" title="Delete Client"><i class="ri-delete-bin-6-line"></i> Delete</button>
+                                <button onclick="toggleWalletPanel('${client._id}')" class="modern-action-btn" title="Manage Client Wallet"><i class="ri-wallet-3-line"></i> Wallet</button>
                             </div>
+                            <div id="wallet-panel-${client._id}" style="display:none; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:20px;"></div>
                         </div>
                     </article>
                 `;
@@ -239,6 +241,199 @@
         }
     }
 
+    async function toggleWalletPanel(clientId) {
+        const panel = document.getElementById(`wallet-panel-${clientId}`);
+        if (!panel) return;
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            await loadWalletDetails(clientId);
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    async function loadWalletDetails(clientId) {
+        const panel = document.getElementById(`wallet-panel-${clientId}`);
+        if (!panel) return;
+
+        panel.innerHTML = `
+            <div style="display:flex; justify-content:center; padding:20px; color:#64748b;">
+                <i class="ri-loader-4-line ri-spin" style="font-size:24px; margin-right:8px;"></i> Loading Wallet Details...
+            </div>
+        `;
+
+        try {
+            const res = await fetch(`/api/admin/clients/${clientId}/wallet`, { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) {
+                panel.innerHTML = `<div style="color:#dc2626; padding:10px; font-weight:600;">Error: ${escapeHtml(data.error || 'Failed to load wallet')}</div>`;
+                return;
+            }
+
+            const wallet = data.wallet || {};
+            const transactions = data.transactions || [];
+
+            panel.innerHTML = `
+                <div style="background:#ffffff; border: 1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="ri-wallet-3-line" style="font-size:20px; color:#1d4ed8;"></i>
+                            <span style="font-weight:700; font-size:14px; color:#0f172a;">Wallet Control Panel</span>
+                        </div>
+                        <span class="wallet-badge" style="background:#e0e7ff; color:#1d4ed8; padding:6px 12px; border-radius:12px; font-weight:bold; font-family:monospace; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="copyToClipboard('${wallet.walletId || ''}', this)" title="Click to copy">
+                            ${escapeHtml(wallet.walletId || 'No ID')} <i class="ri-file-copy-line"></i>
+                        </span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div style="background:#f8fafc; padding:10px; border-radius:10px; border:1px solid #f1f5f9; display:flex; flex-direction:column; justify-content:center;">
+                            <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:2px;">Current Balance</span>
+                            <span style="font-size:18px; font-weight:800; color:#0f172a;">${formatCurrency(wallet.walletBalance)}</span>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:4px;">Wallet Status</span>
+                            <select onchange="updateWalletStatus('${clientId}', this.value)" style="padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-weight:bold; color:#0f172a; font-size:13px; height:38px; min-height:auto; background:#ffffff;">
+                                <option value="Active" ${wallet.walletStatus === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Frozen" ${wallet.walletStatus === 'Frozen' ? 'selected' : ''}>Frozen</option>
+                                <option value="Hold" ${wallet.walletStatus === 'Hold' ? 'selected' : ''}>Hold</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <form onsubmit="submitWalletAdjustment(event, '${clientId}')" style="margin-top:15px; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0;">
+                        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:10px;">Adjust Balance</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div>
+                                <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Type</label>
+                                <select id="adj-type-${clientId}" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
+                                    <option value="Credit">Credit (Add)</option>
+                                    <option value="Debit">Debit (Deduct)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Amount</label>
+                                <input type="number" id="adj-amount-${clientId}" step="any" min="0.01" placeholder="0.00" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom:10px;">
+                            <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Description</label>
+                            <input type="text" id="adj-desc-${clientId}" placeholder="e.g. Refund, manual deduction..." required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; cursor:pointer; min-height:auto;">
+                                <input type="checkbox" id="adj-neg-${clientId}" style="min-height:auto; width:16px; height:16px;"> Allow Negative Balance
+                            </label>
+                            <button type="submit" class="btn-publish" style="padding:8px 16px; font-size:12px; min-height:auto; border-radius:8px; box-shadow:none;">Update Balance</button>
+                        </div>
+                    </form>
+
+                    <div style="margin-top:15px;">
+                        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:8px;">Transaction Ledger</div>
+                        <div style="max-height:180px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; background:#ffffff;">
+                            <table style="width:100%; font-size:12px; border-collapse:collapse; margin-top:0; box-shadow:none;">
+                                <thead>
+                                    <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Date</th>
+                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Type</th>
+                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Amount</th>
+                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${transactions.length === 0 ? `
+                                        <tr><td colspan="4" style="text-align:center; padding:15px; color:#94a3b8;">No transactions found</td></tr>
+                                    ` : transactions.map(t => {
+                                        const color = t.type === 'Credit' ? '#16a34a' : '#dc2626';
+                                        return `
+                                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                                <td style="padding:8px 10px; color:#64748b;">${formatAdminDate(t.createdAt)}</td>
+                                                <td style="padding:8px 10px; font-weight:700; color:${color};">${t.type}</td>
+                                                <td style="padding:8px 10px; font-weight:700; color:${color};">${formatCurrency(t.amount)}</td>
+                                                <td style="padding:8px 10px; color:#334155; word-break:break-word;">${escapeHtml(t.description)}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            panel.innerHTML = `<div style="color:#dc2626; padding:10px;">Failed to fetch wallet info</div>`;
+        }
+    }
+
+    async function copyToClipboard(text, element) {
+        try {
+            await navigator.clipboard.writeText(text);
+            const origHTML = element.innerHTML;
+            element.innerHTML = 'Copied! <i class="ri-check-line"></i>';
+            setTimeout(() => {
+                element.innerHTML = origHTML;
+            }, 1500);
+        } catch (err) {
+            alert('Failed to copy to clipboard');
+        }
+    }
+
+    async function updateWalletStatus(clientId, status) {
+        try {
+            const res = await fetch(`/api/admin/clients/${clientId}/wallet/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ walletStatus: status }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Success: ${data.message || 'Wallet status updated.'}`);
+                await loadWalletDetails(clientId);
+            } else {
+                alert(`Error: ${data.error || 'Failed to update status'}`);
+            }
+        } catch (err) {
+            alert('Connection error');
+        }
+    }
+
+    async function submitWalletAdjustment(event, clientId) {
+        event.preventDefault();
+        const amountVal = document.getElementById(`adj-amount-${clientId}`)?.value;
+        const typeVal = document.getElementById(`adj-type-${clientId}`)?.value;
+        const descVal = document.getElementById(`adj-desc-${clientId}`)?.value;
+        const allowNegVal = document.getElementById(`adj-neg-${clientId}`)?.checked;
+
+        if (!amountVal || !typeVal || !descVal) {
+            alert('All adjustment fields are required.');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/clients/${clientId}/wallet/adjust`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amountVal,
+                    type: typeVal,
+                    description: descVal,
+                    allowNegative: allowNegVal
+                }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Success: ${data.message || 'Balance adjusted successfully.'}`);
+                await loadWalletDetails(clientId);
+            } else {
+                alert(`Error: ${data.error || 'Adjustment failed'}`);
+            }
+        } catch (err) {
+            alert('Connection error');
+        }
+    }
+
     window.mountAdminClientOpsSections = function () {
         mountSections(["helpdesk-section","staff-tickets-section","meetings-section","jobs-section","clients-section"]);
     };
@@ -249,4 +444,9 @@
     window.fetchStaffTickets = fetchStaffTickets;
     window.updateStaffTicketStatus = updateStaffTicketStatus;
     window.replyToStaffTicket = replyToStaffTicket;
+    window.toggleWalletPanel = toggleWalletPanel;
+    window.loadWalletDetails = loadWalletDetails;
+    window.copyToClipboard = copyToClipboard;
+    window.updateWalletStatus = updateWalletStatus;
+    window.submitWalletAdjustment = submitWalletAdjustment;
 })();

@@ -79,6 +79,38 @@
             color: #334155;
         }
 
+        .user-badge.avatar-mode {
+            background: transparent;
+            border-color: transparent;
+            padding: 2px 6px 2px 2px;
+            gap: 6px;
+        }
+
+        .user-badge.avatar-mode:hover {
+            background: rgba(108, 99, 255, 0.08);
+            border-color: transparent;
+        }
+
+        .initial-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #6c63ff, #8b5cf6);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 2px 8px rgba(108, 99, 255, 0.25);
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+
+        .user-badge:hover .initial-avatar {
+            transform: scale(1.05);
+            filter: brightness(1.05);
+        }
+
         .user-badge i {
             color: #6c63ff;
             font-size: 1.1rem;
@@ -96,23 +128,12 @@
             color: #6c63ff;
         }
 
-        .btn-logout {
-            background: #fee2e2;
-            color: #ef4444;
-            padding: 8px 18px;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+        .profile-dropdown-menu .dropdown-item:hover {
+            background-color: #f8fafc;
         }
 
-        .btn-logout:hover {
-            background: #fecaca;
-            transform: translateY(-2px);
+        .profile-dropdown-menu .dropdown-item.logout:hover {
+            background-color: #fee2e2;
         }
 
         /* --- 2. MAIN CONTENT --- */
@@ -453,31 +474,20 @@
                 justify-content: center;
             }
 
-            .user-badge span {
+            .user-badge.avatar-mode {
+                padding: 2px;
+                width: auto;
+                height: auto;
+                background: transparent !important;
+            }
+
+            .user-badge span,
+            .user-badge .profile-arrow {
                 display: none;
             }
 
             /* Naam chupao */
             .user-badge i {
-                font-size: 1.2rem;
-                margin: 0;
-            }
-
-            /* Logout Button Icon Only */
-            .btn-logout {
-                padding: 10px;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                justify-content: center;
-            }
-
-            .btn-logout span {
-                display: none;
-            }
-
-            /* Text chupao */
-            .btn-logout i {
                 font-size: 1.2rem;
                 margin: 0;
             }
@@ -518,6 +528,236 @@
             }
         }
 
+        /* ==========================================
+           💳 MY WALLET SECTION
+           ========================================== */
+        .wallet-view {
+            display: none;
+        }
+        .wallet-view.active {
+            display: block;
+        }
+        .wallet-hero-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+            border-radius: 24px;
+            padding: 32px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 60px rgba(67, 56, 202, 0.35);
+        }
+        .wallet-hero-card::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .wallet-hero-card::after {
+            content: '';
+            position: absolute;
+            bottom: -80px; left: -40px;
+            width: 240px; height: 240px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .wallet-hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .wallet-id-badge {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 8px 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.9);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .wallet-id-badge:hover {
+            background: rgba(255,255,255,0.22);
+        }
+        .wallet-balance-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 6px;
+        }
+        .wallet-balance-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .wallet-topup-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 14px;
+            padding: 12px 24px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            margin-top: 20px;
+            position: relative;
+            z-index: 10;
+        }
+        .wallet-topup-btn:hover {
+            background: rgba(255,255,255,0.28);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .wallet-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .wallet-status-badge.active {
+            background: rgba(16,185,129,0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        .wallet-status-badge.frozen {
+            background: rgba(59,130,246,0.2);
+            color: #93c5fd;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .wallet-status-badge.hold {
+            background: rgba(245,158,11,0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(245,158,11,0.3);
+        }
+        .wallet-restriction-banner {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 1px solid #fcd34d;
+            border-radius: 16px;
+            padding: 18px 22px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .wallet-restriction-banner i {
+            font-size: 1.8rem;
+            color: #d97706;
+            flex-shrink: 0;
+        }
+        .wallet-restriction-banner h4 {
+            color: #92400e;
+            margin: 0 0 4px 0;
+            font-size: 0.95rem;
+        }
+        .wallet-restriction-banner p {
+            color: #b45309;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+        .wallet-ledger-section {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #f0f0f0;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+        .wallet-ledger-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .wallet-ledger-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .wallet-txn-row {
+            display: grid;
+            grid-template-columns: 1.4fr 0.7fr 0.9fr 1.5fr;
+            gap: 12px;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid #f8fafc;
+            transition: background 0.15s;
+        }
+        .wallet-txn-row:last-child { border-bottom: none; }
+        .wallet-txn-row:hover { background: #f8fafc; }
+        .wallet-txn-header-row {
+            grid-template-columns: 1.4fr 0.7fr 0.9fr 1.5fr;
+            background: #f8fafc;
+            padding: 10px 24px;
+            gap: 12px;
+            display: grid;
+        }
+        .wallet-txn-header-row span {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            font-weight: 800;
+        }
+        .txn-credit { color: #15803d; font-weight: 700; }
+        .txn-debit { color: #dc2626; font-weight: 700; }
+        .txn-type-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .txn-type-pill.credit {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .txn-type-pill.debit {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        @media (max-width: 600px) {
+            .wallet-balance-amount { font-size: 2.2rem; }
+            .wallet-txn-row, .wallet-txn-header-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .wallet-txn-row > *:nth-child(3),
+            .wallet-txn-row > *:nth-child(4),
+            .wallet-txn-header-row > *:nth-child(3),
+            .wallet-txn-header-row > *:nth-child(4) {
+                display: none;
+            }
+        }
         /* --- 🔔 REAL-TIME TOAST NOTIFICATION --- */
         #toastBox {
             position: fixed;
@@ -573,88 +813,131 @@
         <nav>
             <a href="/" class="logo-area">
                 <img src="logo.webp" alt="Logo" class="logo-img">
-
             </a>
 
             <div class="nav-right">
-
-
-                <div class="user-badge" title="User Profile">
-                    <i class="ri-user-smile-line"></i>
-                    <span id="userName">User</span>
+                <div class="profile-dropdown-wrapper" style="position: relative; display: inline-block;">
+                    <div class="user-badge avatar-mode" id="profileTrigger" style="cursor: pointer; user-select: none;">
+                        <div class="initial-avatar" id="userAvatar">U</div>
+                        <i class="ri-arrow-down-s-line profile-arrow" style="font-size: 0.9rem; margin-left: 2px; color: #6c63ff;"></i>
+                    </div>
+                    <div class="profile-dropdown-menu" id="profileDropdown" style="display: none; position: absolute; right: 0; top: 110%; background: #ffffff; min-width: 180px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; overflow: hidden; padding: 6px 0;">
+                        <a href="#" class="dropdown-item" onclick="showChangePassword(); return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
+                            <i class="ri-lock-password-line" style="color: #6c63ff;"></i> Password
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="document.getElementById('securityModal').style.display='flex'; return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
+                            <i class="ri-macbook-line" style="color: #6c63ff;"></i> Devices
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="showSupportTickets(); return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
+                            <i class="ri-customer-service-2-line" style="color: #6c63ff;"></i> Support Tickets
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="showWalletView(); return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
+                            <i class="ri-wallet-3-line" style="color: #6c63ff;"></i> My Wallet
+                            <span id="walletNavBadge" style="margin-left:auto; background:#e0e7ff; color:#4f46e5; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">₹0</span>
+                        </a>
+                        <hr style="margin: 6px 0; border: 0; border-top: 1px solid #f1f5f9;">
+                        <a href="#" class="dropdown-item logout" onclick="logout(); return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #ef4444; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: background 0.2s; background: #fff5f5;">
+                            <i class="ri-logout-box-r-line" style="color: #ef4444;"></i> Logout
+                        </a>
+                    </div>
                 </div>
-                <a href="#" onclick="showChangePassword()" class="btn-logout" title="Change Password"
-                    style="background: #f1f5f9; color: #334155; margin-right: 10px;">
-                    <i class="ri-lock-password-line"></i> <span>Password</span>
-                </a>
-                <button onclick="document.getElementById('securityModal').style.display='flex'"
-                    style="background: transparent; border: 1px solid #cbd5e1; color: #475569; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;">
-                    <i class="ri-macbook-line"></i> Devices
-                </button>
-                <a href="#" onclick="logout()" class="btn-logout" title="Logout">
-                    <i class="ri-logout-box-r-line"></i> <span>Logout</span>
-                </a>
-
             </div>
         </nav>
 
+        <!-- Dashboard Tab Nav -->
+        <div style="background:white; border-bottom:1px solid #f1f5f9; position:sticky; top:72px; z-index:100;">
+            <div style="max-width:900px; margin:0 auto; padding:0 20px; display:flex; gap:0;">
+                <button id="tabOrders" onclick="showDashTab('orders')" style="padding:14px 20px; border:none; background:transparent; font-weight:700; font-size:0.9rem; color:#6c63ff; border-bottom:2px solid #6c63ff; cursor:pointer; font-family:inherit; transition:0.2s;">📦 My Orders</button>
+                <button id="tabWallet" onclick="showDashTab('wallet')" style="padding:14px 20px; border:none; background:transparent; font-weight:600; font-size:0.9rem; color:#64748b; border-bottom:2px solid transparent; cursor:pointer; font-family:inherit; transition:0.2s;">💳 My Wallet</button>
+            </div>
+        </div>
+
         <div class="container">
-            <div class="page-header">
-                <div>
-                    <h2>My Orders 📦</h2>
-                    <p>Track your growth journey here.</p>
-                </div>
-                <a href="/packages" class="btn-new-order">+ New Order</a>
-            </div>
 
-            <div id="ordersList">
-                <div style="text-align: center; padding: 50px; color: #94a3b8;">
-                    <i class="ri-loader-4-line ri-spin" style="font-size: 2rem;"></i>
-                    <p style="margin-top: 10px;">Loading your orders...</p>
-                </div>
-            </div>
-
-            <!-- 🎧 CLIENT SUPPORT TICKETS SECTION -->
-            <div style="margin-top:40px;">
+            <!-- ORDERS VIEW -->
+            <div id="ordersView">
                 <div class="page-header">
                     <div>
-                        <h2>🎧 Support Tickets</h2>
-                        <p>Need help? Raise a ticket and our team will resolve it.</p>
+                        <h2>My Orders 📦</h2>
+                        <p>Track your growth journey here.</p>
                     </div>
-                    <button
-                        onclick="document.getElementById('ticketForm').style.display = document.getElementById('ticketForm').style.display === 'none' ? 'block' : 'none'"
-                        style="background:#6c63ff;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9rem;">+
-                        New Ticket</button>
+                    <a href="/packages" class="btn-new-order">+ New Order</a>
                 </div>
-
-                <div id="ticketForm"
-                    style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;padding:25px;margin-bottom:20px;">
-                    <h4 style="margin-bottom:15px;color:#1e293b;">Create Support Ticket</h4>
-                    <div style="margin-bottom:12px;">
-                        <label
-                            style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Subject</label>
-                        <input type="text" id="ticketSubject" placeholder="e.g. My followers not increasing"
-                            style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;"
-                            onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#cbd5e1'">
+                <div id="ordersList">
+                    <div style="text-align: center; padding: 50px; color: #94a3b8;">
+                        <i class="ri-loader-4-line ri-spin" style="font-size: 2rem;"></i>
+                        <p style="margin-top: 10px;">Loading your orders...</p>
                     </div>
-                    <div style="margin-bottom:15px;">
-                        <label
-                            style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Describe
-                            your issue</label>
-                        <textarea id="ticketIssue" rows="4" placeholder="Please describe your issue in detail..."
-                            style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;font-family:inherit;"
-                            onfocus="this.style.borderColor='#6c63ff'"
-                            onblur="this.style.borderColor='#cbd5e1'"></textarea>
-                    </div>
-                    <button onclick="createTicket()" id="btnCreateTicket"
-                        style="background:#6c63ff;color:white;padding:12px 25px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;transition:0.3s;"
-                        onmouseover="this.style.background='#5a52d5'"
-                        onmouseout="this.style.background='#6c63ff'">Submit
-                        Ticket 🎫</button>
                 </div>
-
-                <div id="ticketsList"></div>
             </div>
+
+            <!-- WALLET VIEW -->
+            <div id="walletView" class="wallet-view">
+                <div class="page-header" style="margin-bottom:20px;">
+                    <div>
+                        <h2 style="font-size:1.5rem;">My Wallet 💳</h2>
+                        <p>Manage your VibeSphere balance and transactions.</p>
+                    </div>
+                </div>
+
+                <!-- Restriction Banner (hidden by default) -->
+                <div id="walletRestrictionBanner" class="wallet-restriction-banner" style="display:none;">
+                    <i class="ri-error-warning-fill"></i>
+                    <div>
+                        <h4>Wallet Temporarily Restricted</h4>
+                        <p>Your wallet access is currently limited. Please contact our support team to resolve this.</p>
+                    </div>
+                </div>
+
+                <!-- Hero Balance Card -->
+                <div class="wallet-hero-card">
+                    <div class="wallet-hero-top">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                                <img src="/logo.webp" alt="VibeSphere" style="height:22px;filter:brightness(0) invert(1);opacity:0.85;">
+                                <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.6;font-weight:600;">VibeSphere Wallet</span>
+                            </div>
+                            <div id="walletStatusDisplay"></div>
+                        </div>
+                        <div id="walletIdBadge" class="wallet-id-badge" onclick="copyWalletId()" title="Click to copy Wallet ID">
+                            <i class="ri-fingerprint-line"></i>
+                            <span id="walletIdText">Loading...</span>
+                            <i class="ri-file-copy-line" style="opacity:0.6;font-size:0.7rem;"></i>
+                        </div>
+                    </div>
+
+                    <div class="wallet-balance-label">Current Balance</div>
+                    <div class="wallet-balance-amount" id="walletBalanceDisplay">₹—</div>
+
+                    <div style="margin-top:24px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <button class="wallet-topup-btn" onclick="openTopupModal()">
+                            <i class="ri-add-circle-line" style="pointer-events: none;"></i> <span style="pointer-events: none;">Add Money / Top Up</span>
+                        </button>
+                        <span style="font-size:0.75rem;opacity:0.5;">• Secure & Instant</span>
+                    </div>
+                </div>
+
+                <!-- Transaction Ledger -->
+                <div class="wallet-ledger-section">
+                    <div class="wallet-ledger-header">
+                        <h3><i class="ri-receipt-line" style="color:#6c63ff;"></i> Transaction History</h3>
+                        <span id="walletTxnCount" style="background:#f1f5f9;color:#64748b;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;">0 transactions</span>
+                    </div>
+                    <div class="wallet-txn-header-row">
+                        <span>Date</span>
+                        <span>Type</span>
+                        <span>Amount</span>
+                        <span>Description</span>
+                    </div>
+                    <div id="walletLedger">
+                        <div style="text-align:center;padding:40px;color:#94a3b8;">
+                            <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
+                            Loading transactions...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <footer>
@@ -710,7 +993,77 @@
                     transform: translateY(0);
                 }
             }
+            .quick-amt-btn {
+                background: rgba(108, 99, 255, 0.06);
+                border: 1px solid rgba(108, 99, 255, 0.12);
+                border-radius: 10px;
+                padding: 10px 4px;
+                font-weight: 700;
+                color: #6c63ff;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-size: 0.8rem;
+                outline: none;
+            }
+            .quick-amt-btn:hover {
+                background: rgba(108, 99, 255, 0.15);
+                border-color: rgba(108, 99, 255, 0.25);
+                transform: translateY(-1px);
+            }
+            .quick-amt-btn:active {
+                transform: translateY(0);
+            }
         </style>
+
+        <!-- WALLET TOP-UP MODAL (Razorpay Integration) -->
+        <div id="walletTopupModal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div
+                style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); width: 90%; max-width: 420px; border-radius: 20px; padding: 30px; box-shadow: 0 20px 50px rgba(108, 99, 255, 0.15); transform: translateY(-20px); animation: slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
+                
+                <!-- Modal Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(108, 99, 255, 0.1); padding-bottom: 16px; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.3rem;">
+                        <i class="ri-wallet-3-fill" style="color: #6c63ff; font-size: 1.4rem;"></i> Add Money
+                    </h3>
+                    <button onclick="closeTopupModal()"
+                        style="background: rgba(108, 99, 255, 0.08); border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 20px; cursor: pointer; color: #6c63ff; display: flex; justify-content: center; align-items: center; transition: 0.2s;"
+                        onmouseover="this.style.background='rgba(108, 99, 255, 0.15)'" onmouseout="this.style.background='rgba(108, 99, 255, 0.08)'">&times;</button>
+                </div>
+
+                <!-- Form Content -->
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; margin-bottom: 8px; font-weight: 700;">Enter Amount (INR)</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <span style="position: absolute; left: 16px; font-size: 1.8rem; font-weight: 800; color: #1e293b; pointer-events: none;">₹</span>
+                        <input type="number" id="topupAmount" min="10" max="500000" value="1000" placeholder="1,000"
+                            style="width: 100%; padding: 14px 16px 14px 44px; border: 2px solid rgba(108, 99, 255, 0.2); border-radius: 14px; font-size: 1.8rem; font-weight: 800; outline: none; background: rgba(255, 255, 255, 0.6); color: #1e293b; font-family: inherit; transition: all 0.3s ease;"
+                            onfocus="this.style.borderColor='#6c63ff'; this.style.boxShadow='0 0 0 4px rgba(108, 99, 255, 0.15)'"
+                            onfocusout="this.style.borderColor='rgba(108, 99, 255, 0.2)'; this.style.boxShadow='none'">
+                    </div>
+                    <p style="font-size: 0.75rem; color: #64748b; margin: 8px 0 0 4px; display: flex; align-items: center; gap: 4px;">
+                        <i class="ri-information-line"></i> Minimum top-up is ₹10. Max is ₹5,00,000.
+                    </p>
+                </div>
+
+                <!-- Quick Amount Buttons -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px;">
+                    <button class="quick-amt-btn" onclick="setTopupAmount(500)">+₹500</button>
+                    <button class="quick-amt-btn" onclick="setTopupAmount(1000)">+₹1k</button>
+                    <button class="quick-amt-btn" onclick="setTopupAmount(2000)">+₹2k</button>
+                    <button class="quick-amt-btn" onclick="setTopupAmount(5000)">+₹5k</button>
+                </div>
+
+                <!-- Action Button -->
+                <button id="btnTopupSubmit" onclick="initiateRazorpayTopup()"
+                    style="width: 100%; background: linear-gradient(135deg, #6c63ff, #4f46e5); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(108, 99, 255, 0.25);"
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 12px 25px rgba(108, 99, 255, 0.35)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(108, 99, 255, 0.25)'">
+                    Proceed to Add Money <i class="ri-arrow-right-line" style="margin-left: 4px;"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- CHANGE PASSWORD MODAL -->
         <div id="changePasswordModal"
             style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
@@ -808,7 +1161,354 @@
                 }
             }
         </style>
+        <!-- SUPPORT TICKETS MODAL -->
+        <div id="supportTicketsModal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+            <div
+                style="background: white; width: 95%; max-width: 650px; border-radius: 16px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; transform: translateY(-20px); animation: slideDown 0.3s forwards;">
+                
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+                    <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <i class="ri-customer-service-2-fill" style="color: #6c63ff;"></i> Support Tickets
+                    </h3>
+                    <button onclick="closeSupportTicketsModal()"
+                        style="background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 18px; cursor: pointer; color: #64748b; display: flex; justify-content: center; align-items: center;">&times;</button>
+                </div>
+
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                        <p style="color: #64748b; font-size: 0.95rem; margin: 0;">Need help? Raise a ticket and our team will resolve it.</p>
+                        <button
+                            onclick="toggleTicketForm()"
+                            style="background:#6c63ff;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9rem;">
+                            + New Ticket
+                        </button>
+                    </div>
+
+                    <div id="ticketForm"
+                        style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
+                        <h4 style="margin-bottom:15px;color:#1e293b;">Create Support Ticket</h4>
+                        <div style="margin-bottom:12px;">
+                            <label
+                                style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Subject</label>
+                            <input type="text" id="ticketSubject" placeholder="e.g. My followers not increasing"
+                                style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;background:white;"
+                                onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#cbd5e1'">
+                        </div>
+                        <div style="margin-bottom:15px;">
+                            <label
+                                style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Describe
+                                your issue</label>
+                            <textarea id="ticketIssue" rows="4" placeholder="Please describe your issue in detail..."
+                                style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;font-family:inherit;background:white;"
+                                onfocus="this.style.borderColor='#6c63ff'"
+                                onblur="this.style.borderColor='#cbd5e1'"></textarea>
+                        </div>
+                        <button onclick="createTicket()" id="btnCreateTicket"
+                            style="background:#6c63ff;color:white;padding:12px 25px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;transition:0.3s;"
+                            onmouseover="this.style.background='#5a52d5'"
+                            onmouseout="this.style.background='#6c63ff'">Submit
+                            Ticket 🎫</button>
+                    </div>
+
+                    <div id="ticketsList"></div>
+                </div>
+            </div>
+        </div>
         <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // ==========================================
+            // 💳 WALLET DASHBOARD LOGIC
+            // ==========================================
+            let _walletData = null;
+
+            function showDashTab(tab) {
+                const ordersView = document.getElementById('ordersView');
+                const walletView = document.getElementById('walletView');
+                const tabOrders = document.getElementById('tabOrders');
+                const tabWallet = document.getElementById('tabWallet');
+
+                if (tab === 'orders') {
+                    ordersView.style.display = 'block';
+                    walletView.classList.remove('active');
+                    tabOrders.style.color = '#6c63ff';
+                    tabOrders.style.borderBottom = '2px solid #6c63ff';
+                    tabOrders.style.fontWeight = '700';
+                    tabWallet.style.color = '#64748b';
+                    tabWallet.style.borderBottom = '2px solid transparent';
+                    tabWallet.style.fontWeight = '600';
+                } else {
+                    ordersView.style.display = 'none';
+                    walletView.classList.add('active');
+                    tabWallet.style.color = '#6c63ff';
+                    tabWallet.style.borderBottom = '2px solid #6c63ff';
+                    tabWallet.style.fontWeight = '700';
+                    tabOrders.style.color = '#64748b';
+                    tabOrders.style.borderBottom = '2px solid transparent';
+                    tabOrders.style.fontWeight = '600';
+                    if (!_walletData) fetchWalletData();
+                }
+            }
+
+            function showWalletView() {
+                document.getElementById('profileDropdown').style.display = 'none';
+                showDashTab('wallet');
+            }
+
+            async function fetchWalletData() {
+                try {
+                    const res = await fetch('/api/user/wallet', { credentials: 'include' });
+                    const data = await res.json();
+
+                    if (!data.success) {
+                        document.getElementById('walletLedger').innerHTML =
+                            `<div style="text-align:center;padding:30px;color:#dc2626;">Failed to load wallet: ${data.error || 'Unknown error'}</div>`;
+                        return;
+                    }
+
+                    _walletData = data;
+                    const wallet = data.wallet;
+                    const transactions = data.transactions || [];
+
+                    // Update nav badge
+                    const navBadge = document.getElementById('walletNavBadge');
+                    if (navBadge) navBadge.textContent = `₹${(wallet.walletBalance || 0).toLocaleString('en-IN')}`;
+
+                    // Balance display
+                    const balanceEl = document.getElementById('walletBalanceDisplay');
+                    if (balanceEl) {
+                        const bal = wallet.walletBalance || 0;
+                        balanceEl.textContent = `₹${bal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    }
+
+                    // Wallet ID
+                    const walletIdEl = document.getElementById('walletIdText');
+                    if (walletIdEl) walletIdEl.textContent = wallet.walletId || 'Not assigned';
+
+                    // Status badge
+                    const statusEl = document.getElementById('walletStatusDisplay');
+                    if (statusEl) {
+                        const s = (wallet.walletStatus || 'Active').toLowerCase();
+                        const label = wallet.walletStatus || 'Active';
+                        const dot = s === 'active' ? '🟢' : s === 'frozen' ? '🔵' : '🟡';
+                        statusEl.innerHTML = `<span class="wallet-status-badge ${s}">${dot} ${label}</span>`;
+                    }
+
+                    // Restriction banner
+                    const banner = document.getElementById('walletRestrictionBanner');
+                    if (banner) {
+                        const restricted = wallet.walletStatus === 'Frozen' || wallet.walletStatus === 'Hold';
+                        banner.style.display = restricted ? 'flex' : 'none';
+                        if (restricted) {
+                            const msg = wallet.walletStatus === 'Frozen'
+                                ? 'Your wallet is currently <strong>Frozen</strong>. All transactions are paused.'
+                                : 'Your wallet is currently on <strong>Hold</strong>. Please contact support to lift the restriction.';
+                            banner.querySelector('p').innerHTML = msg;
+                        }
+                    }
+
+                    // Transaction ledger
+                    const ledger = document.getElementById('walletLedger');
+                    const txnCount = document.getElementById('walletTxnCount');
+                    if (txnCount) txnCount.textContent = `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''}`;
+
+                    if (!transactions.length) {
+                        ledger.innerHTML = `
+                            <div style="text-align:center;padding:48px 24px;color:#94a3b8;">
+                                <i class="ri-receipt-line" style="font-size:2.5rem;display:block;margin-bottom:12px;color:#cbd5e1;"></i>
+                                <h4 style="color:#64748b;margin:0 0 6px 0;">No transactions yet</h4>
+                                <p style="margin:0;font-size:0.88rem;">Your transaction history will appear here once you make a transaction.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    ledger.innerHTML = transactions.map(t => {
+                        const isCredit = t.type === 'Credit';
+                        const colorClass = isCredit ? 'credit' : 'debit';
+                        const amtSign = isCredit ? '+' : '-';
+                        const date = new Date(t.createdAt || t.date);
+                        const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                        
+                        let descText = (t.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        let orderIdBadge = '';
+                        const orderMatch = descText.match(/\((Order\s+(#ORD-\d+))\)/);
+                        if (orderMatch) {
+                            const fullMatch = orderMatch[0];
+                            const orderNum = orderMatch[2];
+                            descText = descText.replace(fullMatch, '').trim();
+                            orderIdBadge = `<span style="background: rgba(108, 99, 255, 0.08); color: #6c63ff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(108, 99, 255, 0.15); margin-left: 6px; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px;" title="Linked Order"><i class="ri-receipt-line"></i> ${orderNum}</span>`;
+                        }
+
+                        return `
+                            <div class="wallet-txn-row">
+                                <div style="color:#64748b;font-size:0.85rem;">${dateStr}</div>
+                                <div><span class="txn-type-pill ${colorClass}">${isCredit ? '↑' : '↓'} ${t.type}</span></div>
+                                <div class="txn-${colorClass}" style="font-size:0.9rem;">${amtSign}₹${(t.amount || 0).toLocaleString('en-IN')}</div>
+                                <div style="color:#334155;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;" title="${t.description || ''}">
+                                    <span>${descText}</span>
+                                    ${orderIdBadge}
+                                </div>
+                            </div>`;
+                    }).join('');
+
+                } catch (err) {
+                    console.error('Wallet fetch error:', err);
+                    const ledger = document.getElementById('walletLedger');
+                    if (ledger) ledger.innerHTML = `<div style="text-align:center;padding:30px;color:#dc2626;">Failed to connect to wallet service.</div>`;
+                }
+            }
+
+            function copyWalletId() {
+                const id = document.getElementById('walletIdText')?.textContent?.trim();
+                if (!id || id === 'Loading...' || id === 'Not assigned') return;
+                navigator.clipboard.writeText(id).then(() => {
+                    const badge = document.getElementById('walletIdBadge');
+                    const orig = badge.innerHTML;
+                    badge.innerHTML = '<i class="ri-check-line"></i> Copied!';
+                    setTimeout(() => { badge.innerHTML = orig; }, 1600);
+                });
+            }
+
+            // ==========================================
+            // 💳 WALLET TOP-UP & RAZORPAY INTEGRATION
+            // ==========================================
+            function openTopupModal() {
+                if (_walletData && _walletData.wallet) {
+                    const status = _walletData.wallet.walletStatus;
+                    if (status === 'Frozen' || status === 'Hold') {
+                        alert(`Cannot add money. Your wallet is currently ${status}.`);
+                        return;
+                    }
+                }
+                document.getElementById('topupAmount').value = '1000';
+                document.getElementById('walletTopupModal').style.display = 'flex';
+            }
+
+            function closeTopupModal() {
+                document.getElementById('walletTopupModal').style.display = 'none';
+            }
+
+            function setTopupAmount(amt) {
+                const input = document.getElementById('topupAmount');
+                const val = Number(input.value) || 0;
+                input.value = val + amt;
+            }
+
+            function loadRazorpaySDK() {
+                return new Promise((resolve) => {
+                    if (window.Razorpay) {
+                        resolve(true);
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    script.onload = () => resolve(true);
+                    script.onerror = () => resolve(false);
+                    document.body.appendChild(script);
+                });
+            }
+
+            async function initiateRazorpayTopup() {
+                const amountInput = document.getElementById('topupAmount');
+                const amount = Number(amountInput.value);
+                if (isNaN(amount) || amount < 10) {
+                    alert('Please enter a valid amount (minimum ₹10).');
+                    return;
+                }
+                if (amount > 500000) {
+                    alert('Maximum top-up amount is ₹5,00,000.');
+                    return;
+                }
+
+                const btn = document.getElementById('btnTopupSubmit');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = 'Creating Order... <i class="ri-loader-4-line ri-spin"></i>';
+
+                try {
+                    const res = await fetch('/api/payment/create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount }),
+                        credentials: 'include'
+                    });
+
+                    const data = await res.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to initiate top-up.');
+                    }
+
+                    const sdkLoaded = await loadRazorpaySDK();
+                    if (!sdkLoaded) {
+                        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
+                    }
+
+                    const options = {
+                        key: data.razorpayKeyId,
+                        amount: data.order.amount,
+                        currency: data.order.currency,
+                        name: 'VibeSphere Media',
+                        description: 'Wallet Balance Top-up',
+                        image: '/logo.webp',
+                        order_id: data.order_id,
+                        handler: async function (response) {
+                            btn.innerHTML = 'Verifying... <i class="ri-loader-4-line ri-spin"></i>';
+                            try {
+                                const verifyRes = await fetch('/api/payment/verify', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature,
+                                        amount
+                                    }),
+                                    credentials: 'include'
+                                });
+
+                                const verifyData = await verifyRes.json();
+                                if (!verifyData.success) {
+                                    throw new Error(verifyData.error || 'Payment verification failed.');
+                                }
+
+                                closeTopupModal();
+                                alert('₹' + amount.toLocaleString('en-IN') + ' successfully added to your wallet! 🎉');
+                                fetchWalletData();
+                            } catch (err) {
+                                console.error('Verification Error:', err);
+                                alert('Payment verification failed: ' + err.message);
+                            } finally {
+                                btn.disabled = false;
+                                btn.innerHTML = originalText;
+                            }
+                        },
+                        prefill: {
+                            name: user ? user.name : '',
+                            email: user ? user.email : ''
+                        },
+                        theme: {
+                            color: '#6c63ff'
+                        },
+                        modal: {
+                            ondismiss: function () {
+                                btn.disabled = false;
+                                btn.innerHTML = originalText;
+                            }
+                        }
+                    };
+
+                    const rzp = new window.Razorpay(options);
+                    rzp.open();
+
+                } catch (e) {
+                    console.error('Wallet Top-up error:', e);
+                    alert('Top-up failed: ' + e.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+        </script>
         <script>
             // DASHBOARD BOUNCER: Secure Cookie Check
             let user = null;
@@ -828,7 +1528,16 @@
                     const data = await res.json();
                     if (data.success && data.user) {
                         user = data.user;
-                        document.getElementById('userName').innerText = user.name;
+                        const displayName = user.name || user.email || 'User';
+                        const initial = displayName.trim().charAt(0).toUpperCase();
+                        const avatarEl = document.getElementById('userAvatar');
+                        if (avatarEl) {
+                            avatarEl.innerText = initial;
+                        }
+                        const triggerEl = document.getElementById('profileTrigger');
+                        if (triggerEl) {
+                            triggerEl.title = displayName;
+                        }
                         document.querySelector('.dashboard-wrapper').style.display = 'block';
 
                         // Update hidden username field for change password form
@@ -929,12 +1638,27 @@
                         </a>`;
                                     }
 
+                                    let packageDisplay = '';
+                                    if (order.orderItems && order.orderItems.length > 0) {
+                                        const itemsHtml = order.orderItems.map(item => {
+                                            const name = item.name || item.title || item.packageId?.title || 'Package';
+                                            const itemPriceVal = item.price || item.priceAtAdd || item.amount || 0;
+                                            const itemCurrency = item.currency || order.currency || 'INR';
+                                            const symbol = itemCurrency === 'USD' ? '$' : '₹';
+                                            const priceStr = typeof itemPriceVal === 'number' ? `${symbol}${itemPriceVal.toLocaleString()}` : (String(itemPriceVal).startsWith('$') || String(itemPriceVal).startsWith('₹') ? itemPriceVal : `${symbol}${itemPriceVal}`);
+                                            return `<li style="margin-bottom: 4px;">${name} - ${priceStr}</li>`;
+                                        }).join('');
+                                        packageDisplay = `<ul style="margin: 0 0 10px 0; padding-left: 20px; font-weight: 600; color: #1e293b; font-size: 1.15rem; list-style-type: disc;">${itemsHtml}</ul>`;
+                                    } else {
+                                        packageDisplay = `<h4>${order.package}</h4>`;
+                                    }
+
                                     // 🟢 3. The New UI Card
                                     list.innerHTML += `
                     <div class="order-card" style="display: block;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                             <div class="order-info">
-                                <h4>${order.package}</h4>
+                                ${packageDisplay}
                                 <p><i class="ri-hashtag" style="color:#94a3b8;"></i> <strong>Order ID:</strong> ${order.orderId}</p>
                                 <p><i class="ri-calendar-line" style="color:#94a3b8;"></i> <strong>Date:</strong> ${order.date}</p>
                             </div>
@@ -983,10 +1707,29 @@
                                 document.getElementById('ordersList').innerHTML = `<p style="text-align:center; color:red; padding:20px;">Error loading orders. Please refresh.</p>`;
                             });
 
-                        // 🟢 Fetch other dependent data only AFTER user is defined
                         fetchMyTickets();
                         fetchSecurityData();
                         checkOnboarding();
+                        fetchWalletData(); // Silently pre-fetch wallet for nav badge
+
+                        // Route to correct tab if specified in URL query params
+                        const urlParams = new URLSearchParams(window.location.search);
+                        if (urlParams.get('tab') === 'wallet') {
+                            showDashTab('wallet');
+
+                            // Execute action based on global header dropdown clicks
+                            const walletAction = localStorage.getItem('wallet_action');
+                            if (walletAction === 'topup') {
+                                localStorage.removeItem('wallet_action');
+                                setTimeout(() => openTopupModal(), 400);
+                            } else if (walletAction === 'transactions') {
+                                localStorage.removeItem('wallet_action');
+                                setTimeout(() => {
+                                    const ledger = document.querySelector('.wallet-ledger-section');
+                                    if (ledger) ledger.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }, 600);
+                            }
+                        }
 
                     } else {
                         window.location.href = '/login.html';
@@ -1080,6 +1823,24 @@
                     </div>`;
                     });
                 } catch (e) { console.error('Tickets fetch error:', e); }
+            }
+
+            function showSupportTickets() {
+                document.getElementById('supportTicketsModal').style.display = 'flex';
+                document.getElementById('profileDropdown').style.display = 'none';
+                fetchMyTickets();
+            }
+
+            function closeSupportTicketsModal() {
+                document.getElementById('supportTicketsModal').style.display = 'none';
+                document.getElementById('ticketForm').style.display = 'none';
+                document.getElementById('ticketSubject').value = '';
+                document.getElementById('ticketIssue').value = '';
+            }
+
+            function toggleTicketForm() {
+                const form = document.getElementById('ticketForm');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
             }
 
             // --- PASSWORD CHANGE LOGIC ---
@@ -1238,6 +1999,24 @@
                     btn.innerHTML = 'Save Profile & Continue <i class="ri-arrow-right-line"></i>';
                     btn.style.opacity = '1';
                 }
+            }
+
+            // Toggle profile dropdown
+            const profileTrigger = document.getElementById('profileTrigger');
+            const profileDropdown = document.getElementById('profileDropdown');
+            if (profileTrigger && profileDropdown) {
+                profileTrigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const isDisplayed = profileDropdown.style.display === 'block';
+                    profileDropdown.style.display = isDisplayed ? 'none' : 'block';
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!profileTrigger.contains(e.target) && !profileDropdown.contains(e.target)) {
+                        profileDropdown.style.display = 'none';
+                    }
+                });
             }
 
             // Dashboard load hote hi initialize

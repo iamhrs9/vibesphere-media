@@ -2,7 +2,17 @@ try {
     require('dotenv').config();
 } catch (e) {
     console.warn("⚠️ dotenv module not found. Falling back to system environment variables.");
-} const express = require('express');
+}
+
+if (!process.env.JWT_SECRET) {
+    throw new Error("FATAL ERROR: JWT_SECRET is not defined in environment variables.");
+}
+
+if (!process.env.ADMIN_PASSWORD) {
+    throw new Error("FATAL ERROR: ADMIN_PASSWORD is not defined in environment variables.");
+}
+
+const express = require('express');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const http = require('http');
@@ -100,9 +110,20 @@ const io = require('socket.io')(server, {
 // 🟢 THE SOCKET.IO ENGINE (Live Dashboard Bouncer)
 io.on('connection', (socket) => {
     // Jab koi client dashboard kholega
-    socket.on('join_room', (email) => {
+    socket.on('join_room', async (email) => {
         socket.join(email);
-        console.log(`🟢 Client Live: ${email}`);
+        let role = 'Client';
+        if (email === 'Admin') {
+            role = 'Admin';
+        } else {
+            try {
+                const isStaff = await mongoose.model('Staff').findOne({ email }).select('_id').lean();
+                if (isStaff) role = 'Staff';
+            } catch (err) {
+                // Fallback to Client
+            }
+        }
+        console.log(`🟢 ${role} Live: ${email}`);
     });
 
     // 🟢 NAYA: CHAT MESSAGE ENGINE
@@ -173,7 +194,7 @@ async function checkAuth(req, res, next) {
     if (!token) return res.status(401).json({ error: "Access Denied. Please login." });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // If the token belongs to an Admin, pass through immediately (they don't exist in the User DB)
         if (decoded.role === 'Admin') {
@@ -194,6 +215,15 @@ async function checkAuth(req, res, next) {
     }
 }
 
+async function checkAdmin(req, res, next) {
+    if (!req.user || req.user.role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Access Denied: Admins only.' });
+    }
+    next();
+}
+
+app.use('/api/admin/*', checkAuth, checkAdmin);
+
 async function optionalAuth(req, _res, next) {
     const token = req.cookies?.token;
     req.user = null;
@@ -201,7 +231,7 @@ async function optionalAuth(req, _res, next) {
     if (!token) return next();
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Keep admin payload lightweight for optional context use.
         if (decoded.role === 'Admin') {
@@ -231,7 +261,7 @@ async function checkStaffSession(req, res, next) {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         if (decoded.role !== 'Staff') {
             return res.status(403).json({ success: false, message: 'Staff access required.' });
@@ -357,7 +387,7 @@ function parseTokenFromRequest(req) {
     const token = req.cookies?.token;
     if (!token) return null;
     try {
-        return jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        return jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
         return null;
     }
@@ -2298,39 +2328,54 @@ function buildAgencyInvoice(doc, order) {
         .text('Rate', 400, tableTop + 7)
         .text('Amount', 480, tableTop + 7);
 
-    // --- 4. TABLE ROW ---
-    let itemsList = [];
+    // --- 4. TABLE ROWS ---
+    let itemsToRender = [];
     if (order.orderItems && order.orderItems.length > 0) {
-        itemsList = order.orderItems.map(item => {
-            return item.title || item.packageId?.title || item.serviceName || 'Package';
+        itemsToRender = order.orderItems.map(item => {
+            const name = item.name || item.title || item.packageId?.title || 'Package';
+            const quantity = item.quantity || 1;
+            const price = item.price || item.priceAtAdd || 0;
+            const currency = item.currency || order.currency || 'INR';
+            return { name, quantity, price, currency };
         });
-    }
-
-    let descText = '';
-    if (itemsList.length > 0) {
-        descText = itemsList.map((item, idx) => `${idx + 1}. ${item}`).join('\n');
     } else {
-        descText = order.package || 'VibeSphere Digital Service';
+        const name = order.package || 'VibeSphere Digital Service';
+        const quantity = order.quantity || 1;
+        let priceNum = 0;
+        if (order.price) {
+            const cleaned = order.price.replace(/[^\d.]/g, '');
+            priceNum = parseFloat(cleaned) || 0;
+        }
+        const currency = order.currency || (order.price && order.price.includes('$') ? 'USD' : 'INR');
+        itemsToRender.push({ name, quantity, price: priceNum, currency });
     }
 
-    const descHeight = doc.heightOfString(descText, { width: 250 });
-
+    let currentY = tableTop + 35;
     doc.fillColor('#333333').font('Helvetica').fontSize(10);
-    
-    // Render Description with wrapping width
-    doc.text(descText, 60, tableTop + 35, { width: 250, align: 'left' });
 
-    // Qty, Rate, and Amount rendered at the same Y coordinate
-    doc.text('1', 330, tableTop + 35)
-        .text(displayPrice, 400, tableTop + 35)
-        .text(displayPrice, 480, tableTop + 35);
+    for (const item of itemsToRender) {
+        const descHeight = doc.heightOfString(item.name, { width: 250 });
+        
+        doc.text(item.name, 60, currentY, { width: 250, align: 'left' });
+        doc.text(String(item.quantity), 330, currentY);
 
-    // Draw the dividing line below the wrapped description text
-    const lineY = tableTop + 35 + descHeight + 15;
-    doc.moveTo(50, lineY).lineTo(540, lineY).strokeColor('#e2e8f0').lineWidth(1).stroke();
+        const cleanCurrency = item.currency === 'INR' ? 'INR' : item.currency;
+        const rateText = `${cleanCurrency} ${Number(item.price).toLocaleString()}`;
+        doc.text(rateText, 400, currentY);
+
+        const amountNum = item.quantity * item.price;
+        const amountText = `${cleanCurrency} ${Number(amountNum).toLocaleString()}`;
+        doc.text(amountText, 480, currentY);
+
+        const rowHeight = Math.max(descHeight, 20);
+        currentY += rowHeight + 10;
+
+        doc.moveTo(50, currentY - 5).lineTo(540, currentY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+        currentY += 10;
+    }
 
     // --- 5. TOTAL CALCULATION ---
-    const totalY = lineY + 20;
+    const totalY = currentY + 10;
 
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
         .text('Subtotal', 400, totalY)
@@ -2563,8 +2608,7 @@ function buildProfessionalInvoice(doc, order) {
     }
 }
 // --- 1. Variables ---
-let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "DEFAULT_SECRET_KEY";
+let CURRENT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // NOTE: CORS is already configured above with credentials: true — do NOT add a second app.use(cors()) here
 
@@ -2596,6 +2640,15 @@ const otpLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 3, // Maximum 3 requests allowed per IP
     message: { success: false, message: "🚨 Too many OTP requests from this IP! Please wait 15 minutes to prevent spam." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Ek IP address se 15 minute mein sirf 10 baar login attempts allowed hain
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Maximum 10 requests allowed per IP
+    message: { success: false, message: "Too many login attempts, please try again after 15 minutes" },
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -2650,8 +2703,27 @@ const userSchema = new mongoose.Schema({
     brandColors: { type: String, default: "" },
     referenceLinks: { type: String, default: "" },
 
+    // 💸 WALLET SYSTEM (Phase 1)
+    walletBalance: { type: Number, default: 0 },
+    walletId: { type: String, unique: true },
+    walletStatus: { type: String, enum: ['Active', 'Frozen', 'Hold'], default: 'Active' },
+
     date: { type: Date, default: Date.now }
 });
+
+// Auto-generate unique walletId
+userSchema.pre('save', function (next) {
+    if (!this.walletId) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let randomStr = '';
+        for (let i = 0; i < 8; i++) {
+            randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        this.walletId = `VS-W-${randomStr}`;
+    }
+    next();
+});
+
 const User = mongoose.model('User', userSchema);
 // ==========================================
 // 💸 PAYOUT REQUEST SCHEMA (UPDATED)
@@ -2822,7 +2894,7 @@ transporter.verify();
 
 // 1. Client Signup
 // 1. Client Signup (WITH FOUNDER'S WELCOME EMAIL)
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', loginLimiter, async (req, res) => {
     try {
         const { name, email, password, phone } = req.body;
         const existingUser = await User.findOne({ email });
@@ -2868,7 +2940,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
 // 2. Client Login
 // 2. Client Login (WITH DEVICE & LOCATION SECURITY ALERT)
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ email });
@@ -2902,7 +2974,7 @@ app.post('/api/auth/login', async (req, res) => {
                 email: user.email,
                 role: tokenRole,
                 name: user.name
-            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: jwtExpiresIn });
+            }, process.env.JWT_SECRET, { expiresIn: jwtExpiresIn });
 
             res.cookie('token', token, {
                 httpOnly: true,
@@ -3093,7 +3165,7 @@ app.post('/api/auth/verify-magic-link', async (req, res) => {
                 email: user.email,
                 role: 'Client',
                 name: user.name
-            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
+            }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
             res.cookie('token', tokenGenerated, {
                 httpOnly: true,
@@ -3195,7 +3267,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 // 2c. Client Change Password (Dashboard)
-app.post('/api/auth/change-password', async (req, res) => {
+app.post('/api/auth/change-password', loginLimiter, async (req, res) => {
     try {
         const { email, currentPassword, newPassword } = req.body;
         const user = await User.findOne({ email });
@@ -3211,9 +3283,9 @@ app.post('/api/auth/change-password', async (req, res) => {
 });
 
 // 3. Get Client Orders (Dashboard)
-app.post('/api/client/my-orders', async (req, res) => {
+app.post('/api/client/my-orders', checkAuth, async (req, res) => {
     try {
-        const { email } = req.body; // Client ka email aayega
+        const email = req.user.email;
         // Us email se jude saare orders dhoondo
         const myOrders = await Order.find({ email: email }).sort({ _id: -1 });
         res.json({ success: true, orders: myOrders });
@@ -3224,9 +3296,9 @@ app.post('/api/client/my-orders', async (req, res) => {
 // ==========================================
 
 // 1. Get Login History
-app.post('/api/client/security-data', async (req, res) => {
+app.post('/api/client/security-data', checkAuth, async (req, res) => {
     try {
-        const { email } = req.body;
+        const email = req.user.email;
         const user = await User.findOne({ email });
 
         if (user) {
@@ -3239,9 +3311,9 @@ app.post('/api/client/security-data', async (req, res) => {
 });
 
 // 2. Log Out of All Other Devices
-app.post('/api/client/logout-other-devices', async (req, res) => {
+app.post('/api/client/logout-other-devices', checkAuth, async (req, res) => {
     try {
-        const { email } = req.body;
+        const email = req.user.email;
         const user = await User.findOne({ email });
 
         if (user && user.activeSessions.length > 0) {
@@ -3671,6 +3743,21 @@ const financialTransactionSchema = new mongoose.Schema({
 const FinancialTransaction = mongoose.model('FinancialTransaction', financialTransactionSchema);
 
 // ==========================================
+// 💸 WALLET TRANSACTION SCHEMA (Phase 1)
+// ==========================================
+const transactionSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    type: { type: String, enum: ['Credit', 'Debit'], required: true },
+    amount: { type: Number, required: true },
+    description: { type: String, required: true },
+    transactionId: { type: String },
+    status: { type: String, enum: ['Success', 'Pending', 'Failed', 'Refunded'], default: 'Success' }
+}, {
+    timestamps: true
+});
+const Transaction = mongoose.model('Transaction', transactionSchema);
+
+// ==========================================
 // 📚 RESOURCE HUB SCHEMA (Knowledge Base)
 // ==========================================
 const resourceSchema = new mongoose.Schema({
@@ -3946,7 +4033,7 @@ async function enrichStaffBountyTasks(tasks = []) {
 // ==========================================
 
 // API 1: Staff Login
-app.post('/api/staff/login', async (req, res) => {
+app.post('/api/staff/login', loginLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
         const staff = await Staff.findOne({ email });
@@ -3957,7 +4044,7 @@ app.post('/api/staff/login', async (req, res) => {
                 role: 'Staff',
                 empId: staff.empId,
                 name: staff.name
-            }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '12h' });
+            }, process.env.JWT_SECRET, { expiresIn: '12h' });
 
             res.cookie('token', token, {
                 httpOnly: true,
@@ -3993,7 +4080,7 @@ app.get('/api/staff/me', (req, res) => {
     if (!token) return res.status(401).json({ success: false, message: "No active session." });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'Staff') {
             // Re-fetch robust UI context from DB if needed, or simply return decoded values
             Staff.findOne({ email: decoded.email }).then(staff => {
@@ -4220,7 +4307,7 @@ app.get('/api/staff/today-attendance', async (req, res) => {
         const token = req.cookies?.token;
         if (!token) return res.status(401).json({ success: false, message: 'No active session.' });
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role !== 'Staff') return res.status(401).json({ success: false, message: 'Role mismatch.' });
 
         const dateString = getISTDateString(0);
@@ -4247,7 +4334,7 @@ app.get('/api/staff/my-attendance', async (req, res) => {
         const token = req.cookies?.token;
         if (!token) return res.status(401).json({ success: false, message: 'No active session.' });
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role !== 'Staff') return res.status(401).json({ success: false, message: 'Role mismatch.' });
 
         const month = Number(req.query.month || 0);
@@ -6206,7 +6293,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                 transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
 
                 // IMPORTANT: res.json MUST be here so it waits for PDF generating
-                res.json({ success: true });
+                res.json({ success: true, orderId: newOrder.orderId });
             });
 
             // Make the PDF content (Same as download logic)
@@ -6214,7 +6301,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
         } catch (emailErr) {
             console.log("Failed to process email", emailErr);
-            res.json({ success: true }); // Fallback response if PDF generation completely fails
+            res.json({ success: true, orderId: newOrder.orderId }); // Fallback response if PDF generation completely fails
         }
     } else {
         res.json({ success: false });
@@ -6222,10 +6309,10 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 });
 
 // Admin Auth
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, (req, res) => {
     const { password } = req.body;
     if (password === CURRENT_ADMIN_PASSWORD) {
-        const token = jwt.sign({ role: 'Admin' }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '2h' });
+        const token = jwt.sign({ role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '2h' });
 
         res.cookie('token', token, {
             httpOnly: true,
@@ -6276,7 +6363,7 @@ app.get('/api/admin/me', (req, res) => {
     if (!token) return res.status(401).json({ success: false, message: "No active session." });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'Admin') {
             res.json({ success: true, user: { role: 'Admin' } });
         } else {
@@ -6293,7 +6380,7 @@ app.get('/api/client/me', async (req, res) => {
     if (!token) return res.status(401).json({ success: false, message: "No active session." });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'Client') {
             const user = await User.findOne({ email: decoded.email });
             if (!user) {
@@ -6314,6 +6401,258 @@ app.get('/api/client/me', async (req, res) => {
 app.post('/api/logout', (req, res) => {
     res.clearCookie('token');
     res.json({ success: true, message: "Logged out completely." });
+});
+
+// ==========================================
+// 💳 USER WALLET API (Client-Facing)
+// ==========================================
+app.get('/api/user/wallet', checkAuth, async (req, res) => {
+    try {
+        // Guard: this route is for clients only
+        if (req.user.role === 'Admin') {
+            return res.status(403).json({ success: false, error: 'Admins do not have a wallet.' });
+        }
+
+        const user = await User.findById(req.user._id).select('walletBalance walletId walletStatus name email');
+        if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+
+        const transactions = await Transaction.find({ userId: user._id }).sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            wallet: {
+                walletBalance: user.walletBalance || 0,
+                walletId: user.walletId || null,
+                walletStatus: user.walletStatus || 'Active',
+                name: user.name,
+                email: user.email
+            },
+            transactions
+        });
+    } catch (e) {
+        console.error('❌ User Wallet Error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ==========================================
+// 💳 USER WALLET PAYMENTS (Razorpay Top-up)
+// ==========================================
+
+// POST /api/payment/create-order
+app.post('/api/payment/create-order', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role === 'Admin') {
+            return res.status(403).json({ success: false, error: 'Admins do not have a wallet.' });
+        }
+
+        const { amount } = req.body;
+        const parsedAmount = Number(amount);
+        if (!parsedAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ success: false, error: 'Invalid amount. Must be a positive number.' });
+        }
+
+        const options = {
+            amount: Math.round(parsedAmount * 100), // convert to paise
+            currency: 'INR',
+            receipt: 'wallet_topup_' + Date.now()
+        };
+
+        const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+        if (!razorpayKeyId) {
+            return res.status(500).json({ success: false, error: 'Razorpay Key ID missing.' });
+        }
+
+        const order = await razorpay.orders.create(options);
+        res.json({
+            success: true,
+            order_id: order.id,
+            order,
+            razorpayKeyId
+        });
+    } catch (e) {
+        console.error('❌ Wallet Create Order Error:', e);
+        res.status(500).json({ success: false, error: e.message || 'Razorpay order creation failed.' });
+    }
+});
+
+// POST /api/payment/verify
+app.post('/api/payment/verify', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role === 'Admin') {
+            return res.status(403).json({ success: false, error: 'Admins do not have a wallet.' });
+        }
+
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+        const parsedAmount = Number(amount);
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || isNaN(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ success: false, error: 'Missing or invalid parameters.' });
+        }
+
+        // Verify signature using crypto
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(body.toString()).digest('hex');
+
+        if (expectedSignature !== razorpay_signature) {
+            return res.status(400).json({ success: false, error: 'Payment signature verification failed.' });
+        }
+
+        // Find and update client user
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        // Check wallet status first
+        if (user.walletStatus === 'Frozen' || user.walletStatus === 'Hold') {
+            return res.status(403).json({ success: false, error: 'Your wallet is temporarily restricted.' });
+        }
+
+        // Add amount to user's walletBalance
+        user.walletBalance = (user.walletBalance || 0) + parsedAmount;
+        await user.save();
+
+        // Create transaction history document
+        const transaction = new Transaction({
+            userId: user._id,
+            type: 'Credit',
+            amount: parsedAmount,
+            description: 'Wallet Top-up via Razorpay',
+            transactionId: razorpay_payment_id,
+            status: 'Success'
+        });
+        await transaction.save();
+
+        res.json({
+            success: true,
+            message: 'Wallet topped up successfully.',
+            walletBalance: user.walletBalance
+        });
+    } catch (e) {
+        console.error('❌ Wallet Verify Payment Error:', e);
+        res.status(500).json({ success: false, error: e.message || 'Payment verification failed.' });
+    }
+});
+
+// POST /api/checkout/wallet
+app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role === 'Admin') {
+            return res.status(403).json({ success: false, error: 'Admins do not have a wallet.' });
+        }
+
+        const { amount, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
+        const parsedAmount = Number(amount);
+
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ success: false, error: 'Invalid checkout amount.' });
+        }
+
+        // Fetch User and check wallet balance
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        // Check if wallet is Active
+        if (user.walletStatus !== 'Active') {
+            return res.status(403).json({ success: false, error: `Your wallet is currently ${user.walletStatus || 'restricted'}.` });
+        }
+
+        // Check wallet balance
+        if ((user.walletBalance || 0) < parsedAmount) {
+            return res.status(400).json({ success: false, error: 'Insufficient Wallet Balance.' });
+        }
+
+        // Deduct balance
+        user.walletBalance = (user.walletBalance || 0) - parsedAmount;
+        await user.save();
+
+        // Pre-generate Order ID and Transaction ID for transaction linking
+        const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
+        const transactionId = 'W-TXN-' + Math.floor(100000 + Math.random() * 900000);
+
+        // Create Order Document first so newOrder is fully defined and accessible
+        let orderType = 'agency';
+        let resolvedServiceId = '';
+        let resolvedQuantity = 0;
+        let resolvedTargetLink = '';
+
+        if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
+            orderType = 'smm';
+            resolvedServiceId = serviceId || orderDetails?.serviceId || '';
+            resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
+            resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
+        }
+
+        const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
+
+        const newOrder = new Order({
+            orderId: generatedOrderId,
+            paymentId: transactionId,
+            paymentStatus: 'Paid via Wallet',
+            workStatus: 'Work Pending',
+            status: 'Work Pending',
+            userId: user._id,
+            ...orderDetails,
+            orderAmount: parsedAmount,
+            orderItems: resolvedOrderItems,
+            orderType: orderType,
+            serviceId: resolvedServiceId,
+            quantity: resolvedQuantity,
+            targetLink: resolvedTargetLink,
+            instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
+            date: new Date().toLocaleString()
+        });
+
+        if (mongoose.connection.readyState === 1) {
+            await newOrder.save();
+        }
+
+        // Create transaction history document utilizing the verified newOrder.orderId
+        const packageName = orderDetails?.package || 'Service Package';
+        const transaction = new Transaction({
+            userId: user._id,
+            type: 'Debit',
+            amount: parsedAmount,
+            description: `Purchased ${packageName} (Order ${newOrder.orderId})`,
+            status: 'Success',
+            transactionId: transactionId
+        });
+        await transaction.save();
+
+        // Generate PDF and Send Invoice Email (Background process with callback)
+        try {
+            const doc = new PDFDocument({ margin: 0, size: 'A4' });
+            let buffers = [];
+            doc.on('data', buffers.push.bind(buffers));
+            doc.on('end', async () => {
+                let pdfData = Buffer.concat(buffers);
+
+                let mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: newOrder.email || user.email,
+                    subject: `Order Confirmed! Your Invoice ${newOrder.orderId} - VibeSphere Media`,
+                    text: `Hi ${newOrder.customerName || user.name},\n\nThank you for choosing VibeSphere Media! Your payment was successful using your VibeSphere Wallet, and your order (${newOrder.orderId}) is now confirmed.\n\nPlease find your official invoice attached to this email.\n\nOur team will contact you shortly to start the work.\n\nRegards,\nTeam VibeSphere`,
+                    attachments: [{ filename: `Invoice-${newOrder.orderId}.pdf`, content: pdfData }]
+                };
+
+                transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+
+                res.json({ success: true, orderId: newOrder.orderId, transactionId: transaction.transactionId });
+            });
+
+            buildProfessionalInvoice(doc, newOrder);
+        } catch (emailErr) {
+            console.log("Failed to process email", emailErr);
+            res.json({ success: true, orderId: newOrder.orderId, transactionId: transaction.transactionId }); // Fallback response
+        }
+    } catch (e) {
+        console.error('❌ Wallet Checkout Error:', e);
+        res.status(500).json({ success: false, error: e.message || 'Wallet checkout failed.' });
+    }
 });
 
 
@@ -6481,7 +6820,7 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
 // ==========================================
 
 // 1. Save New Blog (Admin Only)
-app.post('/api/add-blog', checkAuth, async (req, res) => {
+app.post('/api/add-blog', checkAuth, checkAdmin, async (req, res) => {
     try {
         // Frontend se aane wale naye SEO fields ko bhi receive karo
         const {
@@ -6503,7 +6842,7 @@ app.post('/api/add-blog', checkAuth, async (req, res) => {
 });
 
 // 2. Edit (Update) Blog (Admin Only)
-app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
+app.put('/api/edit-blog/:id', checkAuth, checkAdmin, async (req, res) => {
     try {
         // req.body mein ab metaTitle aur metaDesc bhi aayenge jo direct update ho jayenge
         await Blog.findByIdAndUpdate(req.params.id, req.body);
@@ -6514,7 +6853,7 @@ app.put('/api/edit-blog/:id', checkAuth, async (req, res) => {
     }
 });
 // 3. Delete Blog (Admin Only 🔒)
-app.delete('/api/delete-blog/:id', checkAuth, async (req, res) => {
+app.delete('/api/delete-blog/:id', checkAuth, checkAdmin, async (req, res) => {
     try {
         await Blog.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Blog Deleted!" });
@@ -6593,7 +6932,7 @@ app.post('/api/auth/google', async (req, res) => {
             email: user.email,
             role: 'Client',
             name: user.name
-        }, process.env.JWT_SECRET || "SECRET_VIBESPHERE_KEY_123", { expiresIn: '7d' });
+        }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.cookie('token', jwtToken, {
             httpOnly: true,
@@ -6949,12 +7288,8 @@ app.get('/api/admin/finance-overview', checkAuth, async (req, res) => {
     }
 });
 
-app.get('/api/finance/stats', checkAuth, async (req, res) => {
+app.get('/api/finance/stats', checkAuth, checkAdmin, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
-            return res.status(403).json({ success: false, message: 'Admin access required.' });
-        }
-
         const payload = await buildFinanceDashboardPayload({ year: req.query.year, month: req.query.month });
         res.json({
             success: true,
@@ -7679,9 +8014,9 @@ app.post('/api/client/create-ticket', async (req, res) => {
 });
 
 // Client views own tickets
-app.post('/api/client/my-tickets', async (req, res) => {
+app.post('/api/client/my-tickets', checkAuth, async (req, res) => {
     try {
-        const tickets = await Ticket.find({ clientEmail: req.body.email }).sort({ date: -1 });
+        const tickets = await Ticket.find({ clientEmail: req.user.email }).sort({ date: -1 });
         res.json({ success: true, tickets });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -8649,6 +8984,107 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
 
         res.json({ success: true, message: isBanned ? "User Restricted & Notified 🚫" : "User Restored & Notified ✅" });
     } catch (e) { res.status(500).json({ success: false, error: "Status update failed" }); }
+});
+
+// 5. Get Client Wallet details & transaction history
+app.get('/api/admin/clients/:id/wallet', checkAuth, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('walletBalance walletId walletStatus name email');
+        if (!user) return res.status(404).json({ success: false, error: "User not found!" });
+
+        const transactions = await Transaction.find({ userId: req.params.id }).sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            wallet: {
+                walletBalance: user.walletBalance || 0,
+                walletId: user.walletId || null,
+                walletStatus: user.walletStatus || 'Active',
+                name: user.name,
+                email: user.email
+            },
+            transactions
+        });
+    } catch (e) {
+        console.error("❌ Get Wallet Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 6. Manual Balance Adjustment
+app.post('/api/admin/clients/:id/wallet/adjust', checkAuth, async (req, res) => {
+    try {
+        const { amount, type, description, allowNegative } = req.body;
+        const adjustAmount = Number(amount);
+
+        if (isNaN(adjustAmount) || adjustAmount <= 0) {
+            return res.status(400).json({ success: false, error: "Invalid amount. Must be a positive number." });
+        }
+
+        if (type !== 'Credit' && type !== 'Debit') {
+            return res.status(400).json({ success: false, error: "Invalid transaction type. Must be 'Credit' or 'Debit'." });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, error: "User not found!" });
+
+        if (type === 'Credit') {
+            user.walletBalance = (user.walletBalance || 0) + adjustAmount;
+        } else if (type === 'Debit') {
+            if (!allowNegative && (user.walletBalance || 0) - adjustAmount < 0) {
+                return res.status(400).json({ success: false, error: "Insufficient wallet balance." });
+            }
+            user.walletBalance = (user.walletBalance || 0) - adjustAmount;
+        }
+
+        // Create and save Transaction
+        const txn = new Transaction({
+            userId: user._id,
+            type,
+            amount: adjustAmount,
+            description: description || `Manual ${type} adjustment`,
+            status: 'Success'
+        });
+        await txn.save();
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Wallet balance adjusted successfully.",
+            walletBalance: user.walletBalance,
+            transaction: txn
+        });
+    } catch (e) {
+        console.error("❌ Wallet Adjustment Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 7. Update Wallet Status
+app.patch('/api/admin/clients/:id/wallet/status', checkAuth, async (req, res) => {
+    try {
+        const { walletStatus } = req.body;
+        
+        if (!['Active', 'Frozen', 'Hold'].includes(walletStatus)) {
+            return res.status(400).json({ success: false, error: "Invalid wallet status. Must be 'Active', 'Frozen', or 'Hold'." });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, error: "User not found!" });
+
+        user.walletStatus = walletStatus;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: `Wallet status updated to ${walletStatus} successfully.`,
+            walletStatus: user.walletStatus
+        });
+    } catch (e) {
+        console.error("❌ Update Wallet Status Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // ==========================================
