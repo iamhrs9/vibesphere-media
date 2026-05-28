@@ -367,17 +367,208 @@ const VibeUI = {
         }
     },
     showToast: (msg) => {
-        let toast = document.getElementById('global-toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'global-toast';
-            toast.className = 'vibe-toast';
-            document.body.appendChild(toast);
+        let container = document.getElementById('vibe-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'vibe-toast-container';
+            container.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-end;
+                z-index: 99999999;
+                pointer-events: none;
+                max-width: 380px;
+                width: 90%;
+            `;
+            document.body.appendChild(container);
         }
-        toast.textContent = msg;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
+
+        const escapeHtml = (val) => String(val ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        let bg = 'rgba(15, 23, 42, 0.72)';
+        let border = '1px solid rgba(255, 255, 255, 0.15)';
+        let color = '#f8fafc';
+        let icon = 'ℹ️';
+        
+        const lowerMsg = String(msg || '').toLowerCase();
+        if (lowerMsg.includes('success') || lowerMsg.includes('✅') || lowerMsg.includes('saved') || lowerMsg.includes('completed') || lowerMsg.includes('added') || lowerMsg.includes('sent')) {
+            bg = 'rgba(16, 185, 129, 0.16)';
+            border = '1px solid rgba(16, 185, 129, 0.28)';
+            color = '#34d399';
+            icon = '✅';
+        } else if (lowerMsg.includes('error') || lowerMsg.includes('failed') || lowerMsg.includes('❌') || lowerMsg.includes('insufficient') || lowerMsg.includes('invalid') || lowerMsg.includes('missing') || lowerMsg.includes('required') || lowerMsg.includes('⚠️')) {
+            bg = 'rgba(239, 68, 68, 0.16)';
+            border = '1px solid rgba(239, 68, 68, 0.28)';
+            color = '#f87171';
+            icon = '⚠️';
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'vibe-toast-item';
+        toast.style.cssText = `
+            background: ${bg};
+            border: ${border};
+            color: ${color};
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 14px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: inherit;
+            width: 100%;
+            pointer-events: auto;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+
+        toast.innerHTML = `<span style="font-size:1.1rem;flex-shrink:0;">${icon}</span> <span style="line-height:1.4;">${escapeHtml(msg)}</span>`;
+        container.appendChild(toast);
+
+        // Animate entrance
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 30);
+
+        // Auto-dismiss exactly 3 seconds (3000ms) after it appears
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            // Remove from DOM after fade-out transition completes
+            setTimeout(() => {
+                toast.remove();
+                if (container.children.length === 0) {
+                    container.remove();
+                }
+            }, 400);
+        }, 3000);
+    },
+    showConfirm: (message, onConfirm, onCancel) => {
+        let overlay = document.getElementById('global-confirm-modal');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'global-confirm-modal';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 23, 42, 0.4);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999999;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        const escapeHtml = (val) => String(val ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        overlay.innerHTML = `
+            <div style="
+                background: rgba(255, 255, 255, 0.82);
+                backdrop-filter: blur(30px);
+                -webkit-backdrop-filter: blur(30px);
+                border: 1px solid rgba(255, 255, 255, 0.45);
+                border-radius: 24px;
+                padding: 32px;
+                width: 90%;
+                max-width: 420px;
+                box-shadow: 0 30px 60px rgba(0,0,0,0.18);
+                text-align: center;
+                transform: scale(0.9);
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            " class="confirm-content">
+                <div style="font-size: 2.5rem; margin-bottom: 14px;">⚠️</div>
+                <h3 style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 800; color: #0f172a; font-family: inherit;">Please Confirm</h3>
+                <p style="margin: 0 0 28px 0; font-size: 0.95rem; color: #475569; line-height: 1.5; font-family: inherit; font-weight: 600;">${escapeHtml(message)}</p>
+                <div style="display: flex; gap: 14px; justify-content: center;">
+                    <button id="confirm-cancel-btn" style="
+                        background: rgba(148, 163, 184, 0.1);
+                        color: #475569;
+                        border: 1px solid rgba(148, 163, 184, 0.25);
+                        padding: 12px 24px;
+                        border-radius: 12px;
+                        font-weight: 700;
+                        font-size: 0.92rem;
+                        cursor: pointer;
+                        flex: 1;
+                        transition: all 0.25s;
+                        font-family: inherit;
+                    ">Cancel</button>
+                    <button id="confirm-ok-btn" style="
+                        background: #6c63ff;
+                        color: #fff;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 12px;
+                        font-weight: 700;
+                        font-size: 0.92rem;
+                        cursor: pointer;
+                        flex: 1;
+                        box-shadow: 0 8px 20px rgba(108, 99, 255, 0.3);
+                        transition: all 0.25s;
+                        font-family: inherit;
+                    ">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        overlay.style.display = 'flex';
+        overlay.offsetHeight;
+        overlay.style.opacity = '1';
+        overlay.querySelector('.confirm-content').style.transform = 'scale(1)';
+
+        const closeConfirm = () => {
+            overlay.style.opacity = '0';
+            overlay.querySelector('.confirm-content').style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        };
+
+        const handleCancel = () => {
+            closeConfirm();
+            if (typeof onCancel === 'function') onCancel();
+        };
+
+        const handleConfirm = () => {
+            closeConfirm();
+            if (typeof onConfirm === 'function') onConfirm();
+        };
+
+        overlay.querySelector('#confirm-cancel-btn').onclick = handleCancel;
+        overlay.querySelector('#confirm-ok-btn').onclick = handleConfirm;
+        overlay.onclick = (e) => {
+            if (e.target === overlay) handleCancel();
+        };
     }
 };
+
+(function() {
+    window.alert = function (msg) {
+        if (typeof VibeUI !== 'undefined' && typeof VibeUI.showToast === 'function') {
+            VibeUI.showToast(msg);
+        } else {
+            console.log("Native Alert:", msg);
+        }
+    };
+})();
+
 window.VibeUI = VibeUI;
 window.VibeGuestCart = VibeGuestCart;

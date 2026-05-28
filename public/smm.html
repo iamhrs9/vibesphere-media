@@ -434,18 +434,7 @@
             <!-- Right Calculator -->
             <div>
                 <div class="platform-card-grid">
-                    <div class="platform-card active" data-platform="Instagram">
-                        <i class="ri-instagram-fill"></i>
-                        <h3>Instagram</h3>
-                    </div>
-                    <div class="platform-card" data-platform="YouTube">
-                        <i class="ri-youtube-fill"></i>
-                        <h3>YouTube</h3>
-                    </div>
-                    <div class="platform-card" data-platform="Facebook">
-                        <i class="ri-facebook-box-fill"></i>
-                        <h3>Facebook</h3>
-                    </div>
+                    <div style="text-align: center; width: 100%; color: #64748b; font-size: 0.9rem; padding: 20px;">Loading platforms...</div>
                 </div>
 
                 <div class="calc-card">
@@ -461,19 +450,46 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="quantity">Quantity</label>
-                        <div class="quantity-wrapper">
-                            <input type="number" id="quantity" class="form-control" value="1000" min="100" max="100000" step="100">
-                        </div>
-                        <div class="quantity-hint">
-                            <span>Min: 100</span>
-                            <span>Max: 100,000</span>
-                        </div>
+                        <label id="targetLinkLabel" for="targetLink">Profile Link / Username *</label>
+                        <input type="text" id="targetLink" class="form-control" placeholder="Enter link here...">
                     </div>
 
                     <div class="form-group">
-                        <label for="targetLink" id="targetLinkLabel">Target Profile Link / Username *</label>
-                        <input type="text" id="targetLink" class="form-control" placeholder="e.g. @username or full post link">
+                        <label for="quantity">Quantity</label>
+                        <div class="quantity-wrapper">
+                            <input type="number" id="quantity" class="form-control" value="1000" min="100" max="100000" step="100">
+                            <div class="quantity-hint">
+                                <span>Min: 100</span>
+                                <span>Max: 100,000</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Variant Selectors Group -->
+                    <div id="variantSelectorsGroup" style="display: none; border-top: 1px solid #f1f5f9; padding-top: 20px; margin-top: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px; font-size: 0.95rem;">
+                            <i class="ri-settings-4-line" style="color: #6c63ff;"></i> Service Specifications
+                        </h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="targetCountry" style="font-size: 0.8rem;">Target Country</label>
+                                <select id="targetCountry" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="serviceSpeed" style="font-size: 0.8rem;">Speed</label>
+                                <select id="serviceSpeed" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0; grid-column: span 2;">
+                                <label for="refillGuarantee" style="font-size: 0.8rem;">Refill Guarantee</label>
+                                <select id="refillGuarantee" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
+                                </select>
+                            </div>
+                        </div>
+                        <p id="variantError" style="color:#ef4444;font-size:0.8rem;display:none;margin-top:4px;">Selected combination is unavailable.</p>
+                        <p id="detailDescription" style="margin: 0; color: #64748b; font-size: 0.82rem; line-height: 1.4; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: none;"></p>
                     </div>
 
                     <div class="price-box" id="priceBox">
@@ -521,23 +537,8 @@
             // Load live rates
             await loadSmmRates();
 
-            // Set up platform card triggers
-            const cards = document.querySelectorAll(".platform-card");
-            cards.forEach(card => {
-                card.addEventListener("click", () => {
-                    cards.forEach(c => c.classList.remove("active"));
-                    card.classList.add("active");
-                    selectedPlatform = card.dataset.platform;
-
-                    populateServiceTypes();
-                });
-            });
-
             // Set up calculator calculation event listeners
-            document.getElementById("serviceType").addEventListener("change", () => {
-                updateTargetLinkLabel();
-                calculatePrice();
-            });
+            document.getElementById("serviceType").addEventListener("change", handleServiceSelectionChange);
             document.getElementById("quantity").addEventListener("input", calculatePrice);
             document.getElementById("quantity").addEventListener("keyup", calculatePrice);
             document.getElementById("quantity").addEventListener("change", calculatePrice);
@@ -550,22 +551,13 @@
                 if (targetService) {
                     selectedPlatform = targetService.platform;
                     
-                    // Activate platform card in UI
-                    cards.forEach(c => {
-                        if (c.dataset.platform.toLowerCase() === targetService.platform.toLowerCase()) {
-                            c.classList.add("active");
-                        } else {
-                            c.classList.remove("active");
-                        }
-                    });
-
+                    populatePlatforms();
                     populateServiceTypes();
 
                     const serviceSelect = document.getElementById("serviceType");
                     if (serviceSelect) {
                         serviceSelect.value = targetService.serviceId;
-                        updateTargetLinkLabel();
-                        calculatePrice();
+                        handleServiceSelectionChange();
                     }
                 }
             }
@@ -577,6 +569,7 @@
                 const data = await res.json();
                 if (data.success) {
                     smmRates = data.rates;
+                    populatePlatforms();
                     populateServiceTypes();
                 } else {
                     document.getElementById("rateHint").innerText = "Failed to load rates.";
@@ -585,6 +578,51 @@
                 document.getElementById("rateHint").innerText = "Failed to fetch rates.";
             }
         }
+
+        function populatePlatforms() {
+            const grid = document.querySelector(".platform-card-grid");
+            if (!grid || !smmRates.length) return;
+
+            // Get unique platforms case-insensitively
+            const uniquePlatforms = [];
+            smmRates.forEach(r => {
+                if (r.platform && !uniquePlatforms.some(p => p.toLowerCase() === r.platform.toLowerCase())) {
+                    uniquePlatforms.push(r.platform);
+                }
+            });
+
+            if (!uniquePlatforms.some(p => p.toLowerCase() === selectedPlatform.toLowerCase())) {
+                selectedPlatform = uniquePlatforms[0] || "Instagram";
+            }
+
+            const platformIcons = {
+                "instagram": "ri-instagram-fill",
+                "youtube": "ri-youtube-fill",
+                "facebook": "ri-facebook-box-fill",
+                "twitter": "ri-twitter-fill",
+                "tiktok": "ri-tiktok-fill",
+                "telegram": "ri-telegram-fill"
+            };
+
+            grid.innerHTML = uniquePlatforms.map(p => {
+                const icon = platformIcons[p.toLowerCase()] || "ri-rocket-line";
+                const isActive = p.toLowerCase() === selectedPlatform.toLowerCase() ? "active" : "";
+                return `
+                    <div class="platform-card ${isActive}" data-platform="${p}" onclick="selectPlatform('${p}', this)">
+                        <i class="${icon}"></i>
+                        <h3>${p}</h3>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        window.selectPlatform = function(plat, element) {
+            const cards = document.querySelectorAll(".platform-card");
+            cards.forEach(c => c.classList.remove("active"));
+            element.classList.add("active");
+            selectedPlatform = plat;
+            populateServiceTypes();
+        };
 
         function updateTargetLinkLabel() {
             const select = document.getElementById("serviceType");
@@ -628,18 +666,79 @@
             if (!select) return;
 
             // Filter rates for current platform
-            const platformRates = smmRates.filter(r => r.platform.toLowerCase() === selectedPlatform.toLowerCase());
+            const platformRates = smmRates.filter(r => r.platform && r.platform.toLowerCase() === selectedPlatform.toLowerCase());
             
             if (platformRates.length === 0) {
                 select.innerHTML = `<option value="">No services available</option>`;
-                document.getElementById("totalPriceDisplay").innerText = "₹0.00";
-                document.getElementById("rateHint").innerText = "No rates configured for this platform.";
+                const totalPriceDisplay = document.getElementById("totalPriceDisplay");
+                if (totalPriceDisplay) totalPriceDisplay.innerText = "₹0.00";
+                const rateHint = document.getElementById("rateHint");
+                if (rateHint) rateHint.innerText = "No rates configured for this platform.";
+                
+                const countryGroupEl = document.getElementById("countryGroup");
+                if (countryGroupEl) countryGroupEl.style.display = "none";
+                const serviceDetailsBoxEl = document.getElementById("serviceDetailsBox");
+                if (serviceDetailsBoxEl) serviceDetailsBoxEl.style.display = "none";
                 return;
             }
 
-            select.innerHTML = platformRates.map(r => `
-                <option value="${r.serviceId}" data-rate="${r.ratePer1000}">${r.serviceType} (₹${r.ratePer1000}/1k)</option>
-            `).join("");
+            select.innerHTML = platformRates.map(package => {
+                console.log('Package Data:', package);
+                let priceLabel = '';
+                if (package.pricingVariants?.length > 0) {
+                    const validPrices = package.pricingVariants.map(v => v?.price).filter(p => p !== undefined && p !== null);
+                    if (validPrices.length > 0) {
+                        const lowestPrice = Math.min(...validPrices);
+                        priceLabel = ` (Starting at ₹${lowestPrice})`;
+                    }
+                } else if (package.ratePer1000 !== undefined && package.ratePer1000 !== null) {
+                    priceLabel = ` (₹${package.ratePer1000}/1k)`;
+                }
+                return `
+                    <option value="${package.serviceId}" data-rate="${package.ratePer1000 || ''}">${package.serviceType}${priceLabel}</option>
+                `;
+            }).join("");
+
+            handleServiceSelectionChange();
+        }
+
+        function handleServiceSelectionChange() {
+            const select = document.getElementById("serviceType");
+            if (!select || select.value === "") return;
+
+            const serviceId = select.value;
+            window.currentPackage = smmRates.find(r => r.serviceId === serviceId);
+            const package = window.currentPackage;
+            if (!package) return;
+
+            const variantGroup = document.getElementById("variantSelectorsGroup");
+            const targetCountrySelect = document.getElementById("targetCountry");
+            const serviceSpeedSelect = document.getElementById("serviceSpeed");
+            const refillGuaranteeSelect = document.getElementById("refillGuarantee");
+
+            if (variantGroup && package.pricingVariants?.length > 0) {
+                const uniqueCountries = [...new Set(package.pricingVariants.map(v => v?.country).filter(Boolean))];
+                const uniqueSpeeds = [...new Set(package.pricingVariants.map(v => v?.speed).filter(Boolean))];
+                const uniqueRefills = [...new Set(package.pricingVariants.map(v => v?.refillGuarantee).filter(Boolean))];
+
+                targetCountrySelect.innerHTML = uniqueCountries.map(c => `<option value="${c}">${c}</option>`).join('');
+                serviceSpeedSelect.innerHTML = uniqueSpeeds.map(s => `<option value="${s}">${s}</option>`).join('');
+                refillGuaranteeSelect.innerHTML = uniqueRefills.map(r => `<option value="${r}">${r}</option>`).join('');
+                
+                variantGroup.style.display = "block";
+            } else {
+                if (variantGroup) variantGroup.style.display = "none";
+            }
+
+            const descEl = document.getElementById("detailDescription");
+            if (descEl) {
+                if (package.serviceDetails && package.serviceDetails.description) {
+                    descEl.innerText = package.serviceDetails.description;
+                    descEl.style.display = "block";
+                } else {
+                    descEl.style.display = "none";
+                }
+            }
 
             updateTargetLinkLabel();
             calculatePrice();
@@ -651,13 +750,39 @@
             const priceDisplay = document.getElementById("totalPriceDisplay");
             const rateHint = document.getElementById("rateHint");
             const priceBox = document.getElementById("priceBox");
+            const variantError = document.getElementById("variantError");
 
-            if (!select || !qtyInput || select.value === "") return;
+            if (!select || !qtyInput || select.value === "" || !window.currentPackage) return;
 
-            const selectedOption = select.options[select.selectedIndex];
-            if (!selectedOption) return;
-            const rate = parseFloat(selectedOption.dataset.rate || 0);
+            let rate = 0;
             let qty = parseInt(qtyInput.value || 0);
+            
+            // Check variant
+            const package = window.currentPackage;
+            let matchedVariantIndex = -1;
+            
+            if (package.pricingVariants?.length > 0) {
+                const c = document.getElementById("targetCountry")?.value;
+                const s = document.getElementById("serviceSpeed")?.value;
+                const r = document.getElementById("refillGuarantee")?.value;
+                
+                matchedVariantIndex = package.pricingVariants.findIndex(v => v?.country === c && v?.speed === s && v?.refillGuarantee === r);
+                
+                if (matchedVariantIndex === -1) {
+                    if (variantError) variantError.style.display = "block";
+                    priceDisplay.innerText = `₹0.00`;
+                    rateHint.innerText = `Combination not available`;
+                    window.currentVariantIndex = -1;
+                    return;
+                } else {
+                    if (variantError) variantError.style.display = "none";
+                    rate = Number(package.pricingVariants[matchedVariantIndex]?.price || 0);
+                    window.currentVariantIndex = matchedVariantIndex;
+                }
+            } else {
+                rate = parseFloat(package.ratePer1000 || 0);
+                window.currentVariantIndex = 0;
+            }
 
             // Min / Max constraints
             if (qty < 100) qty = 100;
@@ -696,13 +821,22 @@
                 return;
             }
 
-            const selectedOption = select.options[select.selectedIndex];
-            const rate = parseFloat(selectedOption.dataset.rate || 0);
-            const totalPrice = (qty / 1000) * rate;
-            const serviceTypeLabel = selectedOption.text.split(" (")[0];
+            let finalTargetLink = targetLink;
+
+            if (window.currentVariantIndex === -1) {
+                alert("⚠️ Please select a valid service specification combination.");
+                return;
+            }
 
             // Flow directly into the secure checkout page forwarding ONLY serviceId, quantity, and targetLink
-            window.location.href = `/checkout.html?serviceId=${encodeURIComponent(select.value)}&quantity=${qty}&targetLink=${encodeURIComponent(targetLink)}`;
+            const urlParams = new URLSearchParams({
+                isSmm: 'true',
+                serviceId: select.value,
+                quantity: qty,
+                targetLink: finalTargetLink,
+                variantIndex: window.currentVariantIndex !== undefined ? window.currentVariantIndex : 0
+            });
+            window.location.href = `/checkout.html?${urlParams.toString()}`;
         }
     </script>
 </body>

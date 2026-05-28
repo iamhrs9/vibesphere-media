@@ -747,6 +747,7 @@
         let smmServiceId = params.get('smmServiceId') || params.get('serviceId') || null;
         let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
         let insta = params.get('insta') || params.get('targetLink') || null;
+        let smmVariantIndex = params.get('variantIndex') ? Number(params.get('variantIndex')) : 0;
         let currencyFromURL = params.get('currency') || "INR";
         let validSmmService = !(smmServiceId && smmQty);
         let isCartCheckout = false;
@@ -761,6 +762,17 @@
                 return Boolean(data?.success && data?.user);
             } catch (e) {
                 return false;
+            }
+        }
+
+        async function fetchActiveSessionUser() {
+            try {
+                const res = await fetch('/api/auth/me', { credentials: 'include' });
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data?.success ? data.user : null;
+            } catch (e) {
+                return null;
             }
         }
 
@@ -958,7 +970,11 @@
                     if (data && data.success && Array.isArray(data.rates)) {
                         const service = data.rates.find(r => String(r.serviceId) === String(smmServiceId));
                         if (service) {
-                            const ratePer1000 = Number(service.ratePer1000);
+                            let ratePer1000 = Number(service.ratePer1000 || 0);
+                            if (service.pricingVariants && service.pricingVariants.length > 0) {
+                                const variant = service.pricingVariants[smmVariantIndex] || service.pricingVariants[0];
+                                ratePer1000 = Number(variant.price);
+                            }
                             const computedPrice = (smmQty / 1000) * ratePer1000;
                             
                             pkg = `${service.platform} ${service.serviceType} (${smmQty} units)`;
@@ -1134,6 +1150,30 @@
             const dispPriceText = document.getElementById('dispPrice').innerText;
             const numericPrice = parseFloat(dispPriceText.replace(/[^0-9.]/g, '')) || 0;
             await initCheckoutWallet(numericPrice);
+
+            // Auto-fill user details if logged in
+            try {
+                const activeUser = await fetchActiveSessionUser();
+                if (activeUser) {
+                    const nameInput = document.getElementById('name');
+                    const emailInput = document.getElementById('email');
+                    const phoneInput = document.getElementById('phone');
+
+                    if (nameInput && activeUser.name) {
+                        nameInput.value = activeUser.name;
+                    }
+                    if (emailInput && activeUser.email) {
+                        emailInput.value = activeUser.email;
+                        emailInput.readOnly = true;
+                        emailInput.style.background = '#f1f5f9';
+                    }
+                    if (phoneInput && activeUser.phone) {
+                        phoneInput.value = activeUser.phone;
+                    }
+                }
+            } catch (err) {
+                console.error("Auto-fill details failed:", err);
+            }
         });
 
         // 2. PAYMENT LOGIC
@@ -1205,6 +1245,7 @@
                         walletPayload.quantity = smmQty;
                         walletPayload.targetLink = insta;
                         walletPayload.orderType = 'smm';
+                        walletPayload.variantIndex = smmVariantIndex;
                     } else {
                         walletPayload.orderType = 'agency';
                     }
@@ -1259,6 +1300,7 @@
                     createPayload.serviceId = smmServiceId;
                     createPayload.quantity = smmQty;
                     createPayload.orderType = 'smm';
+                    createPayload.variantIndex = smmVariantIndex;
                 } else {
                     createPayload.amount = finalAmount;
                     createPayload.orderType = 'agency';
@@ -1304,7 +1346,8 @@
                                 phone: phone,
                                 email: email,
                                 orderItems: isCartCheckout ? cartItems : [],
-                                orderType: smmServiceId && smmQty ? 'smm' : 'agency'
+                                orderType: smmServiceId && smmQty ? 'smm' : 'agency',
+                                variantIndex: smmServiceId && smmQty ? smmVariantIndex : undefined
                             }
                         };
 

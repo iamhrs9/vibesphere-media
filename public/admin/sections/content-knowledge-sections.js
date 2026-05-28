@@ -181,7 +181,7 @@ window.resetForm = function () {
     document.getElementById('submitBtn').innerText = "Save Blog";
     document.getElementById('cancelBtn').style.display = "none";
 }
-document.getElementById('blogForm').addEventListener('submit', async (e) => {
+document.getElementById('blogForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('editBlogId').value;
     const isEdit = id ? true : false;

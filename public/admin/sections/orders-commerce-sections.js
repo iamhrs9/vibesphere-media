@@ -62,15 +62,32 @@
     }
 
     function getOrderDescriptionMarkup(order) {
+        let pkgMarkup = '';
         if (order.orderItems && order.orderItems.length > 0) {
             const items = order.orderItems.map(item => {
                 return item.title || item.packageId?.title || item.serviceName || 'Package';
             });
-            return `<ol style="margin: 0; padding-left: 15px; font-size: 0.9rem; line-height: 1.4;">
+            pkgMarkup = `<ol style="margin: 0; padding-left: 15px; font-size: 0.9rem; line-height: 1.4;">
                 ${items.map(title => `<li style="font-weight: 700; color: #0f172a;">${escapeHtml(title)}</li>`).join('')}
             </ol>`;
+        } else {
+            pkgMarkup = `<div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || 'Custom Package')}</div>`;
         }
-        return `<div style="font-weight:700;color:#0f172a;">${escapeHtml(order.package || 'Custom Package')}</div>`;
+
+        const country = order.selectedCountry || order.country || '';
+        const speed = order.selectedSpeed || order.speed || '';
+        const refill = order.selectedRefill || order.refill || '';
+
+        if (country?.length || speed?.length || refill?.length) {
+            let details = [];
+            if (country?.length) details.push(`📍 Country: ${escapeHtml(country)}`);
+            if (speed?.length) details.push(`⚡ Speed: ${escapeHtml(speed)}`);
+            if (refill?.length) details.push(`🔄 Refill: ${escapeHtml(refill)}`);
+            
+            pkgMarkup += `<div class="text-xs text-gray-500 mt-1" style="font-size:0.75rem;color:#64748b;margin-top:4px;">${details.join(' | ')}</div>`;
+        }
+
+        return pkgMarkup;
     }
 
     async function fetchOrders() {

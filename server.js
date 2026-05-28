@@ -3391,6 +3391,9 @@ const orderSchema = new mongoose.Schema({
     targetLink: { type: String, default: '' },
     quantity: { type: Number, default: 0 },
     serviceId: { type: String, default: '' },
+    selectedCountry: { type: String, default: '' },
+    selectedSpeed: { type: String, default: '' },
+    selectedRefill: { type: String, default: '' },
 
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
@@ -5423,7 +5426,20 @@ const smmServiceSchema = new mongoose.Schema({
     serviceId: { type: String, required: true, unique: true }, // e.g., 'ig-followers'
     platform: { type: String, required: true },               // e.g., 'Instagram', 'YouTube'
     serviceType: { type: String, required: true },            // e.g., 'Followers', 'Likes'
-    ratePer1000: { type: Number, required: true },            // Base price per 1000 units in INR
+    pricingVariants: [{
+        country: { type: String, required: true },
+        speed: { type: String, required: true },
+        refillGuarantee: { type: String, required: true },
+        price: { type: Number, required: true } // Price per 1000 units in INR
+    }],
+    ratePer1000: { type: Number }, // Legacy
+    targetCountries: { type: [String], default: [] }, // Legacy
+    serviceDetails: { // Legacy
+        startTime: { type: String, default: '' },
+        refillGuarantee: { type: String, default: '' },
+        speed: { type: String, default: '' },
+        description: { type: String, default: '' }
+    }
 }, { timestamps: true });
 const SmmService = mongoose.model('SmmService', smmServiceSchema);
 
@@ -5433,15 +5449,42 @@ async function initSmmServices() {
         const count = await SmmService.countDocuments();
         if (count === 0) {
             const defaults = [
-                { serviceId: 'ig-followers', platform: 'Instagram', serviceType: 'Followers', ratePer1000: 150 },
-                { serviceId: 'ig-likes', platform: 'Instagram', serviceType: 'Likes', ratePer1000: 80 },
-                { serviceId: 'ig-comments', platform: 'Instagram', serviceType: 'Comments', ratePer1000: 350 },
-                { serviceId: 'ig-views', platform: 'Instagram', serviceType: 'Views', ratePer1000: 50 },
-                { serviceId: 'yt-subscribers', platform: 'YouTube', serviceType: 'Subscribers', ratePer1000: 800 },
-                { serviceId: 'yt-likes', platform: 'YouTube', serviceType: 'Likes', ratePer1000: 200 },
-                { serviceId: 'yt-views', platform: 'YouTube', serviceType: 'Views', ratePer1000: 300 },
-                { serviceId: 'fb-followers', platform: 'Facebook', serviceType: 'Followers', ratePer1000: 180 },
-                { serviceId: 'fb-likes', platform: 'Facebook', serviceType: 'Likes', ratePer1000: 100 }
+                { 
+                    serviceId: 'ig-followers', platform: 'Instagram', serviceType: 'Followers', 
+                    pricingVariants: [{ country: 'Global', speed: '1K-5K/day', refillGuarantee: '30 Days Refill', price: 150 }] 
+                },
+                { 
+                    serviceId: 'ig-likes', platform: 'Instagram', serviceType: 'Likes', 
+                    pricingVariants: [{ country: 'Global', speed: 'Instant', refillGuarantee: 'No Refill', price: 80 }] 
+                },
+                { 
+                    serviceId: 'ig-comments', platform: 'Instagram', serviceType: 'Comments', 
+                    pricingVariants: [{ country: 'Global', speed: 'Custom', refillGuarantee: 'No Refill', price: 350 }] 
+                },
+                { 
+                    serviceId: 'ig-views', platform: 'Instagram', serviceType: 'Views', 
+                    pricingVariants: [{ country: 'Global', speed: 'Instant', refillGuarantee: 'No Refill', price: 50 }] 
+                },
+                { 
+                    serviceId: 'yt-subscribers', platform: 'YouTube', serviceType: 'Subscribers', 
+                    pricingVariants: [{ country: 'Global', speed: '100-500/day', refillGuarantee: '30 Days Refill', price: 800 }] 
+                },
+                { 
+                    serviceId: 'yt-likes', platform: 'YouTube', serviceType: 'Likes', 
+                    pricingVariants: [{ country: 'Global', speed: '1K/day', refillGuarantee: 'No Refill', price: 200 }] 
+                },
+                { 
+                    serviceId: 'yt-views', platform: 'YouTube', serviceType: 'Views', 
+                    pricingVariants: [{ country: 'Global', speed: '10K/day', refillGuarantee: 'No Refill', price: 300 }] 
+                },
+                { 
+                    serviceId: 'fb-followers', platform: 'Facebook', serviceType: 'Followers', 
+                    pricingVariants: [{ country: 'Global', speed: '1K-2K/day', refillGuarantee: '30 Days Refill', price: 180 }] 
+                },
+                { 
+                    serviceId: 'fb-likes', platform: 'Facebook', serviceType: 'Likes', 
+                    pricingVariants: [{ country: 'Global', speed: '1K-2K/day', refillGuarantee: '30 Days Refill', price: 100 }] 
+                }
             ];
             await SmmService.insertMany(defaults);
             console.log("🚀 Default SMM rates initialized successfully.");
@@ -5472,23 +5515,29 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
         if (req.user.role !== 'Admin') {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
-        const { serviceId, platform, serviceType, ratePer1000 } = req.body;
-        if (!serviceId || !platform || !serviceType || ratePer1000 == null) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        const { serviceId, platform, serviceType, pricingVariants, serviceDetails } = req.body;
+        if (!serviceId || !platform || !serviceType || !pricingVariants || !Array.isArray(pricingVariants)) {
+            return res.status(400).json({ success: false, error: 'Missing required fields or invalid pricingVariants' });
         }
-        const parsedRatePer1000 = Number(ratePer1000);
-        if (!Number.isFinite(parsedRatePer1000) || parsedRatePer1000 <= 0) {
-            return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
-        }
+        
         const existing = await SmmService.findOne({ serviceId });
         if (existing) {
-            existing.ratePer1000 = parsedRatePer1000;
             existing.platform = platform;
             existing.serviceType = serviceType;
+            existing.pricingVariants = pricingVariants;
+            if (serviceDetails) {
+                existing.serviceDetails = serviceDetails;
+            }
             await existing.save();
             return res.json({ success: true, message: 'SMM rate updated successfully.' });
         }
-        const newSmm = new SmmService({ serviceId, platform, serviceType, ratePer1000: parsedRatePer1000 });
+        const newSmm = new SmmService({
+            serviceId,
+            platform,
+            serviceType,
+            pricingVariants,
+            serviceDetails: serviceDetails || {}
+        });
         await newSmm.save();
         res.json({ success: true, message: 'SMM rate created successfully.' });
     } catch (e) {
@@ -6148,7 +6197,7 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
-        let { amount, currency, isSmm, serviceId, quantity, orderType } = req.body;
+        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex } = req.body;
         const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
 
         if (!razorpayKeyId) {
@@ -6168,7 +6217,11 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             if (!smmSvc) {
                 return res.status(404).json({ success: false, error: 'SMM Service not found' });
             }
-            const ratePer1000 = Number(smmSvc.ratePer1000);
+            let ratePer1000 = smmSvc.ratePer1000 || 0;
+            if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
+                const sVar = smmSvc.pricingVariants[variantIndex] || smmSvc.pricingVariants[0];
+                ratePer1000 = Number(sVar.price);
+            }
             if (!Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
                 return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
             }
@@ -6213,18 +6266,33 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         let resolvedServiceId = '';
         let resolvedQuantity = 0;
         let resolvedTargetLink = '';
+        let selectedCountry = '';
+        let selectedSpeed = '';
+        let selectedRefill = '';
 
         if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
             orderType = 'smm';
             resolvedServiceId = serviceId || orderDetails?.serviceId || '';
             resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
             resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
+            if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+            }
+            const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
 
             // Secure recalculation on server side
             try {
                 const smmSvc = await SmmService.findOne({ serviceId: resolvedServiceId });
                 if (smmSvc) {
-                    normalizedOrderAmount = (resolvedQuantity / 1000) * smmSvc.ratePer1000;
+                    let rRate = smmSvc.ratePer1000 || 0;
+                    if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
+                        const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
+                        rRate = Number(sVar.price);
+                        selectedCountry = sVar.country || '';
+                        selectedSpeed = sVar.speed || '';
+                        selectedRefill = sVar.refillGuarantee || '';
+                    }
+                    normalizedOrderAmount = (resolvedQuantity / 1000) * rRate;
                 }
             } catch (err) {
                 console.error("Server side recalculation error:", err);
@@ -6268,6 +6336,9 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             quantity: resolvedQuantity,
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
+            selectedCountry: selectedCountry,
+            selectedSpeed: selectedSpeed,
+            selectedRefill: selectedRefill,
             date: new Date().toLocaleString()
         });
 
@@ -6352,6 +6423,7 @@ app.get('/api/auth/me', optionalAuth, (req, res) => {
             _id: req.user._id || null,
             name: req.user.name || null,
             email: req.user.email || null,
+            phone: req.user.phone || null,
             role: req.user.role || 'Client'
         }
     });
@@ -6387,7 +6459,7 @@ app.get('/api/client/me', async (req, res) => {
                 console.log(`❌ Client not found: ${decoded.email}`);
                 return res.status(401).json({ success: false });
             }
-            res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email } });
+            res.json({ success: true, user: { _id: user._id, name: user.name, email: user.email, phone: user.phone } });
         } else {
             console.log(`⚠️ Role mismatch for ${decoded.email}: Expected Client, got ${decoded.role}`);
             res.status(401).json({ success: false, message: "Role mismatch." });
@@ -6579,12 +6651,32 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         let resolvedServiceId = '';
         let resolvedQuantity = 0;
         let resolvedTargetLink = '';
+        let selectedCountry = '';
+        let selectedSpeed = '';
+        let selectedRefill = '';
 
         if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
             orderType = 'smm';
             resolvedServiceId = serviceId || orderDetails?.serviceId || '';
             resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
             resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
+            if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+            }
+            const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
+            try {
+                const smmSvc = await SmmService.findOne({ serviceId: resolvedServiceId });
+                if (smmSvc) {
+                    if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
+                        const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
+                        selectedCountry = sVar.country || '';
+                        selectedSpeed = sVar.speed || '';
+                        selectedRefill = sVar.refillGuarantee || '';
+                    }
+                }
+            } catch (err) {
+                console.error("Wallet checkout SMM variant fetch error:", err);
+            }
         }
 
         const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
@@ -6604,6 +6696,9 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             quantity: resolvedQuantity,
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
+            selectedCountry: selectedCountry,
+            selectedSpeed: selectedSpeed,
+            selectedRefill: selectedRefill,
             date: new Date().toLocaleString()
         });
 
@@ -6613,11 +6708,15 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
 
         // Create transaction history document utilizing the verified newOrder.orderId
         const packageName = orderDetails?.package || 'Service Package';
+        let txnDescription = `Purchased ${packageName} (Order ${newOrder.orderId})`;
+        if (orderType === 'smm' && selectedCountry && selectedSpeed) {
+            txnDescription = `Purchased ${packageName} (${selectedCountry}, ${selectedSpeed}) (Order ${newOrder.orderId})`;
+        }
         const transaction = new Transaction({
             userId: user._id,
             type: 'Debit',
             amount: parsedAmount,
-            description: `Purchased ${packageName} (Order ${newOrder.orderId})`,
+            description: txnDescription,
             status: 'Success',
             transactionId: transactionId
         });

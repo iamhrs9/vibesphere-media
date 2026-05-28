@@ -31,11 +31,42 @@
                                 <input type="text" id="smmServiceType" placeholder="e.g. Followers, Likes, Views"
                                     style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
                             </div>
-                            <div>
-                                <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Rate Per 1,000 (INR) *</label>
-                                <input type="number" id="smmRatePer1000" placeholder="e.g. 150" min="0.01" step="0.01"
-                                    style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
+                        </div>
+
+                        <!-- Restored Service Details Fields -->
+                        <div style="border-top:1px solid rgba(148,163,184,0.12);padding-top:16px;margin-bottom:20px;">
+                            <h4 style="margin:0 0 12px 0;font-size:0.95rem;color:#1e293b;font-weight:700;">ℹ️ Service Details</h4>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:16px;">
+                                <div>
+                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Start Time</label>
+                                    <input type="text" id="smmStartTime" placeholder="e.g. 0-1 Hours, Instant"
+                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Refill Guarantee</label>
+                                    <input type="text" id="smmRefillGuarantee" placeholder="e.g. 30 Days Refill, No Refill"
+                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Speed</label>
+                                    <input type="text" id="smmSpeed" placeholder="e.g. 1K - 5K / Day"
+                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
+                                </div>
                             </div>
+                            <div style="margin-bottom:16px;">
+                                <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Detailed Description</label>
+                                <textarea id="smmDescription" placeholder="Enter service details, start time info, or rules here..." rows="3"
+                                    style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;font-family:inherit;resize:vertical;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Pricing Variants Section -->
+                        <div style="border-top:1px solid rgba(148,163,184,0.12);padding-top:16px;margin-bottom:20px;">
+                            <h4 style="margin:0 0 12px 0;font-size:0.95rem;color:#1e293b;font-weight:700;">💰 Dynamic Pricing Variants</h4>
+                            <div id="smmVariantsContainer">
+                                <!-- Variants will be added here -->
+                            </div>
+                            <button type="button" onclick="addSmmVariant()" style="margin-top:10px;background:#f1f5f9;color:#475569;border:1px dashed #cbd5e1;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;width:100%;">+ Add Variant</button>
                         </div>
 
                         <div style="display:flex;gap:10px;">
@@ -89,6 +120,60 @@
 
     window.mountAdminSmmRatesSection = function () {
         mountSections(["smm-rates-section"]);
+        if (typeof renderSmmVariants === 'function') renderSmmVariants();
+    };
+
+    window.currentSmmVariants = [];
+
+    window.addSmmVariant = function() {
+        window.currentSmmVariants.push({ country: '', speed: '', refillGuarantee: 'No Refill', price: '' });
+        window.renderSmmVariants();
+    };
+
+    window.removeSmmVariant = function(index) {
+        window.currentSmmVariants.splice(index, 1);
+        window.renderSmmVariants();
+    };
+
+    window.updateSmmVariant = function(index, field, value) {
+        window.currentSmmVariants[index][field] = value;
+    };
+
+    window.renderSmmVariants = function() {
+        const container = document.getElementById('smmVariantsContainer');
+        if (!container) return;
+        if (window.currentSmmVariants.length === 0) {
+            container.innerHTML = '<p style="color:#64748b;font-size:0.85rem;">No variants added. Add at least one variant to define pricing.</p>';
+            return;
+        }
+        container.innerHTML = window.currentSmmVariants.map((v, i) => `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;margin-bottom:10px;align-items:end;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Country</label>
+                    <input type="text" value="${escapeHtml(v.country)}" onchange="updateSmmVariant(${i}, 'country', this.value)" placeholder="e.g. Global" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Speed</label>
+                    <input type="text" value="${escapeHtml(v.speed)}" onchange="updateSmmVariant(${i}, 'speed', this.value)" placeholder="e.g. 1K-5K/day" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Refill Guarantee</label>
+                    <select onchange="updateSmmVariant(${i}, 'refillGuarantee', this.value)" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                        <option value="No Refill" ${v.refillGuarantee === 'No Refill' ? 'selected' : ''}>No Refill</option>
+                        <option value="30 Days Refill" ${v.refillGuarantee === '30 Days Refill' ? 'selected' : ''}>30 Days Refill</option>
+                        <option value="60 Days Refill" ${v.refillGuarantee === '60 Days Refill' ? 'selected' : ''}>60 Days Refill</option>
+                        <option value="Lifetime Refill" ${v.refillGuarantee === 'Lifetime Refill' ? 'selected' : ''}>Lifetime Refill</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Price/1k</label>
+                    <input type="number" value="${v.price}" onchange="updateSmmVariant(${i}, 'price', this.value)" placeholder="e.g. 150" min="0" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                </div>
+                <div>
+                    <button type="button" onclick="removeSmmVariant(${i})" style="background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">🗑️</button>
+                </div>
+            </div>
+        `).join('');
     };
 })();
 
@@ -104,12 +189,33 @@ async function fetchAdminSmmRates() {
             return;
         }
         tbody.innerHTML = data.rates.map((rate) => {
+            let priceDisplayHtml = '';
+            if (rate.pricingVariants?.length > 0) {
+                const validPrices = rate.pricingVariants.map(v => v?.price).filter(p => p !== undefined && p !== null);
+                if (validPrices.length > 0) {
+                    const lowestPrice = Math.min(...validPrices);
+                    priceDisplayHtml = `
+                        <div style="line-height:1.2;">
+                            <strong style="color:#10b981;font-size:0.9rem;">Starting at ₹${lowestPrice}</strong>
+                            <br/>
+                            <span style="display:inline-block;margin-top:4px;font-size:0.7rem;font-weight:600;color:#6366f1;background:#e0e7ff;padding:2px 6px;border-radius:10px;">${rate.pricingVariants.length} variants</span>
+                        </div>
+                    `;
+                } else {
+                    priceDisplayHtml = `<span style="color:#94a3b8;font-size:0.85rem;">No valid pricing</span>`;
+                }
+            } else if (rate.ratePer1000 !== undefined && rate.ratePer1000 !== null) {
+                priceDisplayHtml = `<strong style="color:#475569;">₹${Number(rate.ratePer1000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>`;
+            } else {
+                priceDisplayHtml = `<span style="color:#94a3b8;font-size:0.85rem;">₹0.00</span>`;
+            }
+
             return `
                 <tr style="border-bottom:1px solid #f1f5f9;">
                     <td style="padding:16px 20px;"><strong>${escapeHtml(rate.platform)}</strong></td>
                     <td style="padding:16px 20px;">${escapeHtml(rate.serviceType)}</td>
                     <td style="padding:16px 20px;"><code>${escapeHtml(rate.serviceId)}</code></td>
-                    <td style="padding:16px 20px;font-weight:700;color:#6b46c1;">₹${Number(rate.ratePer1000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style="padding:16px 20px;">${priceDisplayHtml}</td>
                     <td style="padding:16px 20px;text-align:right;">
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
                             <button type="button" class="btn-publish smm-edit-btn" data-rate="${escapeHtml(JSON.stringify(rate))}" style="background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">✏️ Edit</button>
@@ -152,7 +258,23 @@ function editSmmRate(rate) {
         }
         document.getElementById('smmPlatform').value = rate.platform || 'Instagram';
         document.getElementById('smmServiceType').value = rate.serviceType || '';
-        document.getElementById('smmRatePer1000').value = rate.ratePer1000 || '';
+        document.getElementById('smmStartTime').value = rate.serviceDetails?.startTime || '';
+        document.getElementById('smmRefillGuarantee').value = rate.serviceDetails?.refillGuarantee || '';
+        document.getElementById('smmSpeed').value = rate.serviceDetails?.speed || '';
+        document.getElementById('smmDescription').value = rate.serviceDetails?.description || '';
+        
+        window.currentSmmVariants = rate.pricingVariants ? JSON.parse(JSON.stringify(rate.pricingVariants)) : [];
+        if (window.currentSmmVariants.length === 0 && rate.ratePer1000) {
+            // Legacy mapping
+            window.currentSmmVariants.push({
+                country: Array.isArray(rate.targetCountries) && rate.targetCountries.length > 0 ? rate.targetCountries[0] : 'Global',
+                speed: rate.serviceDetails?.speed || 'Instant',
+                refillGuarantee: rate.serviceDetails?.refillGuarantee || 'No Refill',
+                price: rate.ratePer1000
+            });
+        }
+        window.renderSmmVariants();
+
         document.getElementById('smm-form-title').textContent = '✏️ Edit SMM Service Rate';
         document.getElementById('smm-cancel-btn').style.display = 'inline-block';
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -172,7 +294,12 @@ function editSmmRate(rate) {
 
 function resetSmmForm() {
     document.getElementById('smmServiceType').value = '';
-    document.getElementById('smmRatePer1000').value = '';
+    document.getElementById('smmStartTime').value = '';
+    document.getElementById('smmRefillGuarantee').value = '';
+    document.getElementById('smmSpeed').value = '';
+    document.getElementById('smmDescription').value = '';
+    window.currentSmmVariants = [];
+    window.renderSmmVariants();
     document.getElementById('smm-form-title').textContent = '➕ Add / Update SMM Service Rate';
     document.getElementById('smm-cancel-btn').style.display = 'none';
     const errorEl = document.getElementById('smm-form-error');
@@ -185,11 +312,23 @@ function resetSmmForm() {
 async function saveSmmRate() {
     const platform = document.getElementById('smmPlatform').value;
     const serviceType = document.getElementById('smmServiceType').value.trim();
-    const ratePer1000 = document.getElementById('smmRatePer1000').value.trim();
+    const startTime = document.getElementById('smmStartTime').value.trim();
+    const refillGuarantee = document.getElementById('smmRefillGuarantee').value.trim();
+    const speed = document.getElementById('smmSpeed').value.trim();
+    const description = document.getElementById('smmDescription').value.trim();
 
-    if (!platform || !serviceType || !ratePer1000) {
-        alert('⚠️ All fields are required.');
+    if (!platform || !serviceType || window.currentSmmVariants.length === 0) {
+        alert('⚠️ Platform, service type, and at least one pricing variant are required.');
         return;
+    }
+
+    // Validate variants
+    for (const v of window.currentSmmVariants) {
+        if (!v.country || !v.speed || !v.refillGuarantee || v.price === '' || isNaN(v.price) || Number(v.price) <= 0) {
+            alert('⚠️ All variant fields (country, speed, refill, valid price) must be filled correctly.');
+            return;
+        }
+        v.price = Number(v.price);
     }
 
     // Auto-generate service ID from platform and serviceType, e.g. ig-followers
@@ -206,7 +345,18 @@ async function saveSmmRate() {
     const cleanType = serviceType.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const serviceId = `${getPrefix(platform)}-${cleanType}`;
 
-    const payload = { serviceId, platform, serviceType, ratePer1000: Number(ratePer1000) };
+    const payload = { 
+        serviceId, 
+        platform, 
+        serviceType, 
+        pricingVariants: window.currentSmmVariants,
+        serviceDetails: {
+            startTime,
+            refillGuarantee,
+            speed,
+            description
+        }
+    };
 
     try {
         const res = await fetch('/api/admin/smm/rates', {
@@ -246,3 +396,10 @@ async function deleteSmmRate(serviceId) {
         alert('Server Error');
     }
 }
+
+// Bindings to window for global access (required by inline HTML event handlers)
+window.fetchAdminSmmRates = fetchAdminSmmRates;
+window.editSmmRate = editSmmRate;
+window.resetSmmForm = resetSmmForm;
+window.saveSmmRate = saveSmmRate;
+window.deleteSmmRate = deleteSmmRate;
