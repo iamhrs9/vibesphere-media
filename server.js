@@ -6673,9 +6673,8 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         user.walletBalance = (user.walletBalance || 0) - parsedAmount;
         await user.save();
 
-        // Pre-generate Order ID and Transaction ID for transaction linking
+        // Pre-generate Order ID for transaction linking
         const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
-        const transactionId = 'W-TXN-' + Math.floor(100000 + Math.random() * 900000);
 
         // Create Order Document first so newOrder is fully defined and accessible
         let orderType = 'agency';
@@ -6725,9 +6724,27 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         const remainingRunsVal = isDripActive ? runsVal : 0;
         const nextRunTimestamp = isDripActive ? new Date() : null;
 
+        // Create transaction history document first to get its unique _id
+        const packageName = orderDetails?.package || 'Service Package';
+        let txnDescription = `Purchased ${packageName} (Order ${generatedOrderId})`;
+        if (orderType === 'smm' && selectedCountry && selectedSpeed) {
+            const qualityStr = selectedQuality ? `, ${selectedQuality}` : '';
+            txnDescription = `Purchased ${packageName} (${selectedCountry}${qualityStr}, ${selectedSpeed}) (Order ${generatedOrderId})`;
+        }
+        const transaction = new Transaction({
+            userId: user._id,
+            type: 'Debit',
+            amount: parsedAmount,
+            description: txnDescription,
+            status: 'Success'
+        });
+        const finalTxnId = `#TXN-${transaction._id.toString().slice(-8).toUpperCase()}`;
+        transaction.transactionId = finalTxnId;
+        await transaction.save();
+
         const newOrder = new Order({
             orderId: generatedOrderId,
-            paymentId: transactionId,
+            paymentId: finalTxnId,
             paymentStatus: 'Paid via Wallet',
             workStatus: 'Work Pending',
             status: 'Work Pending',
@@ -6756,23 +6773,6 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         if (mongoose.connection.readyState === 1) {
             await newOrder.save();
         }
-
-        // Create transaction history document utilizing the verified newOrder.orderId
-        const packageName = orderDetails?.package || 'Service Package';
-        let txnDescription = `Purchased ${packageName} (Order ${newOrder.orderId})`;
-        if (orderType === 'smm' && selectedCountry && selectedSpeed) {
-            const qualityStr = selectedQuality ? `, ${selectedQuality}` : '';
-            txnDescription = `Purchased ${packageName} (${selectedCountry}${qualityStr}, ${selectedSpeed}) (Order ${newOrder.orderId})`;
-        }
-        const transaction = new Transaction({
-            userId: user._id,
-            type: 'Debit',
-            amount: parsedAmount,
-            description: txnDescription,
-            status: 'Success',
-            transactionId: transactionId
-        });
-        await transaction.save();
 
         // Generate PDF and Send Invoice Email (Background process with callback)
         try {
@@ -9234,6 +9234,42 @@ app.patch('/api/admin/clients/:id/wallet/status', checkAuth, async (req, res) =>
         });
     } catch (e) {
         console.error("❌ Update Wallet Status Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 8. Update Client Profile Details
+app.patch('/api/admin/clients/:id', checkAuth, async (req, res) => {
+    try {
+        const { name, email, phone } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, error: "User not found!" });
+
+        if (email && email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+            const existing = await User.findOne({ email: email.toLowerCase().trim() });
+            if (existing) {
+                return res.status(400).json({ success: false, error: "Email is already taken by another user." });
+            }
+            user.email = email.toLowerCase().trim();
+        }
+
+        if (name) user.name = name.trim();
+        if (phone !== undefined) user.phone = phone.trim();
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Client profile updated successfully.",
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone
+            }
+        });
+    } catch (e) {
+        console.error("❌ Update Client Error:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });

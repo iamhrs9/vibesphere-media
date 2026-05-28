@@ -1342,14 +1342,20 @@
                             orderIdBadge = `<span style="background: rgba(108, 99, 255, 0.08); color: #6c63ff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(108, 99, 255, 0.15); margin-left: 6px; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px;" title="Linked Order"><i class="ri-receipt-line"></i> ${orderNum}</span>`;
                         }
 
+                        const txnId = t.transactionId || t._id || '';
+                        const formattedTxnId = txnId.startsWith('#TXN-') ? txnId : `#TXN-${txnId.slice(-8).toUpperCase()}`;
+
                         return `
                             <div class="wallet-txn-row">
                                 <div style="color:#64748b;font-size:0.85rem;">${dateStr}</div>
                                 <div><span class="txn-type-pill ${colorClass}">${isCredit ? '↑' : '↓'} ${t.type}</span></div>
                                 <div class="txn-${colorClass}" style="font-size:0.9rem;">${amtSign}₹${(t.amount || 0).toLocaleString('en-IN')}</div>
                                 <div style="color:#334155;font-size:0.85rem;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;display:block;" title="${t.description || ''}">
-                                    <span>${descText}</span>
-                                    ${orderIdBadge}
+                                    <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+                                        <span style="font-family:monospace; font-size:0.75rem; background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px; font-weight:600; cursor:pointer;" onclick="copyTextToClipboard('${txnId}', this)" title="Click to copy Transaction ID">${formattedTxnId}</span>
+                                        ${orderIdBadge}
+                                    </div>
+                                    <div style="display:block;">${descText}</div>
                                 </div>
                             </div>`;
                     }).join('');
@@ -1369,6 +1375,15 @@
                     const orig = badge.innerHTML;
                     badge.innerHTML = '<i class="ri-check-line"></i> Copied!';
                     setTimeout(() => { badge.innerHTML = orig; }, 1600);
+                });
+            }
+
+            function copyTextToClipboard(text, element) {
+                if (!text) return;
+                navigator.clipboard.writeText(text).then(() => {
+                    const orig = element.innerHTML;
+                    element.innerHTML = 'Copied!';
+                    setTimeout(() => { element.innerHTML = orig; }, 1200);
                 });
             }
 

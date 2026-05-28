@@ -4,7 +4,221 @@
         "staff-tickets-section": "<div id=\"staff-tickets-section\" class=\"section\" data-module-mounted=\"true\"><div class=\"premium-section\"><div class=\"section-header\"><div><h2 class=\"section-title\">Staff Internal Tickets</h2><p class=\"section-subtitle\">HR, IT, Accounts, and general support tickets raised by team members.</p></div><div class=\"section-actions\"><span style=\"color:#64748b;font-weight:700;\">Total: <span id=\"staffTicketCount\" style=\"color:#1d4ed8;\">0</span></span><button onclick=\"fetchStaffTickets()\" class=\"section-refresh-btn\"><i class=\"ri-refresh-line\"></i> Refresh</button></div></div><div class=\"table-responsive\" style=\"overflow-x:auto;width:100%;\"><table><thead><tr><th>Staff</th><th>Category</th><th>Subject</th><th>Issue</th><th>Status</th><th>Reply & Action</th></tr></thead><tbody id=\"staffTicketsTable\"></tbody></table></div></div></div>",
         "meetings-section": "<div id=\"meetings-section\" class=\"section\" data-module-mounted=\"true\">\n                <h2 style=\"margin-bottom:20px;\">🎬 Video Meetings</h2>\n\n                <div class=\"staff-card\" style=\"padding:20px;margin-bottom:20px;\">\n                    <h3 style=\"margin-bottom:15px;\">➕ Schedule New Meeting</h3>\n                    <div style=\"display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;\">\n                        <div style=\"flex:2;min-width:180px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Meeting\n                                Topic</label>\n                            <input type=\"text\" id=\"meetTopic\" placeholder=\"e.g. Weekly Team Sync\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <div style=\"flex:1;min-width:180px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Date &\n                                Time</label>\n                            <input type=\"datetime-local\" id=\"meetTime\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <div style=\"flex:1;min-width:150px;\">\n                            <label style=\"font-size:12px;color:#64748b;display:block;margin-bottom:4px;\">Password\n                                (Optional)</label>\n                            <input type=\"text\" id=\"meetPass\" placeholder=\"e.g. 1234\"\n                                style=\"width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;\">\n                        </div>\n                        <button onclick=\"scheduleMeeting()\" class=\"btn-publish\" style=\"padding:10px 20px;\">Schedule\n                            🎬</button>\n                    </div>\n                </div>\n\n                <div id=\"meetingsList\"\n                    style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:15px;\"></div>\n            </div>",
         "jobs-section": "<div id=\"jobs-section\" class=\"section\" data-module-mounted=\"true\">\n                <h3>💼 Manage Careers (Jobs)</h3>\n                <div class=\"staff-card\" style=\"padding: 20px; margin-bottom: 20px;\">\n                    <form id=\"addJobForm\" onsubmit=\"submitJob(event)\"\n                        style=\"display: flex; gap: 15px; flex-wrap: wrap;\">\n                        <input type=\"text\" id=\"jobTitle\" placeholder=\"Job Title (e.g. Graphic Designer)\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <select id=\"jobType\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                            <option value=\"Full-Time\">Full-Time</option>\n                            <option value=\"Part-Time\">Part-Time</option>\n                            <option value=\"Internship\">Internship</option>\n                            <option value=\"Freelance\">Freelance</option>\n                        </select>\n                        <input type=\"text\" id=\"jobLocation\" placeholder=\"Location (e.g. Remote / Jaipur)\" required\n                            style=\"flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <input type=\"text\" id=\"jobDesc\" placeholder=\"Short Description...\" required\n                            style=\"flex:2; padding:10px; border:1px solid #ddd; border-radius:5px;\">\n                        <button type=\"submit\" id=\"btnJob\" class=\"btn-publish\">Post Job 🚀</button>\n                    </form>\n                </div>\n                <div class=\"table-responsive\">\n                    <table>\n                        <thead>\n                            <tr>\n                                <th>Job Title</th>\n                                <th>Type & Location</th>\n                                <th>Posted On</th>\n                                <th>Action</th>\n                            </tr>\n                        </thead>\n                        <tbody id=\"jobsTableBody\"></tbody>\n                    </table>\n                </div>\n            </div>",
-        "clients-section": "<div id=\"clients-section\" class=\"section\" data-module-mounted=\"true\">\n                <div class=\"premium-section\">\n                    <div class=\"section-header\">\n                        <div>\n                            <h2 class=\"section-title\">Clients</h2>\n                            <p class=\"section-subtitle\">A cleaner client directory with account state, onboarding context, and security controls.</p>\n                        </div>\n                        <div class=\"section-actions\">\n                            <div class=\"approvals-search\" style=\"min-width: 280px;\">\n                                <i class=\"ri-search-line\"></i>\n                                <input id=\"clientSearch\" type=\"text\" placeholder=\"Search by Name or Email...\" oninput=\"fetchClients()\">\n                            </div>\n                            <span style=\"color:#64748b;font-weight:700;\">Total: <span id=\"totalUsersCount\" style=\"color:#1d4ed8;\">0</span></span>\n                            <button onclick=\"fetchClients()\" class=\"section-refresh-btn\"><i class=\"ri-refresh-line\"></i> Refresh</button>\n                        </div>\n                    </div>\n                    <div class=\"modern-table-shell\">\n                        <div id=\"clientsTableBody\" class=\"record-card-grid\"></div>\n                    </div>\n                </div>\n            </div>"
+        "clients-section": `<div id="clients-section" class="section" data-module-mounted="true">
+                <style>
+                    .modern-list-table tbody tr.client-row-hoverable:hover {
+                        background: rgba(107, 70, 193, 0.04) !important;
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(15,23,42,0.02);
+                    }
+                    .modern-list-table tbody tr.client-row-hoverable {
+                        transition: all 0.2s ease;
+                    }
+                </style>
+                <div class="premium-section">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Clients</h2>
+                            <p class="section-subtitle">Manage registered users, settings, and wallet balances using a modern Master-Detail drawer.</p>
+                        </div>
+                        <div class="section-actions">
+                            <div class="approvals-search" style="min-width: 280px;">
+                                <i class="ri-search-line"></i>
+                                <input id="clientSearch" type="text" placeholder="Search by Name or Email..." oninput="fetchClients()">
+                            </div>
+                            <span style="color:#64748b;font-weight:700;">Total: <span id="totalUsersCount" style="color:#1d4ed8;">0</span></span>
+                            <button onclick="fetchClients()" class="section-refresh-btn"><i class="ri-refresh-line"></i> Refresh</button>
+                        </div>
+                    </div>
+                    <div class="modern-table-shell">
+                        <div class="table-responsive" style="overflow-x:auto; width:100%;">
+                            <table class="modern-list-table">
+                                <thead>
+                                    <tr>
+                                        <th>Avatar</th>
+                                        <th>Full Name</th>
+                                        <th>Email</th>
+                                        <th>Mobile Number</th>
+                                        <th>Account Status</th>
+                                        <th>Wallet Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Client Detail Side-Drawer -->
+                <div id="clientDetailDrawer" class="detail-drawer" style="position:fixed; top:0; right:-480px; width:460px; height:100vh; background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); border-left:1px solid rgba(148,163,184,0.18); box-shadow:-10px 0 30px rgba(15,23,42,0.1); z-index:1050; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); display:flex; flex-direction:column; overflow:hidden; font-family:'Poppins', sans-serif;">
+                    <!-- Drawer Header -->
+                    <div style="padding:20px 24px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, rgba(107, 70, 193, 0.05), rgba(14, 165, 233, 0.05));">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div id="drawerAvatar" class="staff-avatar-lg" style="width:40px; height:40px; border-radius:50%; background:#e0e7ff; color:#6c63ff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">CL</div>
+                            <div>
+                                <h3 id="drawerTitleName" style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:700;">Client Profile</h3>
+                                <p id="drawerTitleEmail" style="margin:2px 0 0; font-size:0.78rem; color:#64748b;">client@example.com</p>
+                            </div>
+                        </div>
+                        <button onclick="closeClientDetail()" style="background:none; border:none; color:#64748b; font-size:24px; cursor:pointer; line-height:1; padding:4px; border-radius:50%; transition:background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div style="display:flex; border-bottom:1px solid #f1f5f9; background:#ffffff;">
+                        <button id="tabGeneral" onclick="switchDrawerTab('general')" style="flex:1; padding:14px; border:none; background:transparent; font-weight:700; font-size:0.9rem; color:#6c63ff; border-bottom:3px solid #6c63ff; cursor:pointer; transition:0.2s;">
+                            <i class="ri-settings-4-line" style="margin-right:4px;"></i> General Settings
+                        </button>
+                        <button id="tabWallet" onclick="switchDrawerTab('wallet')" style="flex:1; padding:14px; border:none; background:transparent; font-weight:600; font-size:0.9rem; color:#64748b; border-bottom:3px solid transparent; cursor:pointer; transition:0.2s;">
+                            <i class="ri-wallet-3-line" style="margin-right:4px;"></i> Wallet Activity
+                        </button>
+                    </div>
+
+                    <!-- Drawer Content (Scrollable) -->
+                    <div style="flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:20px;">
+                        <!-- TAB 1: GENERAL SETTINGS -->
+                        <div id="drawerTabContentGeneral" style="display:block;">
+                            <!-- Profile Details Form -->
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:18px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom:20px;">
+                                <h4 style="margin:0 0 14px 0; font-size:0.95rem; color:#0f172a; font-weight:700; display:flex; align-items:center; gap:6px;"><i class="ri-user-settings-line" style="color:#6c63ff;"></i> Profile Details</h4>
+                                <div style="display:grid; gap:12px;">
+                                    <div>
+                                        <label style="font-size:0.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase;">Full Name</label>
+                                        <input type="text" id="editClientName" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:10px; font-size:0.9rem; margin-top:4px; font-family:inherit;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase;">Email Address</label>
+                                        <input type="email" id="editClientEmail" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:10px; font-size:0.9rem; margin-top:4px; font-family:inherit;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase;">Mobile Number</label>
+                                        <input type="tel" id="editClientPhone" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:10px; font-size:0.9rem; margin-top:4px; font-family:inherit;">
+                                    </div>
+                                    <button onclick="saveClientProfile()" style="background:#6c63ff; color:#ffffff; border:none; padding:12px; border-radius:10px; font-weight:700; cursor:pointer; margin-top:6px; display:flex; justify-content:center; align-items:center; gap:6px; font-size:0.9rem; transition:0.2s;" onmouseover="this.style.filter='brightness(1.05)'" onmouseout="this.style.filter='none'">
+                                        <i class="ri-save-line"></i> Save Changes
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Account Security & Status Settings -->
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:18px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.02);">
+                                <h4 style="margin:0 0 14px 0; font-size:0.95rem; color:#0f172a; font-weight:700; display:flex; align-items:center; gap:6px;"><i class="ri-shield-keyhole-line" style="color:#6c63ff;"></i> Safety & Account Controls</h4>
+                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f8fafc;">
+                                        <div>
+                                            <div style="font-weight:700; font-size:0.88rem; color:#0f172a;">Account Restriction</div>
+                                            <p style="margin:2px 0 0; font-size:0.75rem; color:#64748b;">Restrict or restore client account access.</p>
+                                        </div>
+                                        <button id="btnToggleBanDrawer" onclick="toggleBanFromDrawer()" style="padding:8px 16px; border:none; border-radius:8px; font-weight:700; font-size:0.83rem; cursor:pointer; transition:0.2s;"></button>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f8fafc;">
+                                        <div>
+                                            <div style="font-weight:700; font-size:0.88rem; color:#0f172a;">Password Reset</div>
+                                            <p style="margin:2px 0 0; font-size:0.75rem; color:#64748b;">Create and email a temporary password.</p>
+                                        </div>
+                                        <button onclick="resetPasswordFromDrawer()" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:8px 16px; border-radius:8px; font-weight:700; font-size:0.83rem; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                                            <i class="ri-key-2-line"></i> Reset Password
+                                        </button>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0;">
+                                        <div>
+                                            <div style="font-weight:700; font-size:0.88rem; color:#ef4444;">Delete Client</div>
+                                            <p style="margin:2px 0 0; font-size:0.75rem; color:#64748b;">Permanently remove this client and data.</p>
+                                        </div>
+                                        <button onclick="deleteClientFromDrawer()" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; padding:8px 16px; border-radius:8px; font-weight:700; font-size:0.83rem; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='#fca5a5'" onmouseout="this.style.background='#fee2e2'">
+                                            <i class="ri-delete-bin-6-line"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: WALLET ACTIVITY -->
+                        <div id="drawerTabContentWallet" style="display:none;">
+                            <!-- Wallet Overview & Control -->
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:18px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom:20px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <i class="ri-wallet-3-line" style="font-size:20px; color:#1d4ed8;"></i>
+                                        <span style="font-weight:700; font-size:0.95rem; color:#0f172a;">Wallet Control Panel</span>
+                                    </div>
+                                    <span id="drawerWalletId" class="wallet-badge" style="background:#e0e7ff; color:#1d4ed8; padding:4px 10px; border-radius:8px; font-weight:bold; font-family:monospace; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                                        No ID
+                                    </span>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:15px;">
+                                    <div style="background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #f1f5f9; display:flex; flex-direction:column; justify-content:center;">
+                                        <span style="font-size:0.68rem; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:2px;">Current Balance</span>
+                                        <span id="drawerWalletBalance" style="font-size:1.15rem; font-weight:800; color:#0f172a;">₹0.00</span>
+                                    </div>
+
+                                    <div style="display:flex; flex-direction:column; justify-content:center;">
+                                        <span style="font-size:0.68rem; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:4px;">Wallet Status</span>
+                                        <select id="drawerWalletStatus" onchange="updateWalletStatusFromDrawer(this.value)" style="padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-weight:bold; color:#0f172a; font-size:13px; height:38px; min-height:auto; background:#ffffff; font-family:inherit;">
+                                            <option value="Active">Active</option>
+                                            <option value="Frozen">Frozen</option>
+                                            <option value="Hold">Hold</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Balance Adjust Form -->
+                                <form onsubmit="submitWalletAdjustmentFromDrawer(event)" style="background:#f8fafc; padding:14px; border-radius:14px; border:1px solid #e2e8f0;">
+                                    <div style="font-weight:700; font-size:0.85rem; color:#0f172a; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.04em;">Adjust Balance</div>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                                        <div>
+                                            <label style="font-size:0.68rem; color:#64748b; display:block; margin-bottom:4px; font-weight:700; text-transform:uppercase;">Adjustment Type</label>
+                                            <select id="drawerAdjType" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; min-height:auto; height:38px; background:#ffffff; font-family:inherit;">
+                                                <option value="Credit">Credit (Add Funds)</option>
+                                                <option value="Debit">Debit (Deduct Funds)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.68rem; color:#64748b; display:block; margin-bottom:4px; font-weight:700; text-transform:uppercase;">Amount (₹)</label>
+                                            <input type="number" id="drawerAdjAmount" step="any" min="0.01" placeholder="0.00" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; min-height:auto; height:38px; background:#ffffff; font-family:inherit;">
+                                        </div>
+                                    </div>
+                                    <div style="margin-bottom:10px;">
+                                        <label style="font-size:0.68rem; color:#64748b; display:block; margin-bottom:4px; font-weight:700; text-transform:uppercase;">Adjustment Description</label>
+                                        <input type="text" id="drawerAdjDesc" placeholder="Refund, compensation, custom charge..." required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; min-height:auto; height:38px; background:#ffffff; font-family:inherit;">
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:#64748b; cursor:pointer; min-height:auto; font-weight:600;">
+                                            <input type="checkbox" id="drawerAdjNeg" style="min-height:auto; width:16px; height:16px;"> Allow Negative Balance
+                                        </label>
+                                        <button type="submit" style="background:#6c63ff; color:white; border:none; padding:8px 16px; font-size:0.83rem; font-weight:700; border-radius:8px; cursor:pointer; transition:0.2s;" onmouseover="this.style.filter='brightness(1.05)'" onmouseout="this.style.filter='none'">Update Wallet</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Transaction Ledger -->
+                            <div>
+                                <h4 style="margin:0 0 10px 0; font-size:0.95rem; color:#0f172a; font-weight:700; display:flex; align-items:center; gap:6px;"><i class="ri-history-line" style="color:#6c63ff;"></i> Transaction History Ledger</h4>
+                                <div style="border:1px solid #e2e8f0; border-radius:14px; background:#ffffff; overflow:hidden; box-shadow:0 4px 6px -1px rgba(0,0,0,0.02);">
+                                    <div style="max-height:300px; overflow-y:auto; overflow-x:auto;">
+                                        <table style="width:100%; font-size:0.8rem; border-collapse:collapse; margin-top:0; border:none; box-shadow:none;">
+                                            <thead>
+                                                <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                                                    <th style="padding:10px 12px; font-size:0.68rem; color:#64748b; text-align:left; font-weight:700; text-transform:uppercase; position:sticky; top:0; background:#f8fafc;">Date</th>
+                                                    <th style="padding:10px 12px; font-size:0.68rem; color:#64748b; text-align:left; font-weight:700; text-transform:uppercase; position:sticky; top:0; background:#f8fafc;">Type</th>
+                                                    <th style="padding:10px 12px; font-size:0.68rem; color:#64748b; text-align:left; font-weight:700; text-transform:uppercase; position:sticky; top:0; background:#f8fafc;">Amount</th>
+                                                    <th style="padding:10px 12px; font-size:0.68rem; color:#64748b; text-align:left; font-weight:700; text-transform:uppercase; position:sticky; top:0; background:#f8fafc;">Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="drawerTxnTableBody">
+                                                <tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:18px; margin-right:4px; vertical-align:middle;"></i> Loading Transactions...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
     };
 
     function mountSections(sectionIds) {
@@ -98,23 +312,29 @@
         } catch (e) { alert('Failed to send reply'); }
     }
 
+    let cachedClientsList = [];
+    let currentActiveClientId = null;
+    let currentActiveClientData = null;
+
     async function fetchClients() {
         const grid = document.getElementById('clientsTableBody');
         const countSpan = document.getElementById('totalUsersCount');
         if (!grid || !countSpan) return;
 
         try {
-            grid.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;">Fetching client directory...</div>';
+            grid.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:24px;vertical-align:middle;margin-right:8px;"></i> Fetching client directory...</td></tr>';
             const res = await fetch('/api/admin/clients', { credentials: 'include' });
             const data = await res.json();
             const searchTerm = String(document.getElementById('clientSearch')?.value || '').trim().toLowerCase();
 
             if (!data.success) {
-                grid.innerHTML = `<div class="chat-empty" style="grid-column:1/-1;color:#dc2626;">${escapeHtml(data.error || 'Failed to load clients.')}</div>`;
+                grid.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;font-weight:bold;">${escapeHtml(data.error || 'Failed to load clients.')}</td></tr>`;
                 return;
             }
 
             let clients = Array.isArray(data.clients) ? data.clients : [];
+            cachedClientsList = clients; // Cache clients globally
+
             if (searchTerm) {
                 clients = clients.filter((client) =>
                     String(client.name || '').toLowerCase().includes(searchTerm) ||
@@ -126,67 +346,196 @@
             grid.innerHTML = '';
 
             if (!clients.length) {
-                grid.innerHTML = `<div class="chat-empty" style="grid-column:1/-1;">${searchTerm ? 'No clients matching "' + searchTerm + '"' : 'No clients found yet.'}</div>`;
+                grid.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:30px;">${searchTerm ? 'No clients matching "' + searchTerm + '"' : 'No clients found yet.'}</td></tr>`;
                 return;
             }
 
             grid.innerHTML = clients.map((client) => {
-                const banBtnText = client.isBanned ? 'Unban' : 'Ban';
-                const newBanStatus = !client.isBanned;
+                const isBanned = client.isBanned;
+                const statusBadge = renderModernStatusBadge(isBanned ? 'Banned' : 'Active', isBanned ? 'Banned' : 'Active');
                 const safeName = (client.name || 'Unknown User').replace(/'/g, "\\'");
-                let brandDetailsUI = '<span style="color:#94a3b8;font-size:12px;font-style:italic;">Not onboarded</span>';
-
-                if (client.isOnboarded) {
-                    brandDetailsUI = `
-                        <div style="background:#f8fafc;padding:12px;border-radius:14px;border:1px dashed #cbd5e1;font-size:12px;">
-                            <strong style="color:#0f172a;font-size:13px;">${escapeHtml(client.brandName || 'Brand')}</strong><br>
-                            <span style="color:#64748b;display:inline-block;margin-top:4px;">${escapeHtml(client.brandColors || 'No colors')}</span><br>
-                            ${client.referenceLinks
-                                ? `<a href="${client.referenceLinks.startsWith('http') ? client.referenceLinks : 'https://' + client.referenceLinks}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;font-weight:700;display:inline-block;margin-top:4px;">Reference Link</a>`
-                                : '<span style="color:#94a3b8;display:inline-block;margin-top:4px;">No reference link</span>'}
-                        </div>`;
-                }
+                const avatarInitials = escapeHtml(getInitials(client.name || client.email || 'CL'));
+                const walletBalanceFormatted = formatCurrency(client.walletBalance || 0);
 
                 return `
-                    <article class="client-profile-card">
-                        <div class="client-profile-body">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-                                <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-                                    <div class="staff-avatar-lg">${escapeHtml(getInitials(client.name || client.email || 'CL'))}</div>
-                                    <div style="min-width:0;">
-                                        <div style="font-weight:700;color:#0f172a;">${escapeHtml(client.name || 'Unknown User')}</div>
-                                        <div style="margin-top:4px;font-size:0.83rem;color:#64748b;word-break:break-word;">${escapeHtml(client.email || '—')}</div>
-                                    </div>
-                                </div>
-                                ${renderModernStatusBadge(client.isBanned ? 'Banned' : 'Active', client.isBanned ? 'Banned' : 'Active')}
-                            </div>
-                            <div style="display:grid;gap:10px;margin-top:16px;">
-                                <div>
-                                    <div style="font-size:0.75rem;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Phone</div>
-                                    <div style="margin-top:4px;color:#0f172a;">${escapeHtml(client.phone || 'No phone number')}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size:0.75rem;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Joined</div>
-                                    <div style="margin-top:4px;color:#0f172a;">${formatAdminDate(client.date)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size:0.75rem;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Brand Profile</div>
-                                    ${brandDetailsUI}
-                                </div>
-                            </div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;">
-                                <button onclick="adminResetPassword('${client._id}', '${safeName}')" class="modern-action-btn" title="Create Temporary Password"><i class="ri-key-2-line"></i> Password</button>
-                                <button onclick="toggleBan('${client._id}', '${safeName}', ${newBanStatus})" class="modern-action-btn"><i class="ri-forbid-2-line"></i> ${banBtnText}</button>
-                                <button onclick="deleteClient('${client._id}', '${safeName}')" class="modern-action-btn" title="Delete Client"><i class="ri-delete-bin-6-line"></i> Delete</button>
-                                <button onclick="toggleWalletPanel('${client._id}')" class="modern-action-btn" title="Manage Client Wallet"><i class="ri-wallet-3-line"></i> Wallet</button>
-                            </div>
-                            <div id="wallet-panel-${client._id}" style="display:none; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:20px;"></div>
-                        </div>
-                    </article>
+                    <tr onclick="openClientDetail('${client._id}')" style="cursor:pointer;" class="client-row-hoverable">
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
+                            <div class="staff-avatar-sm" style="width:34px; height:34px; border-radius:50%; background:#e0e7ff; color:#6c63ff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;">${avatarInitials}</div>
+                        </td>
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #0f172a;">${escapeHtml(client.name || 'Unknown User')}</td>
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #475569;">${escapeHtml(client.email || '—')}</td>
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #475569;">${escapeHtml(client.phone || '—')}</td>
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${statusBadge}</td>
+                        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #1e293b;">${walletBalanceFormatted}</td>
+                    </tr>
                 `;
             }).join('');
         } catch (error) {
-            grid.innerHTML = '<div class="chat-empty" style="grid-column:1/-1;color:#dc2626;">Frontend could not load the client directory.</div>';
+            grid.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;font-weight:bold;">Frontend could not load the client directory.</td></tr>';
+        }
+    }
+
+    function openClientDetail(clientId) {
+        currentActiveClientId = clientId;
+        const client = cachedClientsList.find(c => c._id === clientId);
+        if (!client) return;
+
+        currentActiveClientData = client;
+        populateDrawerDetails(client);
+        switchDrawerTab('general');
+
+        document.getElementById('clientDetailDrawer').style.right = '0';
+    }
+
+    function closeClientDetail() {
+        document.getElementById('clientDetailDrawer').style.right = '-480px';
+        currentActiveClientId = null;
+        currentActiveClientData = null;
+    }
+
+    function switchDrawerTab(tab) {
+        const tabGen = document.getElementById('tabGeneral');
+        const tabWal = document.getElementById('tabWallet');
+        const contentGen = document.getElementById('drawerTabContentGeneral');
+        const contentWal = document.getElementById('drawerTabContentWallet');
+
+        if (!tabGen || !tabWal || !contentGen || !contentWal) return;
+
+        if (tab === 'general') {
+            tabGen.style.color = '#6c63ff';
+            tabGen.style.borderBottom = '3px solid #6c63ff';
+            tabGen.style.fontWeight = '700';
+            
+            tabWal.style.color = '#64748b';
+            tabWal.style.borderBottom = '3px solid transparent';
+            tabWal.style.fontWeight = '600';
+
+            contentGen.style.display = 'block';
+            contentWal.style.display = 'none';
+        } else {
+            tabWal.style.color = '#6c63ff';
+            tabWal.style.borderBottom = '3px solid #6c63ff';
+            tabWal.style.fontWeight = '700';
+            
+            tabGen.style.color = '#64748b';
+            tabGen.style.borderBottom = '3px solid transparent';
+            tabGen.style.fontWeight = '600';
+
+            contentGen.style.display = 'none';
+            contentWal.style.display = 'block';
+
+            // Lazy load wallet details ONLY now when clicked!
+            if (currentActiveClientId) {
+                loadWalletDetailsFromDrawer(currentActiveClientId);
+            }
+        }
+    }
+
+    function populateDrawerDetails(client) {
+        const initials = getInitials(client.name || client.email || 'CL');
+        document.getElementById('drawerAvatar').innerText = initials;
+        document.getElementById('drawerTitleName').innerText = client.name || 'Unknown User';
+        document.getElementById('drawerTitleEmail').innerText = client.email || '—';
+
+        document.getElementById('editClientName').value = client.name || '';
+        document.getElementById('editClientEmail').value = client.email || '';
+        document.getElementById('editClientPhone').value = client.phone || '';
+
+        const banBtn = document.getElementById('btnToggleBanDrawer');
+        if (banBtn) {
+            if (client.isBanned) {
+                banBtn.innerHTML = '<i class="ri-checkbox-circle-line"></i> Unban User';
+                banBtn.style.background = '#d1fae5';
+                banBtn.style.color = '#065f46';
+                banBtn.style.border = '1px solid #a7f3d0';
+                banBtn.style.padding = '8px 16px';
+                banBtn.style.borderRadius = '8px';
+                banBtn.style.fontWeight = '700';
+                banBtn.style.fontSize = '0.83rem';
+                banBtn.style.cursor = 'pointer';
+            } else {
+                banBtn.innerHTML = '<i class="ri-forbid-2-line"></i> Ban User';
+                banBtn.style.background = '#fee2e2';
+                banBtn.style.color = '#991b1b';
+                banBtn.style.border = '1px solid #fca5a5';
+                banBtn.style.padding = '8px 16px';
+                banBtn.style.borderRadius = '8px';
+                banBtn.style.fontWeight = '700';
+                banBtn.style.fontSize = '0.83rem';
+                banBtn.style.cursor = 'pointer';
+            }
+        }
+    }
+
+    async function loadWalletDetailsFromDrawer(clientId) {
+        const balanceEl = document.getElementById('drawerWalletBalance');
+        const walletIdEl = document.getElementById('drawerWalletId');
+        const statusEl = document.getElementById('drawerWalletStatus');
+        const txnBody = document.getElementById('drawerTxnTableBody');
+
+        if (txnBody) {
+            txnBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:18px; margin-right:4px; vertical-align:middle;"></i> Loading Transactions...</td></tr>`;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/clients/${clientId}/wallet`, { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) {
+                if (txnBody) txnBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#ef4444; font-weight:600;">Error: ${escapeHtml(data.error || 'Failed to load')}</td></tr>`;
+                return;
+            }
+
+            const wallet = data.wallet || {};
+            const transactions = data.transactions || [];
+
+            if (balanceEl) balanceEl.innerText = formatCurrency(wallet.walletBalance || 0);
+            if (walletIdEl) {
+                walletIdEl.innerHTML = `${escapeHtml(wallet.walletId || 'No ID')} <i class="ri-file-copy-line"></i>`;
+                walletIdEl.onclick = (e) => copyToClipboard(wallet.walletId || '', walletIdEl);
+            }
+            if (statusEl) statusEl.value = wallet.walletStatus || 'Active';
+
+            if (txnBody) {
+                if (transactions.length === 0) {
+                    txnBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">No transactions found</td></tr>`;
+                } else {
+                    txnBody.innerHTML = transactions.map(t => {
+                        const color = t.type === 'Credit' ? '#16a34a' : '#dc2626';
+                        const txnId = t.transactionId || t._id || '';
+                        const formattedTxnId = txnId.startsWith('#TXN-') ? txnId : `#TXN-${txnId.slice(-8).toUpperCase()}`;
+                        return `
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:10px 12px; color:#64748b; text-align:left;">${formatAdminDate(t.createdAt)}</td>
+                                <td style="padding:10px 12px; font-weight:700; color:${color}; text-align:left;">${t.type}</td>
+                                <td style="padding:10px 12px; font-weight:700; color:${color}; text-align:left;">${formatCurrency(t.amount)}</td>
+                                <td style="padding:10px 12px; color:#334155; word-break:break-word; text-align:left;">
+                                    <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+                                        <span style="font-family:monospace; font-size:10px; background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px; font-weight:600; cursor:pointer;" onclick="copyToClipboard('${txnId}', this)" title="Click to copy Transaction ID">${formattedTxnId}</span>
+                                    </div>
+                                    <div style="display:block;">${escapeHtml(t.description)}</div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+        } catch (err) {
+            if (txnBody) txnBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#ef4444;">Failed to connect to server</td></tr>`;
+        }
+    }
+
+    async function toggleBanFromDrawer() {
+        if (!currentActiveClientData) return;
+        const banStatus = !currentActiveClientData.isBanned;
+        const safeName = (currentActiveClientData.name || 'Unknown User').replace(/'/g, "\\'");
+        await toggleBan(currentActiveClientData._id, safeName, banStatus);
+        
+        // Refresh local cache and drawer UI
+        await fetchClients();
+        const updated = cachedClientsList.find(c => c._id === currentActiveClientId);
+        if (updated) {
+            currentActiveClientData = updated;
+            populateDrawerDetails(updated);
         }
     }
 
@@ -201,23 +550,20 @@
                 credentials: 'include'
             });
             const result = await res.json();
-            if (result.success) fetchClients();
-            else alert('Error: ' + result.error);
+            if (result.success) {
+                alert('✅ Account restriction status updated successfully.');
+            } else {
+                alert('Error: ' + result.error);
+            }
         } catch (error) {
             alert('Server connection failed');
         }
     }
 
-    async function deleteClient(userId, userName) {
-        if (!confirm(`🚨 EXTREME WARNING: Are you sure you want to PERMANENTLY DELETE ${userName}?`)) return;
-        try {
-            const res = await fetch(`/api/admin/delete-client/${userId}`, { method: 'DELETE', credentials: 'include' });
-            const result = await res.json();
-            if (result.success) fetchClients();
-            else alert('Error: ' + result.error);
-        } catch (error) {
-            alert('Server connection failed');
-        }
+    async function resetPasswordFromDrawer() {
+        if (!currentActiveClientData) return;
+        const safeName = (currentActiveClientData.name || 'Unknown User').replace(/'/g, "\\'");
+        await adminResetPassword(currentActiveClientData._id, safeName);
     }
 
     async function adminResetPassword(userId, userName) {
@@ -241,127 +587,127 @@
         }
     }
 
-    async function toggleWalletPanel(clientId) {
-        const panel = document.getElementById(`wallet-panel-${clientId}`);
-        if (!panel) return;
-        if (panel.style.display === 'none') {
-            panel.style.display = 'block';
-            await loadWalletDetails(clientId);
-        } else {
-            panel.style.display = 'none';
+    async function deleteClientFromDrawer() {
+        if (!currentActiveClientData) return;
+        const safeName = (currentActiveClientData.name || 'Unknown User').replace(/'/g, "\\'");
+        await deleteClient(currentActiveClientData._id, safeName);
+        closeClientDetail();
+    }
+
+    async function deleteClient(userId, userName) {
+        if (!confirm(`🚨 EXTREME WARNING: Are you sure you want to PERMANENTLY DELETE ${userName}?`)) return;
+        try {
+            const res = await fetch(`/api/admin/delete-client/${userId}`, { method: 'DELETE', credentials: 'include' });
+            const result = await res.json();
+            if (result.success) {
+                alert('✅ Client deleted successfully.');
+                fetchClients();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Server connection failed');
         }
     }
 
-    async function loadWalletDetails(clientId) {
-        const panel = document.getElementById(`wallet-panel-${clientId}`);
-        if (!panel) return;
+    async function saveClientProfile() {
+        if (!currentActiveClientId) return;
+        const nameInput = document.getElementById('editClientName');
+        const emailInput = document.getElementById('editClientEmail');
+        const phoneInput = document.getElementById('editClientPhone');
 
-        panel.innerHTML = `
-            <div style="display:flex; justify-content:center; padding:20px; color:#64748b;">
-                <i class="ri-loader-4-line ri-spin" style="font-size:24px; margin-right:8px;"></i> Loading Wallet Details...
-            </div>
-        `;
+        const name = (nameInput?.value || '').trim();
+        const email = (emailInput?.value || '').trim();
+        const phone = (phoneInput?.value || '').trim();
+
+        if (!name || !email) {
+            alert('⚠️ Name and Email are required.');
+            return;
+        }
 
         try {
-            const res = await fetch(`/api/admin/clients/${clientId}/wallet`, { credentials: 'include' });
+            const res = await fetch(`/api/admin/clients/${currentActiveClientId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, phone }),
+                credentials: 'include'
+            });
             const data = await res.json();
-            if (!data.success) {
-                panel.innerHTML = `<div style="color:#dc2626; padding:10px; font-weight:600;">Error: ${escapeHtml(data.error || 'Failed to load wallet')}</div>`;
-                return;
+            if (data.success) {
+                alert('✅ Client profile updated successfully.');
+                await fetchClients();
+                const updated = cachedClientsList.find(c => c._id === currentActiveClientId);
+                if (updated) {
+                    currentActiveClientData = updated;
+                    populateDrawerDetails(updated);
+                }
+            } else {
+                alert('❌ Error: ' + (data.error || 'Update failed.'));
             }
-
-            const wallet = data.wallet || {};
-            const transactions = data.transactions || [];
-
-            panel.innerHTML = `
-                <div style="background:#ffffff; border: 1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <i class="ri-wallet-3-line" style="font-size:20px; color:#1d4ed8;"></i>
-                            <span style="font-weight:700; font-size:14px; color:#0f172a;">Wallet Control Panel</span>
-                        </div>
-                        <span class="wallet-badge" style="background:#e0e7ff; color:#1d4ed8; padding:6px 12px; border-radius:12px; font-weight:bold; font-family:monospace; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" onclick="copyToClipboard('${wallet.walletId || ''}', this)" title="Click to copy">
-                            ${escapeHtml(wallet.walletId || 'No ID')} <i class="ri-file-copy-line"></i>
-                        </span>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                        <div style="background:#f8fafc; padding:10px; border-radius:10px; border:1px solid #f1f5f9; display:flex; flex-direction:column; justify-content:center;">
-                            <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:2px;">Current Balance</span>
-                            <span style="font-size:18px; font-weight:800; color:#0f172a;">${formatCurrency(wallet.walletBalance)}</span>
-                        </div>
-
-                        <div style="display:flex; flex-direction:column; justify-content:center;">
-                            <span style="font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase; margin-bottom:4px;">Wallet Status</span>
-                            <select onchange="updateWalletStatus('${clientId}', this.value)" style="padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-weight:bold; color:#0f172a; font-size:13px; height:38px; min-height:auto; background:#ffffff;">
-                                <option value="Active" ${wallet.walletStatus === 'Active' ? 'selected' : ''}>Active</option>
-                                <option value="Frozen" ${wallet.walletStatus === 'Frozen' ? 'selected' : ''}>Frozen</option>
-                                <option value="Hold" ${wallet.walletStatus === 'Hold' ? 'selected' : ''}>Hold</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <form onsubmit="submitWalletAdjustment(event, '${clientId}')" style="margin-top:15px; background:#f8fafc; padding:12px; border-radius:12px; border:1px solid #e2e8f0;">
-                        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:10px;">Adjust Balance</div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-                            <div>
-                                <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Type</label>
-                                <select id="adj-type-${clientId}" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
-                                    <option value="Credit">Credit (Add)</option>
-                                    <option value="Debit">Debit (Deduct)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Amount</label>
-                                <input type="number" id="adj-amount-${clientId}" step="any" min="0.01" placeholder="0.00" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
-                            </div>
-                        </div>
-                        <div style="margin-bottom:10px;">
-                            <label style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">Description</label>
-                            <input type="text" id="adj-desc-${clientId}" placeholder="e.g. Refund, manual deduction..." required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; min-height:auto; height:38px; background:#ffffff;">
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                            <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; cursor:pointer; min-height:auto;">
-                                <input type="checkbox" id="adj-neg-${clientId}" style="min-height:auto; width:16px; height:16px;"> Allow Negative Balance
-                            </label>
-                            <button type="submit" class="btn-publish" style="padding:8px 16px; font-size:12px; min-height:auto; border-radius:8px; box-shadow:none;">Update Balance</button>
-                        </div>
-                    </form>
-
-                    <div style="margin-top:15px;">
-                        <div style="font-weight:700; font-size:13px; color:#0f172a; margin-bottom:8px;">Transaction Ledger</div>
-                        <div style="max-height:180px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; background:#ffffff;">
-                            <table style="width:100%; font-size:12px; border-collapse:collapse; margin-top:0; box-shadow:none;">
-                                <thead>
-                                    <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Date</th>
-                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Type</th>
-                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Amount</th>
-                                        <th style="padding:8px 10px; font-size:11px; color:#64748b; position:sticky; top:0; background:#f8fafc; font-weight:700;">Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${transactions.length === 0 ? `
-                                        <tr><td colspan="4" style="text-align:center; padding:15px; color:#94a3b8;">No transactions found</td></tr>
-                                    ` : transactions.map(t => {
-                                        const color = t.type === 'Credit' ? '#16a34a' : '#dc2626';
-                                        return `
-                                            <tr style="border-bottom:1px solid #f1f5f9;">
-                                                <td style="padding:8px 10px; color:#64748b;">${formatAdminDate(t.createdAt)}</td>
-                                                <td style="padding:8px 10px; font-weight:700; color:${color};">${t.type}</td>
-                                                <td style="padding:8px 10px; font-weight:700; color:${color};">${formatCurrency(t.amount)}</td>
-                                                <td style="padding:8px 10px; color:#334155; word-break:break-word;">${escapeHtml(t.description)}</td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
         } catch (err) {
-            panel.innerHTML = `<div style="color:#dc2626; padding:10px;">Failed to fetch wallet info</div>`;
+            alert('❌ Failed to connect to server.');
+        }
+    }
+
+    async function submitWalletAdjustmentFromDrawer(event) {
+        event.preventDefault();
+        if (!currentActiveClientId) return;
+
+        const amountVal = document.getElementById('drawerAdjAmount')?.value;
+        const typeVal = document.getElementById('drawerAdjType')?.value;
+        const descVal = document.getElementById('drawerAdjDesc')?.value;
+        const allowNegVal = document.getElementById('drawerAdjNeg')?.checked;
+
+        if (!amountVal || !typeVal || !descVal) {
+            alert('All adjustment fields are required.');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/clients/${currentActiveClientId}/wallet/adjust`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amountVal,
+                    type: typeVal,
+                    description: descVal,
+                    allowNegative: allowNegVal
+                }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Success: ${data.message || 'Balance adjusted successfully.'}`);
+                document.getElementById('drawerAdjAmount').value = '';
+                document.getElementById('drawerAdjDesc').value = '';
+                await loadWalletDetailsFromDrawer(currentActiveClientId);
+                await fetchClients();
+            } else {
+                alert(`Error: ${data.error || 'Adjustment failed'}`);
+            }
+        } catch (err) {
+            alert('Connection error');
+        }
+    }
+
+    async function updateWalletStatusFromDrawer(status) {
+        if (!currentActiveClientId) return;
+        try {
+            const res = await fetch(`/api/admin/clients/${currentActiveClientId}/wallet/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ walletStatus: status }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Success: ${data.message || 'Wallet status updated.'}`);
+                await loadWalletDetailsFromDrawer(currentActiveClientId);
+            } else {
+                alert(`Error: ${data.error || 'Failed to update status'}`);
+            }
+        } catch (err) {
+            alert('Connection error');
         }
     }
 
@@ -378,60 +724,83 @@
         }
     }
 
-    async function updateWalletStatus(clientId, status) {
+    async function fetchStaffTickets() {
+        const tbody = document.getElementById('staffTicketsTable');
+        const countSpan = document.getElementById('staffTicketCount');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:18px;vertical-align:middle;margin-right:4px;"></i> Loading staff tickets...</td></tr>';
         try {
-            const res = await fetch(`/api/admin/clients/${clientId}/wallet/status`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ walletStatus: status }),
-                credentials: 'include'
-            });
+            const res = await fetch('/api/admin/staff-tickets', { credentials: 'include' });
             const data = await res.json();
-            if (data.success) {
-                alert(`Success: ${data.message || 'Wallet status updated.'}`);
-                await loadWalletDetails(clientId);
-            } else {
-                alert(`Error: ${data.error || 'Failed to update status'}`);
+            if (!data.success) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;">Failed to load staff tickets.</td></tr>';
+                return;
             }
-        } catch (err) {
-            alert('Connection error');
+            const tickets = data.tickets || [];
+            if (countSpan) countSpan.innerText = tickets.length;
+            if (!tickets.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:30px;">No internal staff tickets yet 🎉</td></tr>';
+                return;
+            }
+            const categoryColors = { 'IT Support': '#3b82f6', 'HR': '#f59e0b', 'Accounts': '#8b5cf6', 'General': '#64748b' };
+            const statusColors = { 'Open': '#f59e0b', 'In Progress': '#3b82f6', 'Resolved': '#10b981' };
+            tbody.innerHTML = tickets.map(t => {
+                const repliesHtml = (t.replies || []).map(r =>
+                    `<div style="font-size:11px;color:#475569;background:#f8fafc;padding:5px 8px;border-radius:6px;margin-top:4px;"><strong>${escapeHtml(r.sender || 'Admin')}:</strong> ${escapeHtml(r.message)}</div>`
+                ).join('');
+                const catColor = categoryColors[t.category] || '#64748b';
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(t.staffName || 'Staff')}</strong><br><small style="color:#94a3b8;">${escapeHtml(t.staffEmail || '')}</small></td>
+                        <td><span style="background:${catColor}14;color:${catColor};padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;">${escapeHtml(t.category || 'General')}</span></td>
+                        <td style="font-weight:600;">${escapeHtml(t.subject || '')}</td>
+                        <td style="max-width:200px;font-size:13px;">${escapeHtml(t.issue || '')}${repliesHtml}</td>
+                        <td>
+                            <select onchange="updateStaffTicketStatus('${t._id}', this.value)" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-weight:bold;color:${statusColors[t.status] || '#333'};">
+                                <option value="Open" ${t.status === 'Open' ? 'selected' : ''}>🟡 Open</option>
+                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>🟠 In Progress</option>
+                                <option value="Resolved" ${t.status === 'Resolved' ? 'selected' : ''}>✅ Resolved</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:5px;">
+                                <input type="text" id="staff-reply-${t._id}" placeholder="Type reply..." style="flex:1;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;">
+                                <button onclick="replyToStaffTicket('${t._id}')" style="background:#6c63ff;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">Reply</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        } catch (e) {
+            console.error('Staff tickets fetch error:', e);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:30px;">Could not connect to server.</td></tr>';
         }
     }
 
-    async function submitWalletAdjustment(event, clientId) {
-        event.preventDefault();
-        const amountVal = document.getElementById(`adj-amount-${clientId}`)?.value;
-        const typeVal = document.getElementById(`adj-type-${clientId}`)?.value;
-        const descVal = document.getElementById(`adj-desc-${clientId}`)?.value;
-        const allowNegVal = document.getElementById(`adj-neg-${clientId}`)?.checked;
-
-        if (!amountVal || !typeVal || !descVal) {
-            alert('All adjustment fields are required.');
-            return;
-        }
-
+    async function updateStaffTicketStatus(id, status) {
         try {
-            const res = await fetch(`/api/admin/clients/${clientId}/wallet/adjust`, {
+            await fetch('/api/admin/update-staff-ticket', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount: amountVal,
-                    type: typeVal,
-                    description: descVal,
-                    allowNegative: allowNegVal
-                }),
+                body: JSON.stringify({ ticketId: id, status, sender: 'Admin' }),
                 credentials: 'include'
             });
-            const data = await res.json();
-            if (data.success) {
-                alert(`Success: ${data.message || 'Balance adjusted successfully.'}`);
-                await loadWalletDetails(clientId);
-            } else {
-                alert(`Error: ${data.error || 'Adjustment failed'}`);
-            }
-        } catch (err) {
-            alert('Connection error');
-        }
+            fetchStaffTickets();
+        } catch (e) { alert('Failed to update staff ticket'); }
+    }
+
+    async function replyToStaffTicket(id) {
+        const input = document.getElementById('staff-reply-' + id);
+        const reply = (input?.value || '').trim();
+        if (!reply) return alert('Please type a reply');
+        try {
+            await fetch('/api/admin/update-staff-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: id, reply, sender: 'Admin' }),
+                credentials: 'include'
+            });
+            fetchStaffTickets();
+        } catch (e) { alert('Failed to send reply'); }
     }
 
     window.mountAdminClientOpsSections = function () {
@@ -444,9 +813,16 @@
     window.fetchStaffTickets = fetchStaffTickets;
     window.updateStaffTicketStatus = updateStaffTicketStatus;
     window.replyToStaffTicket = replyToStaffTicket;
-    window.toggleWalletPanel = toggleWalletPanel;
-    window.loadWalletDetails = loadWalletDetails;
+    
+    // Modern side-drawer functions
+    window.openClientDetail = openClientDetail;
+    window.closeClientDetail = closeClientDetail;
+    window.switchDrawerTab = switchDrawerTab;
+    window.saveClientProfile = saveClientProfile;
+    window.toggleBanFromDrawer = toggleBanFromDrawer;
+    window.resetPasswordFromDrawer = resetPasswordFromDrawer;
+    window.deleteClientFromDrawer = deleteClientFromDrawer;
+    window.updateWalletStatusFromDrawer = updateWalletStatusFromDrawer;
+    window.submitWalletAdjustmentFromDrawer = submitWalletAdjustmentFromDrawer;
     window.copyToClipboard = copyToClipboard;
-    window.updateWalletStatus = updateWalletStatus;
-    window.submitWalletAdjustment = submitWalletAdjustment;
 })();
