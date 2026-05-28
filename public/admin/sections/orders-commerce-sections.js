@@ -75,16 +75,25 @@
         }
 
         const country = order.selectedCountry || order.country || '';
+        const quality = order.selectedQuality || order.quality || '';
         const speed = order.selectedSpeed || order.speed || '';
         const refill = order.selectedRefill || order.refill || '';
 
-        if (country?.length || speed?.length || refill?.length) {
+        if (country?.length || quality?.length || speed?.length || refill?.length) {
             let details = [];
             if (country?.length) details.push(`📍 Country: ${escapeHtml(country)}`);
+            if (quality?.length) details.push(`💎 Quality: ${escapeHtml(quality)}`);
             if (speed?.length) details.push(`⚡ Speed: ${escapeHtml(speed)}`);
             if (refill?.length) details.push(`🔄 Refill: ${escapeHtml(refill)}`);
             
             pkgMarkup += `<div class="text-xs text-gray-500 mt-1" style="font-size:0.75rem;color:#64748b;margin-top:4px;">${details.join(' | ')}</div>`;
+        }
+
+        if (order?.isDripFeed) {
+            const hrs = order.interval ? (order.interval / 60) : 0;
+            pkgMarkup += `<div class="drip-feed-badge" style="font-size:0.75rem;color:#0369a1;background-color:#e0f2fe;border:1px solid #bae6fd;border-radius:6px;padding:4px 8px;margin-top:6px;display:inline-block;font-weight:600;">
+                💧 Drip Feed: ${order.runs || 0} Runs (Every ${hrs} hrs) | ${order.quantityPerRun || 0} qty/run
+            </div>`;
         }
 
         return pkgMarkup;

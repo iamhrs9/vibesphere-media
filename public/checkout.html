@@ -748,6 +748,9 @@
         let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
         let insta = params.get('insta') || params.get('targetLink') || null;
         let smmVariantIndex = params.get('variantIndex') ? Number(params.get('variantIndex')) : 0;
+        let isDripFeed = params.get('isDripFeed') === 'true';
+        let dripRuns = params.get('runs') ? Number(params.get('runs')) : 1;
+        let dripInterval = params.get('interval') ? Number(params.get('interval')) : 0;
         let currencyFromURL = params.get('currency') || "INR";
         let validSmmService = !(smmServiceId && smmQty);
         let isCartCheckout = false;
@@ -975,10 +978,10 @@
                                 const variant = service.pricingVariants[smmVariantIndex] || service.pricingVariants[0];
                                 ratePer1000 = Number(variant.price);
                             }
-                            const computedPrice = (smmQty / 1000) * ratePer1000;
+                            const computedPrice = parseFloat(((smmQty / 1000) * ratePer1000).toFixed(2));
                             
                             pkg = `${service.platform} ${service.serviceType} (${smmQty} units)`;
-                            price = `₹${computedPrice}`;
+                            price = `₹${computedPrice.toFixed(2)}`;
                             
                             validSmmService = true;
                             setSmmCheckoutError('');
@@ -1246,6 +1249,9 @@
                         walletPayload.targetLink = insta;
                         walletPayload.orderType = 'smm';
                         walletPayload.variantIndex = smmVariantIndex;
+                        walletPayload.isDripFeed = isDripFeed;
+                        walletPayload.runs = dripRuns;
+                        walletPayload.interval = dripInterval;
                     } else {
                         walletPayload.orderType = 'agency';
                     }
@@ -1301,6 +1307,9 @@
                     createPayload.quantity = smmQty;
                     createPayload.orderType = 'smm';
                     createPayload.variantIndex = smmVariantIndex;
+                    createPayload.isDripFeed = isDripFeed;
+                    createPayload.runs = dripRuns;
+                    createPayload.interval = dripInterval;
                 } else {
                     createPayload.amount = finalAmount;
                     createPayload.orderType = 'agency';
@@ -1357,6 +1366,9 @@
                             verifyPayload.quantity = smmQty;
                             verifyPayload.targetLink = insta;
                             verifyPayload.orderType = 'smm';
+                            verifyPayload.isDripFeed = isDripFeed;
+                            verifyPayload.runs = dripRuns;
+                            verifyPayload.interval = dripInterval;
                         } else {
                             verifyPayload.orderType = 'agency';
                         }

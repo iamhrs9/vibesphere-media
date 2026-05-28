@@ -1656,15 +1656,25 @@
                                     }
 
                                     const country = order.selectedCountry || order.country || '';
+                                    const quality = order.selectedQuality || order.quality || '';
                                     const speed = order.selectedSpeed || order.speed || '';
                                     const refill = order.selectedRefill || order.refill || '';
                                     let variantHtml = '';
-                                    if (country?.length || speed?.length || refill?.length) {
+                                    if (country?.length || quality?.length || speed?.length || refill?.length) {
                                         let details = [];
                                         if (country?.length) details.push(`📍 Country: ${country}`);
+                                        if (quality?.length) details.push(`💎 Quality: ${quality}`);
                                         if (speed?.length) details.push(`⚡ Speed: ${speed}`);
                                         if (refill?.length) details.push(`🔄 Refill: ${refill}`);
                                         variantHtml = `<div class="text-xs text-gray-500 mt-1" style="font-size:0.75rem;color:#64748b;margin-top:4px;margin-bottom:8px;">${details.join(' | ')}</div>`;
+                                    }
+
+                                    let dripFeedHtml = '';
+                                    if (order && order.isDripFeed) {
+                                        const hrs = order.interval ? (order.interval / 60) : 0;
+                                        dripFeedHtml = `<div class="drip-feed-badge" style="font-size:0.75rem;color:#0369a1;background-color:#e0f2fe;border:1px solid #bae6fd;border-radius:6px;padding:4px 8px;margin-top:2px;margin-bottom:8px;display:inline-block;font-weight:600;">
+                                            💧 Drip Feed: ${order.runs || 0} Runs (Every ${hrs} hrs) | ${order.quantityPerRun || 0} qty/run
+                                        </div>`;
                                     }
 
                                     // 🟢 3. The New UI Card
@@ -1674,6 +1684,7 @@
                             <div class="order-info">
                                 ${packageDisplay}
                                 ${variantHtml}
+                                ${dripFeedHtml}
                                 <p><i class="ri-hashtag" style="color:#94a3b8;"></i> <strong>Order ID:</strong> ${order.orderId}</p>
                                 <p><i class="ri-calendar-line" style="color:#94a3b8;"></i> <strong>Date:</strong> ${order.date}</p>
                             </div>

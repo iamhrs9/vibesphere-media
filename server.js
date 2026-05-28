@@ -2667,7 +2667,10 @@ const mongoURI = process.env.MONGO_URI;
 
 if (mongoURI) {
     mongoose.connect(mongoURI)
-        .then(() => console.log("✅ MongoDB Connected Successfully!"))
+        .then(() => {
+            console.log("✅ MongoDB Connected Successfully!");
+            startDripFeedWorker();
+        })
         .catch(err => console.error("❌ DB Connection Error:", err.message));
 } else {
     console.warn("⚠️ WARNING: MongoDB URI missing in Environment Variables.");
@@ -3392,8 +3395,15 @@ const orderSchema = new mongoose.Schema({
     quantity: { type: Number, default: 0 },
     serviceId: { type: String, default: '' },
     selectedCountry: { type: String, default: '' },
+    selectedQuality: { type: String, default: '' },
     selectedSpeed: { type: String, default: '' },
     selectedRefill: { type: String, default: '' },
+    isDripFeed: { type: Boolean, default: false },
+    runs: { type: Number, default: 1 },
+    interval: { type: Number, default: 0 }, // in minutes
+    quantityPerRun: { type: Number, default: 0 },
+    remainingRuns: { type: Number, default: 0 },
+    nextRunAt: { type: Date, default: null },
 
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
@@ -5428,6 +5438,7 @@ const smmServiceSchema = new mongoose.Schema({
     serviceType: { type: String, required: true },            // e.g., 'Followers', 'Likes'
     pricingVariants: [{
         country: { type: String, required: true },
+        quality: { type: String, default: 'Standard' },
         speed: { type: String, required: true },
         refillGuarantee: { type: String, required: true },
         price: { type: Number, required: true } // Price per 1000 units in INR
@@ -6225,7 +6236,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             if (!Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
                 return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
             }
-            finalPrice = (parsedQuantity / 1000) * ratePer1000;
+            finalPrice = parseFloat(((parsedQuantity / 1000) * ratePer1000).toFixed(2));
             cleanCurrency = "INR";
             console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${serviceId}`);
         } else {
@@ -6267,6 +6278,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         let resolvedQuantity = 0;
         let resolvedTargetLink = '';
         let selectedCountry = '';
+        let selectedQuality = '';
         let selectedSpeed = '';
         let selectedRefill = '';
 
@@ -6289,10 +6301,11 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                         const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
                         rRate = Number(sVar.price);
                         selectedCountry = sVar.country || '';
+                        selectedQuality = sVar.quality || 'Standard';
                         selectedSpeed = sVar.speed || '';
                         selectedRefill = sVar.refillGuarantee || '';
                     }
-                    normalizedOrderAmount = (resolvedQuantity / 1000) * rRate;
+                    normalizedOrderAmount = parseFloat(((resolvedQuantity / 1000) * rRate).toFixed(2));
                 }
             } catch (err) {
                 console.error("Server side recalculation error:", err);
@@ -6321,6 +6334,17 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             }
         }
 
+        const incomingIsDripFeed = req.body.isDripFeed === true || req.body.isDripFeed === 'true' || orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true';
+        const incomingRuns = Number(req.body.runs || orderDetails?.runs || 1);
+        const incomingInterval = Number(req.body.interval || orderDetails?.interval || 0);
+
+        const isDripActive = (orderType === 'smm') && incomingIsDripFeed;
+        const runsVal = isDripActive ? Math.max(2, incomingRuns) : 1;
+        const intervalMins = isDripActive ? (incomingInterval * 60) : 0;
+        const qtyPerRun = isDripActive ? Math.floor(resolvedQuantity / runsVal) : resolvedQuantity;
+        const remainingRunsVal = isDripActive ? runsVal : 0;
+        const nextRunTimestamp = isDripActive ? new Date() : null;
+
         const newOrder = new Order({
             orderId: "#ORD-" + Math.floor(100000 + Math.random() * 900000),
             paymentId: razorpay_payment_id,
@@ -6337,8 +6361,15 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
             selectedCountry: selectedCountry,
+            selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
             selectedRefill: selectedRefill,
+            isDripFeed: isDripActive,
+            runs: runsVal,
+            interval: intervalMins,
+            quantityPerRun: qtyPerRun,
+            remainingRuns: remainingRunsVal,
+            nextRunAt: nextRunTimestamp,
             date: new Date().toLocaleString()
         });
 
@@ -6652,6 +6683,7 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         let resolvedQuantity = 0;
         let resolvedTargetLink = '';
         let selectedCountry = '';
+        let selectedQuality = '';
         let selectedSpeed = '';
         let selectedRefill = '';
 
@@ -6670,6 +6702,7 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
                     if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
                         const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
                         selectedCountry = sVar.country || '';
+                        selectedQuality = sVar.quality || 'Standard';
                         selectedSpeed = sVar.speed || '';
                         selectedRefill = sVar.refillGuarantee || '';
                     }
@@ -6680,6 +6713,17 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         }
 
         const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
+
+        const incomingIsDripFeed = req.body.isDripFeed === true || req.body.isDripFeed === 'true' || orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true';
+        const incomingRuns = Number(req.body.runs || orderDetails?.runs || 1);
+        const incomingInterval = Number(req.body.interval || orderDetails?.interval || 0);
+
+        const isDripActive = (orderType === 'smm') && incomingIsDripFeed;
+        const runsVal = isDripActive ? Math.max(2, incomingRuns) : 1;
+        const intervalMins = isDripActive ? (incomingInterval * 60) : 0;
+        const qtyPerRun = isDripActive ? Math.floor(resolvedQuantity / runsVal) : resolvedQuantity;
+        const remainingRunsVal = isDripActive ? runsVal : 0;
+        const nextRunTimestamp = isDripActive ? new Date() : null;
 
         const newOrder = new Order({
             orderId: generatedOrderId,
@@ -6697,8 +6741,15 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
             selectedCountry: selectedCountry,
+            selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
             selectedRefill: selectedRefill,
+            isDripFeed: isDripActive,
+            runs: runsVal,
+            interval: intervalMins,
+            quantityPerRun: qtyPerRun,
+            remainingRuns: remainingRunsVal,
+            nextRunAt: nextRunTimestamp,
             date: new Date().toLocaleString()
         });
 
@@ -6710,7 +6761,8 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         const packageName = orderDetails?.package || 'Service Package';
         let txnDescription = `Purchased ${packageName} (Order ${newOrder.orderId})`;
         if (orderType === 'smm' && selectedCountry && selectedSpeed) {
-            txnDescription = `Purchased ${packageName} (${selectedCountry}, ${selectedSpeed}) (Order ${newOrder.orderId})`;
+            const qualityStr = selectedQuality ? `, ${selectedQuality}` : '';
+            txnDescription = `Purchased ${packageName} (${selectedCountry}${qualityStr}, ${selectedSpeed}) (Order ${newOrder.orderId})`;
         }
         const transaction = new Transaction({
             userId: user._id,
@@ -9268,6 +9320,65 @@ app.use((req, res, next) => {
     }
 });
 
+// ==========================================
+// ⏱️ AUTOMATED SMM DRIP FEED WORKER
+// ==========================================
+function startDripFeedWorker() {
+    console.log("⏱️ Drip Feed worker initialized. Checking for scheduled runs every 2 minutes.");
+    
+    const checkAndProcess = async () => {
+        try {
+            const now = new Date();
+            // Find active SMM orders with remaining runs and due run times
+            const orders = await Order.find({
+                orderType: 'smm',
+                isDripFeed: true,
+                remainingRuns: { $gt: 0 },
+                nextRunAt: { $lte: now }
+            });
+
+            if (orders.length > 0) {
+                console.log(`⏱️ Drip Feed Worker: Found ${orders.length} orders to process.`);
+                
+                for (const order of orders) {
+                    try {
+                        // Simulate or trigger delivery action for this run
+                        order.remainingRuns -= 1;
+                        
+                        console.log(`⚡ Drip Feed Run: Processing sub-run for order ${order.orderId}. Quantity: ${order.quantityPerRun}. Runs left: ${order.remainingRuns}`);
+                        
+                        if (order.remainingRuns > 0) {
+                            // Schedule next run
+                            const intervalMs = order.interval * 60 * 1000;
+                            order.nextRunAt = new Date(Date.now() + intervalMs);
+                            order.workStatus = 'In Progress';
+                            order.status = 'In Progress';
+                            console.log(`📅 Order ${order.orderId} rescheduled next run for: ${order.nextRunAt}`);
+                        } else {
+                            // Completed all runs
+                            order.nextRunAt = null;
+                            order.workStatus = 'Completed';
+                            order.status = 'Completed';
+                            console.log(`🏁 Order ${order.orderId} has completed all drip feed runs!`);
+                        }
+                        
+                        await order.save();
+                    } catch (orderErr) {
+                        console.error(`❌ Drip Feed Worker: Error processing order ${order.orderId}:`, orderErr);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("❌ Drip Feed Worker Error:", err);
+        }
+    };
+
+    // Run once immediately on connection
+    checkAndProcess();
+    
+    // Then run every 2 minutes
+    setInterval(checkAndProcess, 2 * 60 * 1000);
+}
 
 server.listen(PORT, () => {
     console.log(`🚀 Live Server Running on http://localhost:${PORT}`);

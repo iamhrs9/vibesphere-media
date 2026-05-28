@@ -126,7 +126,7 @@
     window.currentSmmVariants = [];
 
     window.addSmmVariant = function() {
-        window.currentSmmVariants.push({ country: '', speed: '', refillGuarantee: 'No Refill', price: '' });
+        window.currentSmmVariants.push({ country: '', quality: 'Standard', speed: '', refillGuarantee: 'No Refill', price: '' });
         window.renderSmmVariants();
     };
 
@@ -147,10 +147,14 @@
             return;
         }
         container.innerHTML = window.currentSmmVariants.map((v, i) => `
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;margin-bottom:10px;align-items:end;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr 1fr auto;gap:10px;margin-bottom:10px;align-items:end;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
                 <div>
                     <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Country</label>
                     <input type="text" value="${escapeHtml(v.country)}" onchange="updateSmmVariant(${i}, 'country', this.value)" placeholder="e.g. Global" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Quality/Type</label>
+                    <input type="text" value="${escapeHtml(v.quality || 'Standard')}" onchange="updateSmmVariant(${i}, 'quality', this.value)" placeholder="e.g. High Quality" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
                 </div>
                 <div>
                     <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Speed</label>
@@ -324,6 +328,9 @@ async function saveSmmRate() {
 
     // Validate variants
     for (const v of window.currentSmmVariants) {
+        if (!v.quality || !v.quality.trim()) {
+            v.quality = 'Standard';
+        }
         if (!v.country || !v.speed || !v.refillGuarantee || v.price === '' || isNaN(v.price) || Number(v.price) <= 0) {
             alert('⚠️ All variant fields (country, speed, refill, valid price) must be filled correctly.');
             return;

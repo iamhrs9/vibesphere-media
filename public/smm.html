@@ -474,15 +474,20 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label for="targetCountry" style="font-size: 0.8rem;">Target Country</label>
-                                <select id="targetCountry" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
+                                <select id="targetCountry" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterQualityAndCascade(); calculatePrice();">
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="accountQuality" style="font-size: 0.8rem;">Account Quality</label>
+                                <select id="accountQuality" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterSpeedForQuality(); calculatePrice();">
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label for="serviceSpeed" style="font-size: 0.8rem;">Speed</label>
-                                <select id="serviceSpeed" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
+                                <select id="serviceSpeed" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterRefillForSpeed(); calculatePrice();">
                                 </select>
                             </div>
-                            <div class="form-group" style="margin-bottom: 0; grid-column: span 2;">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label for="refillGuarantee" style="font-size: 0.8rem;">Refill Guarantee</label>
                                 <select id="refillGuarantee" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
                                 </select>
@@ -490,6 +495,26 @@
                         </div>
                         <p id="variantError" style="color:#ef4444;font-size:0.8rem;display:none;margin-top:4px;">Selected combination is unavailable.</p>
                         <p id="detailDescription" style="margin: 0; color: #64748b; font-size: 0.82rem; line-height: 1.4; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: none;"></p>
+                    </div>
+
+                    <!-- SMM Drip Feed Selector Group -->
+                    <div id="dripFeedGroup" style="border-top: 1px solid #f1f5f9; padding-top: 20px; margin-top: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1e293b; font-size: 0.9rem; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="enableDripFeed" onchange="toggleDripFeed()" style="accent-color: #6c63ff; width: 18px; height: 18px; cursor: pointer;">
+                            <span>Enable Drip Feed 🔄</span>
+                        </label>
+                        
+                        <div id="dripFeedInputs" style="display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="dripRuns" style="font-size: 0.8rem;">Runs (Number of Times)</label>
+                                <input type="number" id="dripRuns" class="form-control" style="padding: 10px; font-size: 0.9rem;" value="2" min="2" oninput="calculatePrice()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="dripInterval" style="font-size: 0.8rem;">Interval (in Hours)</label>
+                                <input type="number" id="dripInterval" class="form-control" style="padding: 10px; font-size: 0.9rem;" value="24" min="1" oninput="calculatePrice()">
+                            </div>
+                            <p id="dripFeedSummary" style="grid-column: span 2; margin: 0; color: #6c63ff; font-size: 0.82rem; font-weight: 600; line-height: 1.4; background: rgba(108, 99, 255, 0.05); padding: 10px; border-radius: 8px; border: 1px dashed rgba(108, 99, 255, 0.2); display: none;"></p>
+                        </div>
                     </div>
 
                     <div class="price-box" id="priceBox">
@@ -702,6 +727,116 @@
             handleServiceSelectionChange();
         }
 
+        function filterQualityAndCascade() {
+            const package = window.currentPackage;
+            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
+
+            const targetCountrySelect = document.getElementById("targetCountry");
+            const accountQualitySelect = document.getElementById("accountQuality");
+
+            if (!targetCountrySelect || !accountQualitySelect) return;
+
+            const selectedCountry = targetCountrySelect.value;
+            let filteredVariants = package.pricingVariants;
+            if (selectedCountry) {
+                filteredVariants = package.pricingVariants.filter(v => v?.country === selectedCountry);
+                if (filteredVariants.length === 0) {
+                    filteredVariants = package.pricingVariants;
+                }
+            }
+
+            const uniqueQualities = [...new Set(filteredVariants.map(v => v?.quality || 'Standard').filter(Boolean))];
+
+            const prevQuality = accountQualitySelect.value;
+
+            accountQualitySelect.innerHTML = uniqueQualities.map(q => `<option value="${q}">${q}</option>`).join('');
+
+            if (uniqueQualities.includes(prevQuality)) {
+                accountQualitySelect.value = prevQuality;
+            } else if (uniqueQualities.length > 0) {
+                accountQualitySelect.value = uniqueQualities[0];
+            }
+
+            // Cascade down to Speed selection based on Quality
+            filterSpeedForQuality();
+        }
+
+        function filterSpeedForQuality() {
+            const package = window.currentPackage;
+            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
+
+            const targetCountrySelect = document.getElementById("targetCountry");
+            const accountQualitySelect = document.getElementById("accountQuality");
+            const serviceSpeedSelect = document.getElementById("serviceSpeed");
+
+            if (!targetCountrySelect || !accountQualitySelect || !serviceSpeedSelect) return;
+
+            const selectedCountry = targetCountrySelect.value;
+            const selectedQuality = accountQualitySelect.value;
+
+            let filteredVariants = package.pricingVariants;
+            if (selectedCountry) {
+                filteredVariants = filteredVariants.filter(v => v?.country === selectedCountry);
+            }
+            if (selectedQuality) {
+                filteredVariants = filteredVariants.filter(v => (v?.quality || 'Standard') === selectedQuality);
+            }
+
+            const uniqueSpeeds = [...new Set(filteredVariants.map(v => v?.speed).filter(Boolean))];
+
+            const prevSpeed = serviceSpeedSelect.value;
+
+            serviceSpeedSelect.innerHTML = uniqueSpeeds.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            if (uniqueSpeeds.includes(prevSpeed)) {
+                serviceSpeedSelect.value = prevSpeed;
+            } else if (uniqueSpeeds.length > 0) {
+                serviceSpeedSelect.value = uniqueSpeeds[0];
+            }
+
+            // Cascade down to Refill selection based on Speed
+            filterRefillForSpeed();
+        }
+
+        function filterRefillForSpeed() {
+            const package = window.currentPackage;
+            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
+
+            const targetCountrySelect = document.getElementById("targetCountry");
+            const accountQualitySelect = document.getElementById("accountQuality");
+            const serviceSpeedSelect = document.getElementById("serviceSpeed");
+            const refillGuaranteeSelect = document.getElementById("refillGuarantee");
+
+            if (!targetCountrySelect || !accountQualitySelect || !serviceSpeedSelect || !refillGuaranteeSelect) return;
+
+            const selectedCountry = targetCountrySelect.value;
+            const selectedQuality = accountQualitySelect.value;
+            const selectedSpeed = serviceSpeedSelect.value;
+
+            let filteredVariants = package.pricingVariants;
+            if (selectedCountry) {
+                filteredVariants = filteredVariants.filter(v => v?.country === selectedCountry);
+            }
+            if (selectedQuality) {
+                filteredVariants = filteredVariants.filter(v => (v?.quality || 'Standard') === selectedQuality);
+            }
+            if (selectedSpeed) {
+                filteredVariants = filteredVariants.filter(v => v?.speed === selectedSpeed);
+            }
+
+            const uniqueRefills = [...new Set(filteredVariants.map(v => v?.refillGuarantee).filter(Boolean))];
+
+            const prevRefill = refillGuaranteeSelect.value;
+
+            refillGuaranteeSelect.innerHTML = uniqueRefills.map(r => `<option value="${r}">${r}</option>`).join('');
+
+            if (uniqueRefills.includes(prevRefill)) {
+                refillGuaranteeSelect.value = prevRefill;
+            } else if (uniqueRefills.length > 0) {
+                refillGuaranteeSelect.value = uniqueRefills[0];
+            }
+        }
+
         function handleServiceSelectionChange() {
             const select = document.getElementById("serviceType");
             if (!select || select.value === "") return;
@@ -713,17 +848,12 @@
 
             const variantGroup = document.getElementById("variantSelectorsGroup");
             const targetCountrySelect = document.getElementById("targetCountry");
-            const serviceSpeedSelect = document.getElementById("serviceSpeed");
-            const refillGuaranteeSelect = document.getElementById("refillGuarantee");
 
             if (variantGroup && package.pricingVariants?.length > 0) {
                 const uniqueCountries = [...new Set(package.pricingVariants.map(v => v?.country).filter(Boolean))];
-                const uniqueSpeeds = [...new Set(package.pricingVariants.map(v => v?.speed).filter(Boolean))];
-                const uniqueRefills = [...new Set(package.pricingVariants.map(v => v?.refillGuarantee).filter(Boolean))];
-
                 targetCountrySelect.innerHTML = uniqueCountries.map(c => `<option value="${c}">${c}</option>`).join('');
-                serviceSpeedSelect.innerHTML = uniqueSpeeds.map(s => `<option value="${s}">${s}</option>`).join('');
-                refillGuaranteeSelect.innerHTML = uniqueRefills.map(r => `<option value="${r}">${r}</option>`).join('');
+                
+                filterQualityAndCascade();
                 
                 variantGroup.style.display = "block";
             } else {
@@ -741,6 +871,15 @@
             }
 
             updateTargetLinkLabel();
+            calculatePrice();
+        }
+
+        function toggleDripFeed() {
+            const enabled = document.getElementById("enableDripFeed")?.checked;
+            const inputs = document.getElementById("dripFeedInputs");
+            if (inputs) {
+                inputs.style.display = enabled ? "grid" : "none";
+            }
             calculatePrice();
         }
 
@@ -763,10 +902,11 @@
             
             if (package.pricingVariants?.length > 0) {
                 const c = document.getElementById("targetCountry")?.value;
+                const q = document.getElementById("accountQuality")?.value;
                 const s = document.getElementById("serviceSpeed")?.value;
                 const r = document.getElementById("refillGuarantee")?.value;
                 
-                matchedVariantIndex = package.pricingVariants.findIndex(v => v?.country === c && v?.speed === s && v?.refillGuarantee === r);
+                matchedVariantIndex = package.pricingVariants.findIndex(v => v?.country === c && (v?.quality || 'Standard') === q && v?.speed === s && v?.refillGuarantee === r);
                 
                 if (matchedVariantIndex === -1) {
                     if (variantError) variantError.style.display = "block";
@@ -788,11 +928,37 @@
             if (qty < 100) qty = 100;
             if (qty > 100000) qty = 100000;
 
-            const totalPrice = (qty / 1000) * rate;
+            const totalPrice = parseFloat(((qty / 1000) * rate).toFixed(2));
 
             // Update UI
-            priceDisplay.innerText = `₹${totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+            priceDisplay.innerText = `₹${totalPrice.toFixed(2)}`;
             rateHint.innerText = `Base rate: ₹${rate} per 1,000 units`;
+
+            // SMM Drip Feed Live calculation
+            const dripEnabled = document.getElementById("enableDripFeed")?.checked;
+            const dripRunsInput = document.getElementById("dripRuns");
+            const dripIntervalInput = document.getElementById("dripInterval");
+            const dripSummary = document.getElementById("dripFeedSummary");
+
+            if (dripEnabled && dripRunsInput && dripIntervalInput && dripSummary) {
+                let runs = parseInt(dripRunsInput.value || 0);
+                if (runs < 2) {
+                    runs = 2;
+                    dripRunsInput.value = 2;
+                }
+                let interval = parseInt(dripIntervalInput.value || 0);
+                if (interval < 1) {
+                    interval = 1;
+                    dripIntervalInput.value = 1;
+                }
+
+                const qtyPerRun = Math.floor(qty / runs);
+                dripSummary.style.display = "block";
+                const platformLabel = window.currentPackage?.serviceType || 'units';
+                dripSummary.innerText = `🔄 Drip Feed Active: Total ${qty.toLocaleString()} ${platformLabel.toLowerCase()} will be delivered as ${qtyPerRun.toLocaleString()} ${platformLabel.toLowerCase()} every ${interval} hour${interval !== 1 ? 's' : ''} across ${runs} runs.`;
+            } else if (dripSummary) {
+                dripSummary.style.display = "none";
+            }
 
             // Micro-animation pulsing effect on price box
             priceBox.classList.add("pulse");
@@ -828,13 +994,20 @@
                 return;
             }
 
+            const dripEnabled = document.getElementById("enableDripFeed")?.checked;
+            const runs = dripEnabled ? Number(document.getElementById("dripRuns")?.value || 2) : 1;
+            const interval = dripEnabled ? Number(document.getElementById("dripInterval")?.value || 24) : 0;
+
             // Flow directly into the secure checkout page forwarding ONLY serviceId, quantity, and targetLink
             const urlParams = new URLSearchParams({
                 isSmm: 'true',
                 serviceId: select.value,
                 quantity: qty,
                 targetLink: finalTargetLink,
-                variantIndex: window.currentVariantIndex !== undefined ? window.currentVariantIndex : 0
+                variantIndex: window.currentVariantIndex !== undefined ? window.currentVariantIndex : 0,
+                isDripFeed: dripEnabled ? 'true' : 'false',
+                runs: runs,
+                interval: interval
             });
             window.location.href = `/checkout.html?${urlParams.toString()}`;
         }
