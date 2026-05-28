@@ -126,18 +126,102 @@ io.on('connection', (socket) => {
         console.log(`🟢 ${role} Live: ${email}`);
     });
 
-    // 🟢 NAYA: CHAT MESSAGE ENGINE
-    socket.on('send_message', async (data) => {
+    // 🟢 TEAM CHAT ROOM JOIN HANDLER
+    socket.on('join_team_room', () => {
+        socket.join('admin_team_room');
+        console.log(`🟢 Socket joined admin_team_room: ${socket.id}`);
+    });
+
+    socket.on('join_admin_room', () => {
+        socket.join('admin_room');
+        console.log(`🟢 Socket joined admin_room: ${socket.id}`);
+    });
+
+    // 🎧 LIVE SUPPORT CHAT SOCKET HANDLERS
+    socket.on('join_support_room', async ({ ticketId, email, name, role }) => {
+        socket.join(`support_ticket_${ticketId}`);
+        try {
+            const ticket = await Ticket.findById(ticketId);
+            if (role === 'Admin' || !email) {
+                if (ticket && ticket.isLiveChat) {
+                    io.to(`support_ticket_${ticketId}`).emit('support_agent_joined', { agentName: 'Admin Support', agentEmail: 'admin@vibesphere.in' });
+                }
+                console.log(`💬 Agent joined chat via join_support_room: support_ticket_${ticketId}`);
+            } else {
+                io.to('Admin').emit('support_client_waiting', { ticketId, email, name });
+                console.log(`💬 Client ${name} (${email}) waiting/joining live chat: support_ticket_${ticketId}`);
+            }
+        } catch (err) {
+            console.error("Error in join_support_room socket handler:", err);
+        }
+    });
+
+    socket.on('support_agent_join', async ({ ticketId, agentEmail, agentName }) => {
+        socket.join(`support_ticket_${ticketId}`);
+        try {
+            const ticket = await Ticket.findById(ticketId);
+            if (ticket && ticket.isLiveChat) {
+                io.to(`support_ticket_${ticketId}`).emit('support_agent_joined', { agentName, agentEmail });
+            }
+            console.log(`💬 Agent ${agentName} joined chat: support_ticket_${ticketId}`);
+        } catch (err) {
+            console.error("Error in support_agent_join socket handler:", err);
+        }
+    });
+
+    socket.on('support_send_msg', async ({ ticketId, text, sender }) => {
+        try {
+            const ticket = await Ticket.findById(ticketId);
+            const createdAt = new Date();
+            if (ticket) {
+                ticket.replies.push({ sender, text, message: text, createdAt, date: createdAt });
+                ticket.status = 'Pending';
+                await ticket.save();
+            }
+            socket.broadcast.to(`support_ticket_${ticketId}`).emit('support_receive_msg', { sender, text, ticketId: String(ticketId), createdAt });
+        } catch (err) {
+            console.error("Error saving support chat message:", err);
+        }
+    });
+
+    socket.on('support_close_chat', async ({ ticketId, userType }) => {
+        try {
+            const ticket = await Ticket.findById(ticketId);
+            if (ticket) {
+                ticket.chatActive = false;
+                if (ticket.isLiveChat) {
+                    const msg = `*Live chat session ended. Ticket remains open for processing.*`;
+                    ticket.replies.push({
+                        sender: 'System',
+                        text: msg,
+                        message: msg,
+                        createdAt: new Date(),
+                        date: new Date()
+                    });
+                }
+                await ticket.save();
+            }
+            if (ticket && ticket.isLiveChat) {
+                io.to(`support_ticket_${ticketId}`).emit('support_chat_terminated', { ticketId, userType: userType || 'System' });
+                io.to(`support_ticket_${ticketId}`).emit('support_chat_closed');
+            }
+        } catch (err) {
+            console.error("Error in support_close_chat:", err);
+        }
+    });
+
+    // 🟢 CHAT MESSAGE ENGINE (TEAM CHAT)
+    socket.on('team_send_msg', async (data) => {
         try {
             const settings = await AppSettings.findOne();
             if (settings && settings.isChatBlocked && data.role !== 'Admin') {
-                return socket.emit('chat_error', "Admin has blocked the team chat.");
+                return socket.emit('team_chat_error', "Admin has blocked the team chat.");
             }
 
             if (data.role !== 'Admin') {
                 const staff = await Staff.findOne({ email: data.senderEmail });
                 if (staff && staff.isMuted) {
-                    return socket.emit('chat_error', "You have been muted by Admin.");
+                    return socket.emit('team_chat_error', "You have been muted by Admin.");
                 }
             }
 
@@ -158,7 +242,7 @@ io.on('connection', (socket) => {
             });
             await newMessage.save();
 
-            io.emit('receive_message', newMessage); // Sabko live message bhej do
+            io.to('admin_team_room').emit('team_receive_msg', newMessage); // Restrict to admin_team_room
         } catch (e) {
             console.error("Chat Socket Error:", e);
         }
@@ -3410,7 +3494,7 @@ const orderSchema = new mongoose.Schema({
     assignedAt: { type: Date, default: null },
     commissionValue: { type: Number, default: 0 }, // 20% cut kitna bana
     payoutStatus: { type: String, default: 'Unpaid' } // Unpaid ya Paid
-});
+}, { timestamps: true });
 const Order = mongoose.model('Order', orderSchema);
 // --- Blog Schema (UPDATED WITH SEO) ---
 const blogSchema = new mongoose.Schema({
@@ -3690,18 +3774,40 @@ function scheduleAutoCheckoutJob() {
 // 🎧 HELPDESK TICKETING SCHEMA
 // ==========================================
 const ticketSchema = new mongoose.Schema({
+    ticketNumber: { type: String, default: '' },
     clientEmail: String,
     clientName: String,
     subject: String,
     issue: String,
-    status: { type: String, default: 'Open' }, // Open, In Progress, Resolved
+    status: { type: String, default: 'Open' }, // Open, In Progress, Resolved, Closed
     replies: [{
         sender: String,
         message: String,
-        date: { type: Date, default: Date.now }
+        text: String,
+        date: { type: Date, default: Date.now },
+        createdAt: { type: Date, default: Date.now }
     }],
+    orderId: { type: String, default: '' },
+    category: { type: String, default: '' },
+    subcategory: { type: String, default: '' },
+    actionRequired: { type: String, default: '' },
+    chatActive: { type: Boolean, default: false },
+    isLiveChat: { type: Boolean, default: false },
+    offlineQuery: { type: Boolean, default: false },
     date: { type: Date, default: Date.now }
 });
+
+// Auto-generate a unique ticket number before first save
+ticketSchema.pre('save', function(next) {
+    if (!this.ticketNumber) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let suffix = '';
+        for (let i = 0; i < 6; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+        this.ticketNumber = '#TCK-' + suffix;
+    }
+    next();
+});
+
 const Ticket = mongoose.model('Ticket', ticketSchema);
 
 // ==========================================
@@ -5126,7 +5232,7 @@ app.post('/api/chat/send', async (req, res) => {
         });
 
         await newMessage.save();
-        io.emit('receive_message', newMessage);
+        io.to('admin_team_room').emit('team_receive_msg', newMessage);
 
         res.json({ success: true, message: 'Message sent successfully.', chatMessage: newMessage });
     } catch (e) {
@@ -5183,7 +5289,7 @@ app.post('/api/admin/toggle-chat', checkAuth, async (req, res) => {
         await settings.save();
 
         // Sabko live batao ki chat band/chalu ho gayi
-        io.emit('chat_status_changed', { isChatBlocked: settings.isChatBlocked });
+        io.to('admin_team_room').emit('team_chat_status_changed', { isChatBlocked: settings.isChatBlocked });
         res.json({ success: true, isChatBlocked: settings.isChatBlocked, message: settings.isChatBlocked ? "Chat Blocked! 🚫" : "Chat Unblocked! ✅" });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -5201,9 +5307,9 @@ app.post('/api/admin/mute-staff', checkAuth, async (req, res) => {
 app.delete('/api/admin/delete-message/:id', checkAuth, async (req, res) => {
     try {
         const deleted = await Chat.findByIdAndDelete(req.params.id);
-        io.emit('message_deleted', req.params.id); // Live sabke screen se message hatao
+        io.to('admin_team_room').emit('team_message_deleted', req.params.id); // Live sabke screen se message hatao
         if (deleted?.isPinned) {
-            io.emit('message_pinned', null);
+            io.to('admin_team_room').emit('team_message_pinned', null);
         }
         res.json({ success: true, message: "Message Deleted 🗑️" });
     } catch (e) { res.status(500).json({ success: false }); }
@@ -5218,7 +5324,7 @@ app.post('/api/admin/pin-message/:id', checkAuth, async (req, res) => {
             { new: true }
         );
         if (!message) return res.status(404).json({ success: false, message: 'Message not found.' });
-        io.emit('message_pinned', message);
+        io.to('admin_team_room').emit('team_message_pinned', message);
         res.json({ success: true, message: 'Message pinned successfully.', pinnedMessage: message });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Failed to pin message.' });
@@ -8156,12 +8262,127 @@ app.delete('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
 // Client creates a ticket
 app.post('/api/client/create-ticket', async (req, res) => {
     try {
-        const { email, name, subject, issue } = req.body;
+        const { email, name, subject, issue, orderId, category, subcategory, actionRequired, status, chatActive, isLiveChat, offlineQuery } = req.body;
         if (!subject || !issue) return res.status(400).json({ success: false, message: 'Subject and issue are required' });
-        const ticket = new Ticket({ clientEmail: email, clientName: name, subject, issue });
+        const ticket = new Ticket({
+            clientEmail: email,
+            clientName: name,
+            subject,
+            issue,
+            orderId: orderId || '',
+            category: category || '',
+            subcategory: subcategory || '',
+            actionRequired: actionRequired || '',
+            status: status || 'Open',
+            chatActive: chatActive || false,
+            isLiveChat: isLiveChat || false,
+            offlineQuery: offlineQuery || false
+        });
         await ticket.save();
-        res.json({ success: true, message: 'Ticket created successfully! 🎫' });
+        io.to('admin_room').emit('new_support_ticket', ticket);
+        res.json({ success: true, message: 'Ticket created successfully! 🎫', ticketId: ticket._id });
     } catch (e) { res.status(500).json({ success: false, error: 'Failed to create ticket' }); }
+});
+
+// Client verifies their Order ID to fetch details
+app.post('/api/client/verify-order', checkAuth, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        if (!orderId) return res.status(400).json({ success: false, message: 'Order ID is required' });
+        const cleanedId = orderId.trim();
+        const order = await Order.findOne({
+            $or: [
+                { orderId: cleanedId },
+                { orderId: '#' + cleanedId },
+                { orderId: cleanedId.replace('#', '') }
+            ],
+            email: req.user.email
+        });
+        if (!order) {
+            return res.json({ success: false, message: 'Order not found or does not belong to you.' });
+        }
+        res.json({
+            success: true,
+            orderType: order.orderType || 'agency',
+            packageName: order.package || 'Custom Project',
+            orderId: order.orderId
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Server error verifying order.' });
+    }
+});
+
+// Client checks if any agent is currently online
+app.get('/api/client/check-agent-online', async (req, res) => {
+    try {
+        const onlineStaff = await Staff.findOne({ isOnline: true });
+        res.json({ success: true, online: !!onlineStaff });
+    } catch (e) {
+        res.status(500).json({ success: false, online: false });
+    }
+});
+
+// Admin/Staff views all refill tickets
+app.get('/api/admin/refills', checkAuth, async (req, res) => {
+    try {
+        const tickets = await Ticket.find({ actionRequired: 'Refill' }).sort({ date: -1 });
+        res.json({ success: true, tickets });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// Admin/Staff initiates a refill request
+app.post('/api/admin/start-refill', checkAuth, async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+        const startMsg = '🚀 Your refill request has been initiated and is currently in progress.';
+        ticket.status = 'Pending';
+        ticket.replies.push({ sender: 'System/Admin', message: startMsg, text: startMsg, createdAt: new Date() });
+        await ticket.save();
+        // Broadcast the initiate message live into the ticket's socket room
+        io.to(`support_ticket_${ticketId}`).emit('support_receive_msg', {
+            sender: 'System/Admin',
+            text: startMsg,
+            ticketId: String(ticketId),
+            createdAt: new Date()
+        });
+        if (ticket.isLiveChat) {
+            io.to(`support_ticket_${ticketId}`).emit('support_chat_terminated', { ticketId, userType: 'Admin', status: 'Pending' });
+        }
+        res.json({ success: true, message: 'Refill started!' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to start refill' });
+    }
+});
+
+// Admin/Staff processes a refill request in one click
+app.post('/api/admin/process-refill', checkAuth, async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+        const successMsg = '✅ Your refill request has been successfully processed and completed!';
+        ticket.actionRequired = 'Completed';
+        ticket.status = 'Resolved';
+        ticket.chatActive = false;
+        ticket.replies.push({ sender: 'System/Admin', message: successMsg, text: successMsg, createdAt: new Date() });
+        await ticket.save();
+        // Broadcast the success message live into the ticket's socket room
+        io.to(`support_ticket_${ticketId}`).emit('support_receive_msg', {
+            sender: 'System/Admin',
+            text: successMsg,
+            ticketId: String(ticketId),
+            createdAt: new Date()
+        });
+        // Signal the user frontend to lock the input (session resolved) only if it's a live chat
+        if (ticket.isLiveChat) {
+            io.to(`support_ticket_${ticketId}`).emit('support_chat_closed', { resolved: true });
+        }
+        res.json({ success: true, message: 'Refill processed!' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Failed to process refill' });
+    }
 });
 
 // Client views own tickets
@@ -8172,10 +8393,47 @@ app.post('/api/client/my-tickets', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+// Client reopens a closed ticket
+app.post('/api/client/reopen-ticket', checkAuth, async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        if (!ticketId) return res.status(400).json({ success: false, message: 'Ticket ID is required.' });
+        const ticket = await Ticket.findOne({ _id: ticketId, clientEmail: req.user.email });
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found or access denied.' });
+        if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') return res.json({ success: false, message: 'Only closed or resolved tickets can be reopened.' });
+        ticket.status = 'Pending';
+        ticket.chatActive = true;
+        ticket.replies.push({
+            sender: 'System',
+            message: 'User reopened this ticket.',
+            text: 'User reopened this ticket.',
+            createdAt: new Date()
+        });
+        await ticket.save();
+        res.json({ success: true, ticket });
+    } catch (e) {
+        console.error('Reopen ticket error:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to reopen ticket.' });
+    }
+});
+
 // Admin/Staff views all tickets
 app.get('/api/admin/tickets', checkAuth, async (req, res) => {
     try {
-        const tickets = await Ticket.find().sort({ date: -1 });
+        const { search } = req.query;
+        let query = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { ticketNumber: regex },
+                    { orderId: regex },
+                    { clientName: regex },
+                    { clientEmail: regex }
+                ]
+            };
+        }
+        const tickets = await Ticket.find(query).sort({ date: -1 });
         res.json({ success: true, tickets });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -8188,11 +8446,55 @@ app.post('/api/admin/update-ticket', checkAuth, async (req, res) => {
         if (status) update.status = status;
         const ticket = await Ticket.findById(ticketId);
         if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
-        if (status) ticket.status = status;
+        if (status) {
+            ticket.status = status;
+            if (status === 'Resolved' || status === 'Closed') {
+                ticket.chatActive = false;
+                if (ticket.actionRequired === 'Refill') {
+                    ticket.actionRequired = 'Completed';
+                }
+            }
+        }
         if (reply) ticket.replies.push({ sender: sender || 'Admin', message: reply });
         await ticket.save();
         res.json({ success: true, message: 'Ticket updated! ✅' });
     } catch (e) { res.status(500).json({ success: false, error: 'Failed to update ticket' }); }
+});
+
+// Admin resolves a ticket
+app.post('/api/admin/resolve-ticket', checkAuth, async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found.' });
+
+        ticket.status = 'Resolved';
+        ticket.chatActive = false;
+        if (ticket.actionRequired === 'Refill') {
+            ticket.actionRequired = 'Completed';
+        }
+        if (ticket.isLiveChat) {
+            const msg = 'Support Executive marked this ticket as Resolved.';
+            ticket.replies.push({
+                sender: 'System',
+                text: msg,
+                message: msg,
+                createdAt: new Date(),
+                date: new Date()
+            });
+        }
+        await ticket.save();
+
+        if (ticket.isLiveChat) {
+            // Broadcast to dynamic client rooms that session terminated & resolved
+            io.to(`support_ticket_${ticketId}`).emit('support_chat_terminated', { ticketId, userType: 'Admin', status: 'Resolved' });
+            io.to(`support_ticket_${ticketId}`).emit('support_chat_closed');
+        }
+
+        res.json({ success: true, message: 'Ticket marked as Resolved successfully! ✅' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to resolve ticket.' });
+    }
 });
 
 // Staff mobile inbox: view all customer tickets

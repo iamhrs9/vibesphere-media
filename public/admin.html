@@ -1443,7 +1443,7 @@
 
             <div id="clients-section" class="section"></div>
             <script src="/js/NotificationManager.js"></script>
-            <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+            <script src="/socket.io/socket.io.js"></script>
             <script>
                 const API_URL = '/api';
                 let allBlogs = [];
@@ -1554,6 +1554,24 @@
                 function formatAdminDate(value) {
                     if (!value) return '—';
                     return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+
+                function formatAdminDateTime(value) {
+                    if (!value) return '—';
+                    const d = new Date(value);
+                    if (isNaN(d.getTime())) return '—';
+                    const datePart = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const timePart = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    return `${datePart}, ${timePart}`;
+                }
+
+                function getOrderTimestamp(order) {
+                    if (order.createdAt) return order.createdAt;
+                    if (order.date) return order.date;
+                    if (order._id && typeof order._id === 'string' && order._id.length === 24) {
+                        try { return new Date(parseInt(order._id.substring(0, 8), 16) * 1000).toISOString(); } catch(e) {}
+                    }
+                    return null;
                 }
 
                 function formatAdminTime(value) {
@@ -1908,8 +1926,10 @@
                     reconnection: true,
                     reconnectionAttempts: 5
                 });
+                window.socket = socket;
                 window.initAdminChatModule?.(socket);
                 window.initAdminStaffRealtime?.(socket);
+                window.initHelpdeskRealtime?.(socket);
 
                 // ==========================================
                 // 🚀 ADMIN REAL-TIME LISTENERS (GOD MODE)

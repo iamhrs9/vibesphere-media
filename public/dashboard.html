@@ -1161,60 +1161,360 @@
                 }
             }
         </style>
-        <!-- SUPPORT TICKETS MODAL -->
-        <div id="supportTicketsModal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-            <div
-                style="background: white; width: 95%; max-width: 650px; border-radius: 16px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; transform: translateY(-20px); animation: slideDown 0.3s forwards;">
-                
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
-                    <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                        <i class="ri-customer-service-2-fill" style="color: #6c63ff;"></i> Support Tickets
-                    </h3>
-                    <button onclick="closeSupportTicketsModal()"
-                        style="background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 18px; cursor: pointer; color: #64748b; display: flex; justify-content: center; align-items: center;">&times;</button>
+        <!-- =============================================
+             🎧 SUPPORT WIDGET — FAB + SLIDING OVERLAY
+             ============================================= -->
+        <style>
+            /* ---- FAB Button ---- */
+            #supportFab {
+                position: fixed;
+                bottom: 28px;
+                right: 28px;
+                width: 58px;
+                height: 58px;
+                background: linear-gradient(135deg, #6c63ff 0%, #5a52d5 100%);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 8px 24px rgba(108,99,255,0.45);
+                z-index: 9990;
+                transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
+                border: none;
+                outline: none;
+            }
+            #supportFab:hover { transform: scale(1.1); box-shadow: 0 12px 30px rgba(108,99,255,0.55); }
+            #supportFab i { font-size: 1.5rem; color: #fff; transition: transform 0.3s; }
+            #supportFab.open i { transform: rotate(90deg); }
+
+            /* Notification badge */
+            #supportFabBadge {
+                position: absolute;
+                top: -4px; right: -4px;
+                background: #ef4444;
+                color: #fff;
+                font-size: 10px;
+                font-weight: 700;
+                border-radius: 50%;
+                width: 18px; height: 18px;
+                display: none;
+                align-items: center; justify-content: center;
+                border: 2px solid #fff;
+            }
+
+            /* ---- Sliding Overlay Panel ---- */
+            #supportWidget {
+                position: fixed;
+                bottom: 100px;
+                right: 24px;
+                width: 385px;
+                max-height: calc(100vh - 130px);
+                background: #fff;
+                border-radius: 20px;
+                box-shadow: 0 24px 60px rgba(15,23,42,0.22), 0 4px 16px rgba(108,99,255,0.12);
+                z-index: 9995;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                transform: translateY(30px) scale(0.97);
+                opacity: 0;
+                pointer-events: none;
+                transition: transform 0.32s cubic-bezier(.34,1.3,.64,1), opacity 0.25s ease;
+            }
+            #supportWidget.open {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+                pointer-events: all;
+            }
+            @media (max-width: 480px) {
+                #supportWidget { width: calc(100vw - 24px); right: 12px; bottom: 90px; border-radius: 16px; }
+                #supportFab { bottom: 20px; right: 16px; }
+            }
+
+            /* ---- Widget Header ---- */
+            .sw-header {
+                background: linear-gradient(135deg, #6c63ff 0%, #4f46e5 100%);
+                padding: 18px 20px 16px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+            .sw-header-icon {
+                width: 40px; height: 40px;
+                background: rgba(255,255,255,0.2);
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1.2rem; color: #fff;
+            }
+            .sw-header-title { flex: 1; }
+            .sw-header-title h4 { margin:0; color:#fff; font-size:1rem; font-weight:700; }
+            .sw-header-title span { color:rgba(255,255,255,0.75); font-size:0.78rem; }
+            .sw-close-btn {
+                background: rgba(255,255,255,0.15);
+                border: none; width:30px; height:30px; border-radius:50%;
+                color:#fff; font-size:1.1rem; cursor:pointer;
+                display:flex; align-items:center; justify-content:center;
+                transition: background 0.2s;
+            }
+            .sw-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+            /* ---- Home View ---- */
+            #swHomeView { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+            .sw-new-conv-btn {
+                margin: 16px 16px 8px;
+                background: linear-gradient(135deg,#6c63ff,#4f46e5);
+                color:#fff; border:none; border-radius:12px;
+                padding: 13px 18px;
+                font-size:0.9rem; font-weight:700;
+                cursor:pointer; display:flex; align-items:center; gap:8px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 14px rgba(108,99,255,0.3);
+            }
+            .sw-new-conv-btn:hover { transform:translateY(-1px); box-shadow: 0 6px 18px rgba(108,99,255,0.4); }
+            .sw-tickets-label {
+                padding: 4px 16px 6px;
+                font-size: 11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em;
+            }
+            .sw-ticket-item {
+                margin: 0 10px 6px;
+                padding: 12px 14px;
+                background: #f8fafc;
+                border-radius: 12px;
+                cursor: pointer;
+                border: 1.5px solid #e2e8f0;
+                transition: border-color 0.2s, background 0.2s, transform 0.15s;
+                display:flex; align-items:center; gap:12px;
+            }
+            .sw-ticket-item:hover { border-color: #6c63ff; background: #f5f3ff; transform:translateX(2px); }
+            .sw-ticket-avatar {
+                width:38px; height:38px; border-radius:50%;
+                display:flex; align-items:center; justify-content:center;
+                font-size:1rem; flex-shrink:0;
+            }
+            .sw-ticket-info { flex:1; min-width:0; }
+            .sw-ticket-info .sw-tnum { font-size:11px; font-weight:700; color:#6c63ff; margin-bottom:2px; }
+            .sw-ticket-info .sw-tsubj { font-size:0.85rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .sw-ticket-info .sw-tmeta { font-size:11px; color:#94a3b8; margin-top:2px; }
+            .sw-status-pill {
+                font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap;
+            }
+            .sw-filter-pill {
+                background: #f1f5f9; color: #64748b; border: none;
+                padding: 6px 14px; font-weight: 700; font-size: 11px;
+                border-radius: 20px; cursor: pointer; transition: background 0.2s, color 0.2s;
+                font-family: inherit; outline: none;
+            }
+            .sw-filter-pill.active {
+                background: #eff6ff; color: #1d4ed8;
+            }
+            .sw-filter-pill:hover:not(.active) {
+                background: #e2e8f0; color: #475569;
+            }
+
+            .sw-empty-state {
+                text-align:center; padding:40px 20px 30px;
+                color:#94a3b8; display:flex; flex-direction:column; align-items:center; gap:10px;
+            }
+            .sw-empty-state i { font-size:2.5rem; }
+            .sw-empty-state p { font-size:0.88rem; line-height:1.5; }
+
+            /* ---- Chat View ---- */
+            #swChatView { flex:1; display:none; flex-direction:column; overflow:hidden; }
+            .sw-chat-header {
+                padding: 10px 14px;
+                border-bottom: 1px solid #f1f5f9;
+                display:flex; align-items:center; gap:10px;
+                flex-shrink:0; background:#fff;
+            }
+            .sw-back-btn {
+                background:none; border:none; color:#6c63ff; font-size:1.1rem;
+                cursor:pointer; padding:4px 6px; border-radius:6px; transition: background 0.2s;
+            }
+            .sw-back-btn:hover { background:#f5f3ff; }
+            .sw-chat-header-info { flex:1; }
+            .sw-chat-header-info h5 { margin:0; font-size:0.88rem; font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .sw-chat-header-info span { font-size:11px; color:#94a3b8; }
+
+            /* Chat messages */
+            #swChatMessages {
+                flex:1; overflow-y:auto; padding:14px 14px 8px;
+                display:flex; flex-direction:column; gap:10px;
+                background: #f8fafc;
+            }
+            .sw-bubble { display:flex; gap:8px; align-items:flex-end; max-width:100%; }
+            .sw-bubble.user { flex-direction:row-reverse; }
+            .sw-bubble-avatar {
+                width:28px; height:28px; border-radius:50%;
+                display:flex; align-items:center; justify-content:center;
+                font-size:0.75rem; font-weight:700; flex-shrink:0;
+            }
+            .sw-bubble-body { max-width:78%; }
+            .sw-bubble-text {
+                padding:10px 14px; border-radius:16px;
+                font-size:0.85rem; line-height:1.55; word-break:break-word;
+            }
+            .sw-bubble.bot .sw-bubble-text { background:#fff; border:1.5px solid #e2e8f0; color:#334155; border-bottom-left-radius:4px; }
+            .sw-bubble.system .sw-bubble-text { background:#fef9c3; border:1.5px solid #fde047; color:#713f12; border-radius:10px; text-align:center; font-size:0.8rem; font-style:italic; }
+            .sw-bubble.admin .sw-bubble-text { background:#fff; border:1.5px solid #e2e8f0; color:#334155; border-bottom-left-radius:4px; }
+            .sw-bubble.user .sw-bubble-text { background:linear-gradient(135deg,#6c63ff,#4f46e5); color:#fff; border-bottom-right-radius:4px; }
+            .sw-bubble-time { font-size:10px; color:#94a3b8; margin-top:3px; padding: 0 4px; }
+            .sw-bubble.user .sw-bubble-time { text-align:right; }
+
+            /* Bot typing indicator */
+            .sw-typing { display:flex; align-items:center; gap:4px; padding:10px 14px; }
+            .sw-typing span { width:7px;height:7px;background:#cbd5e1;border-radius:50%; animation:swDot 1.2s infinite; }
+            .sw-typing span:nth-child(2) { animation-delay:.2s; }
+            .sw-typing span:nth-child(3) { animation-delay:.4s; }
+            @keyframes swDot { 0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1} }
+
+            /* Bot choice buttons */
+            #swBotOptions { padding:4px 14px 10px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; background:#f8fafc; }
+            .sw-choice-btn {
+                background:#fff; border:1.5px solid #e2e8f0; color:#334155;
+                padding:10px 14px; border-radius:12px; font-size:0.85rem; font-weight:600;
+                cursor:pointer; text-align:left; transition: border-color 0.2s, background 0.2s, transform 0.15s;
+                display:flex; align-items:center; gap:8px;
+            }
+            .sw-choice-btn:hover { border-color:#6c63ff; background:#f5f3ff; transform:translateX(3px); }
+
+            /* Input area */
+            #swInputArea {
+                border-top:1px solid #f1f5f9; padding:10px 12px;
+                display:flex; gap:8px; align-items:center; flex-shrink:0; background:#fff;
+            }
+            #swChatInput {
+                flex:1; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:12px;
+                font-size:0.88rem; outline:none; font-family:inherit; background:#f8fafc;
+                transition: border-color 0.2s;
+            }
+            #swChatInput:focus { border-color:#6c63ff; background:#fff; }
+            #swSendBtn {
+                width:40px; height:40px; border-radius:12px; border:none;
+                background:linear-gradient(135deg,#6c63ff,#4f46e5); color:#fff;
+                font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 10px rgba(108,99,255,0.3);
+            }
+            #swSendBtn:hover { transform:scale(1.08); }
+
+            /* Reopen area */
+            #swReopenArea {
+                border-top:1px solid #f1f5f9; padding:12px 16px;
+                display:none; align-items:center; justify-content:space-between; gap:10px;
+                background:#fff; flex-shrink:0;
+            }
+            #swReopenArea p { margin:0; font-size:0.83rem; color:#64748b; }
+            #swReopenBtn {
+                background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
+                border:none; padding:9px 16px; border-radius:10px; font-size:0.82rem;
+                font-weight:700; cursor:pointer; white-space:nowrap;
+                transition: transform 0.2s; box-shadow: 0 4px 10px rgba(245,158,11,0.3);
+            }
+            #swReopenBtn:hover { transform:scale(1.04); }
+
+            /* Wizard steps inside chat */
+            .sw-wizard-step { display:none; flex-direction:column; gap:8px; }
+            .sw-wizard-step.active { display:flex; }
+        </style>
+
+        <!-- FAB Button -->
+        <button id="supportFab" onclick="toggleSupportWidget()" aria-label="Open Support">
+            <div id="supportFabBadge">1</div>
+            <i class="ri-customer-service-2-line"></i>
+        </button>
+
+        <!-- Sliding Widget Panel -->
+        <div id="supportWidget" role="dialog" aria-label="Support Chat">
+            <!-- Widget Header -->
+            <div class="sw-header">
+                <div class="sw-header-icon"><i class="ri-headphone-line"></i></div>
+                <div class="sw-header-title">
+                    <h4>Support Center</h4>
+                    <span>We usually reply within a few hours</span>
+                </div>
+                <button class="sw-close-btn" onclick="toggleSupportWidget()" aria-label="Close">&#10005;</button>
+            </div>
+
+            <!-- HOME VIEW: Ticket History -->
+            <div id="swHomeView">
+                <button class="sw-new-conv-btn" onclick="swStartNewConversation()" id="swNewConvBtn">
+                    <i class="ri-add-line"></i> New Conversation
+                </button>
+                <div class="sw-tickets-label">Your Conversations</div>
+                <div id="swFilterBar" style="display:flex;gap:6px;padding:0 16px 12px;margin-top:-4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none;">
+                    <button id="swFilterOpen" onclick="swSetFilter('Open')" class="sw-filter-pill active">Open</button>
+                    <button id="swFilterPending" onclick="swSetFilter('Pending')" class="sw-filter-pill">Pending</button>
+                    <button id="swFilterResolved" onclick="swSetFilter('Resolved')" class="sw-filter-pill">Resolved</button>
+                    <button id="swFilterClosed" onclick="swSetFilter('Closed')" class="sw-filter-pill">Closed</button>
+                </div>
+                <div id="swTicketList" style="flex:1;overflow-y:auto;padding-bottom:10px;"></div>
+            </div>
+
+            <!-- CHAT VIEW: Conversational UI -->
+            <div id="swChatView">
+                <!-- Chat Header with Back -->
+                <div class="sw-chat-header">
+                    <button class="sw-back-btn" onclick="swGoHome()" title="Back"><i class="ri-arrow-left-s-line"></i></button>
+                    <div class="sw-header-icon" style="width:32px;height:32px;background:linear-gradient(135deg,#6c63ff,#4f46e5);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:#fff;">
+                        <i class="ri-customer-service-2-line"></i>
+                    </div>
+                    <div class="sw-chat-header-info">
+                        <h5 id="swChatTitle">Support</h5>
+                        <span id="swChatSubtitle">VibeSphere Support</span>
+                    </div>
+                    <span id="swChatStatusPill" class="sw-status-pill" style="background:#f0fdf4;color:#15803d;">Open</span>
+                    <button id="swEndChatBtn" onclick="swEndActiveChat()" style="background:#fee2e2;color:#ef4444;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:3px;"><i class="ri-close-circle-line"></i> End Chat</button>
                 </div>
 
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                        <p style="color: #64748b; font-size: 0.95rem; margin: 0;">Need help? Raise a ticket and our team will resolve it.</p>
-                        <button
-                            onclick="toggleTicketForm()"
-                            style="background:#6c63ff;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9rem;">
-                            + New Ticket
-                        </button>
-                    </div>
+                <!-- Message bubbles -->
+                <div id="swChatMessages"></div>
 
-                    <div id="ticketForm"
-                        style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
-                        <h4 style="margin-bottom:15px;color:#1e293b;">Create Support Ticket</h4>
-                        <div style="margin-bottom:12px;">
-                            <label
-                                style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Subject</label>
-                            <input type="text" id="ticketSubject" placeholder="e.g. My followers not increasing"
-                                style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;background:white;"
-                                onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#cbd5e1'">
-                        </div>
-                        <div style="margin-bottom:15px;">
-                            <label
-                                style="display:block;font-size:13px;color:#475569;margin-bottom:4px;font-weight:600;">Describe
-                                your issue</label>
-                            <textarea id="ticketIssue" rows="4" placeholder="Please describe your issue in detail..."
-                                style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;font-family:inherit;background:white;"
-                                onfocus="this.style.borderColor='#6c63ff'"
-                                onblur="this.style.borderColor='#cbd5e1'"></textarea>
-                        </div>
-                        <button onclick="createTicket()" id="btnCreateTicket"
-                            style="background:#6c63ff;color:white;padding:12px 25px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;transition:0.3s;"
-                            onmouseover="this.style.background='#5a52d5'"
-                            onmouseout="this.style.background='#6c63ff'">Submit
-                            Ticket 🎫</button>
-                    </div>
+                <!-- Bot choice buttons -->
+                <div id="swBotOptions"></div>
 
-                    <div id="ticketsList"></div>
+                <!-- Live input area -->
+                <div id="swInputArea" style="display:none;">
+                    <input type="text" id="swChatInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter')swSendMessage()">
+                    <button id="swSendBtn" onclick="swSendMessage()" title="Send"><i class="ri-send-plane-fill"></i></button>
+                </div>
+
+                <!-- Closed ticket reopen area -->
+                <div id="swReopenArea">
+                    <p>This conversation is closed.</p>
+                    <button id="swReopenBtn" onclick="swReopenTicket()">🔄 Reopen Chat</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Legacy hidden elements for any lingering JS references -->
+        <div style="display:none;">
+            <div id="ticketsList"></div>
+            <div id="supportChatSpinner"></div>
+            <div id="supportLiveChatRoom"></div>
+            <div id="supportChatMessages"></div>
+            <input id="supportChatInput">
+            <button id="supportSendBtn"></button>
+            <div id="ticketForm"></div>
+            <div id="supportVerifyStep"></div>
+            <div id="supportSmmStep"></div>
+            <div id="supportCustomStep"></div>
+            <div id="supportFallbackStep"></div>
+            <div id="supportOfflineForm"></div>
+            <input id="supportOrderId">
+            <select id="smmProblemSelect"></select>
+            <div id="smmFieldsContainer"></div>
+            <button id="btnSubmitSmm"></button>
+            <select id="customProblemSelect"></select>
+            <div id="customFieldsContainer"></div>
+            <button id="btnSubmitCustom"></button>
+            <span id="smmOrderLabel"></span>
+            <span id="customOrderLabel"></span>
+            <textarea id="offlineQueryText"></textarea>
+            <button id="btnSubmitOffline"></button>
+            <p id="chatTimerText"></p>
+            <p id="offlineDescription"></p>
         </div>
         <script src="/js/utils/auth.js"></script>
         <script src="/js/utils/global-ui.js"></script>
@@ -1566,9 +1866,14 @@
                         // 🟢 THE LIVE DASHBOARD BOUNCER (SOCKET.IO)
                         // ==========================================
                         const socket = io(); // Server se jud gaya
+                        window.socket = socket;
 
                         // Client apne khud ke "Room" (Email) mein entry le raha hai
                         socket.emit('join_room', user.email);
+
+                        // Support Live Chat socket listeners
+                        // Initialize support widget socket listeners
+                        initSupportSocketListeners();
 
                         // Jab server se 'status_updated' ka signal aaye:
                         socket.on('status_updated', (data) => {
@@ -1790,99 +2095,722 @@
             }
 
             // ==========================================
-            // 🎧 CLIENT TICKETING FUNCTIONS
+            // 🎧 CONVERSATIONAL SUPPORT WIDGET ENGINE
             // ==========================================
-            async function createTicket() {
-                const subject = document.getElementById('ticketSubject').value.trim();
-                const issue = document.getElementById('ticketIssue').value.trim();
-                if (!subject || !issue) return alert('Please fill both Subject and Issue!');
 
-                const btn = document.getElementById('btnCreateTicket');
-                btn.innerText = 'Submitting...';
-                btn.disabled = true;
+            // ---- State ----
+            let swIsOpen = false;
+            let swCurrentView = 'home'; // 'home' | 'chat'
+            let swActiveTicket = null;  // full ticket object
+            let swCurrentVerifiedOrder = null;
+            let swWizardStep = null; // 'order' | 'smm' | 'custom' | 'fallback' | 'offline' | 'live'
+            let swBotTypingTimer = null;
+            let swChatCountdown = null;
 
+            // ---- Status Pill Colours ----
+            function swStatusStyle(status) {
+                const map = {
+                    'Open':        'background:#fef3c7;color:#92400e;',
+                    'Pending':     'background:#fef3c7;color:#92400e;',
+                    'In Progress': 'background:#eff6ff;color:#1d4ed8;',
+                    'Resolved':    'background:#f0fdf4;color:#15803d;',
+                    'Closed':      'background:#f1f5f9;color:#64748b;'
+                };
+                return map[status] || 'background:#f1f5f9;color:#64748b;';
+            }
+            function swStatusPill(status) {
+                return `<span class="sw-status-pill" style="${swStatusStyle(status)}">${status}</span>`;
+            }
+
+            // ---- Toggle widget open/close ----
+            function toggleSupportWidget() {
+                swIsOpen = !swIsOpen;
+                const widget = document.getElementById('supportWidget');
+                const fab    = document.getElementById('supportFab');
+                if (swIsOpen) {
+                    widget.classList.add('open');
+                    fab.classList.add('open');
+                    swGoHome();
+                } else {
+                    widget.classList.remove('open');
+                    fab.classList.remove('open');
+                    swReset();
+                }
+            }
+
+            // Alias — called from dropdown nav item
+            function showSupportTickets() {
+                if (!swIsOpen) toggleSupportWidget();
+                else swGoHome();
+                const dd = document.getElementById('profileDropdown');
+                if (dd) dd.style.display = 'none';
+            }
+
+            // ---- Home View ----
+            function swGoHome() {
+                document.getElementById('swHomeView').style.display = 'flex';
+                document.getElementById('swChatView').style.display = 'none';
+                swCurrentView = 'home';
+                swLoadTicketList();
+            }
+
+            let _swAllTickets = [];
+            let _swTicketFilter = 'Open';
+
+            function swSetFilter(filter) {
+                _swTicketFilter = filter;
+                
+                // Update CSS classes on the pills
+                const pills = ['Open', 'Pending', 'Resolved', 'Closed'];
+                pills.forEach(p => {
+                    const btn = document.getElementById('swFilter' + p);
+                    if (btn) {
+                        if (p === filter) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    }
+                });
+                swRenderTicketList();
+            }
+
+            async function swLoadTicketList() {
+                const listEl = document.getElementById('swTicketList');
+                listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#cbd5e1;"><i class="ri-loader-4-line" style="font-size:1.5rem;"></i></div>`;
                 try {
-                    const res = await fetch('/api/client/create-ticket', {
+                    const res  = await fetch('/api/client/my-tickets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email }), credentials:'include' });
+                    const data = await res.json();
+                    _swAllTickets = data.tickets || [];
+                    swRenderTicketList();
+                } catch(e) { 
+                    listEl.innerHTML = `<div class="sw-empty-state"><p>Failed to load conversations.</p></div>`; 
+                }
+            }
+
+            function swRenderTicketList() {
+                const listEl = document.getElementById('swTicketList');
+                if (!listEl) return;
+                listEl.innerHTML = '';
+
+                // Filter based on selected pill
+                let filtered = _swAllTickets;
+                if (_swTicketFilter === 'Open') {
+                    filtered = _swAllTickets.filter(t => t.status === 'Open');
+                } else if (_swTicketFilter === 'Pending') {
+                    filtered = _swAllTickets.filter(t => t.status === 'Pending' || t.status === 'In Progress');
+                } else if (_swTicketFilter === 'Resolved') {
+                    filtered = _swAllTickets.filter(t => t.status === 'Resolved');
+                } else if (_swTicketFilter === 'Closed') {
+                    filtered = _swAllTickets.filter(t => t.status === 'Closed');
+                }
+
+                if (filtered.length === 0) {
+                    listEl.innerHTML = `<div class="sw-empty-state"><i class="ri-customer-service-2-line"></i><p>No conversations found here.</p></div>`;
+                    return;
+                }
+
+                filtered.forEach(t => {
+                    const num    = t.ticketNumber || ('#' + String(t._id).slice(-6).toUpperCase());
+                    const avatar = t.status === 'Closed' ? '✅' : t.category === 'SMM' ? '📊' : t.category === 'Live Chat' ? '💬' : '🎫';
+                    const ago    = swTimeAgo(new Date(t.date));
+                    const item   = document.createElement('div');
+                    item.className = 'sw-ticket-item';
+                    
+                    // Set avatar background based on status
+                    let avatarBg = '#eff6ff';
+                    if (t.status === 'Closed' || t.status === 'Resolved') avatarBg = '#f0fdf4';
+                    else if (t.status === 'Open' || t.status === 'Pending') avatarBg = '#fef3c7';
+
+                    item.innerHTML = `
+                        <div class="sw-ticket-avatar" style="background:${avatarBg};">${avatar}</div>
+                        <div class="sw-ticket-info">
+                            <div class="sw-tnum">${num}</div>
+                            <div class="sw-tsubj">${t.subject}</div>
+                            <div class="sw-tmeta">${ago}</div>
+                        </div>
+                        ${swStatusPill(t.status)}
+                    `;
+                    item.onclick = () => swOpenTicket(t);
+                    listEl.appendChild(item);
+                });
+            }
+
+            // ---- Chat View ----
+            function swUpdateFooterState(status) {
+                const reopenArea = document.getElementById('swReopenArea');
+                const inputArea = document.getElementById('swInputArea');
+                if (!reopenArea || !inputArea) return;
+
+                if (status === 'Closed') {
+                    inputArea.style.display = 'none';
+                    reopenArea.style.display = 'flex';
+                    reopenArea.innerHTML = `<p style="color:#64748b;font-size:0.83rem;text-align:center;width:100%;font-weight:600;padding:10px 0;margin:0;">🔒 This ticket is permanently closed. Please open a new ticket for further assistance.</p>`;
+                } else if (status === 'Resolved') {
+                    inputArea.style.display = 'none';
+                    reopenArea.style.display = 'flex';
+                    reopenArea.innerHTML = `
+                        <p style="margin:0;font-size:0.83rem;color:#64748b;">This conversation is closed.</p>
+                        <button id="swReopenBtn" onclick="swReopenTicket()">🔄 Reopen Chat</button>
+                    `;
+                } else {
+                    inputArea.style.display = 'flex';
+                    reopenArea.style.display = 'none';
+                    const inp = document.getElementById('swChatInput');
+                    if (inp) {
+                        inp.disabled = false;
+                        inp.placeholder = 'Type a message...';
+                    }
+                }
+            }
+
+            function swOpenTicket(ticket) {
+                swActiveTicket = ticket;
+                document.getElementById('swHomeView').style.display = 'none';
+                document.getElementById('swChatView').style.display = 'flex';
+                swCurrentView = 'chat';
+
+                // Header
+                const num = ticket.ticketNumber || ('#' + String(ticket._id).slice(-6).toUpperCase());
+                document.getElementById('swChatTitle').textContent = ticket.subject;
+                document.getElementById('swChatSubtitle').textContent = num + ' · VibeSphere Support';
+                const pillEl = document.getElementById('swChatStatusPill');
+                pillEl.textContent = ticket.status;
+                pillEl.style.cssText = swStatusStyle(ticket.status).replace(/;/g, '; ');
+
+                // Toggle End Chat button in header
+                const endBtn = document.getElementById('swEndChatBtn');
+                if (endBtn) {
+                    endBtn.style.display = ticket.chatActive ? 'flex' : 'none';
+                }
+
+                // Render messages
+                const msgs = document.getElementById('swChatMessages');
+                msgs.innerHTML = '';
+                swBubble('bot', '🤖 VibeSphere Bot', `<strong>Ticket opened</strong>: ${ticket.subject}`, ticket.date);
+                if (ticket.issue) swBubble('user', user.name || 'You', ticket.issue, ticket.date);
+                (ticket.replies || []).forEach(r => {
+                    const isUser   = r.sender && (r.sender.toLowerCase() === 'client' || r.sender === user.name || r.sender === user.email);
+                    const isSystem = r.sender === 'System' || r.sender === 'System/Admin' || r.sender === 'System/Bot';
+                    const type     = isSystem ? 'system' : isUser ? 'user' : 'admin';
+                    swBubble(type, r.sender, r.text || r.message, r.createdAt || r.date);
+                });
+                msgs.scrollTop = msgs.scrollHeight;
+
+                // Footer — show input or reopen depending on status
+                swUpdateFooterState(ticket.status);
+                document.getElementById('swBotOptions').innerHTML = '';
+
+                // Join socket room for support ticket updates when opened
+                if (window.socket && ticket._id) {
+                    window.socket.emit('join_support_room', { ticketId: ticket._id, email: user.email, name: user.name });
+                }
+            }
+
+            function swBubble(type, sender, text, ts) {
+                const msgs = document.getElementById('swChatMessages');
+                const time = ts ? new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+                const avatarMap = { bot:'🤖', system:'⚙️', admin:'👤', user:'👤' };
+                const avatarBg  = { bot:'#e0e7ff', system:'#fef9c3', admin:'#f0fdf4', user:'#ede9fe' };
+                const el = document.createElement('div');
+                el.className = `sw-bubble ${type}`;
+                const content = (type === 'bot' || type === 'system') ? (text || '') : swEscape(text);
+                el.innerHTML = `
+                    <div class="sw-bubble-avatar" style="background:${avatarBg[type]||'#f1f5f9'};">${avatarMap[type]||'👤'}</div>
+                    <div class="sw-bubble-body">
+                        <div class="sw-bubble-text">${content}</div>
+                        <div class="sw-bubble-time">${time}</div>
+                    </div>
+                `;
+                msgs.appendChild(el);
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+
+            function swEscape(text) {
+                const d = document.createElement('div');
+                d.appendChild(document.createTextNode(text || ''));
+                return d.innerHTML;
+            }
+
+            function swBotTyping() {
+                const msgs = document.getElementById('swChatMessages');
+                const el = document.createElement('div');
+                el.className = 'sw-bubble bot';
+                el.id = 'swTypingIndicator';
+                el.innerHTML = `<div class="sw-bubble-avatar" style="background:#e0e7ff;">🤖</div><div class="sw-bubble-body"><div class="sw-typing"><span></span><span></span><span></span></div></div>`;
+                msgs.appendChild(el);
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+
+            function swRemoveTyping() {
+                const el = document.getElementById('swTypingIndicator');
+                if (el) el.remove();
+            }
+
+            function swSetOptions(options) {
+                const el = document.getElementById('swBotOptions');
+                el.innerHTML = '';
+                options.forEach(o => {
+                    const btn = document.createElement('button');
+                    btn.className = 'sw-choice-btn';
+                    btn.innerHTML = o.icon ? `<span>${o.icon}</span>${o.label}` : o.label;
+                    btn.onclick = () => { el.innerHTML = ''; o.action(); };
+                    el.appendChild(btn);
+                });
+            }
+
+            // ---- Send Message (Live Chat) ----
+            function swSendMessage() {
+                const inp  = document.getElementById('swChatInput');
+                const text = inp.value.trim();
+                if (!text || !swActiveTicket) return;
+                inp.value = '';
+                swBubble('user', user.name || 'You', text, new Date());
+                const msgs = document.getElementById('swChatMessages');
+                msgs.scrollTop = msgs.scrollHeight;
+                if (window.socket) {
+                    window.socket.emit('support_send_msg', { ticketId: swActiveTicket._id, text, sender: user.name || user.email });
+                }
+            }
+
+            // ---- Reopen Ticket ----
+            async function swReopenTicket() {
+                const btn = document.getElementById('swReopenBtn');
+                btn.textContent = 'Reopening...';
+                btn.disabled = true;
+                try {
+                    const res  = await fetch('/api/client/reopen-ticket', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: user.email, name: user.name, subject, issue }), credentials: 'include'
+                        body: JSON.stringify({ ticketId: swActiveTicket._id }),
+                        credentials: 'include'
                     });
                     const data = await res.json();
-                    alert(data.message || 'Ticket Created!');
-                    document.getElementById('ticketSubject').value = '';
-                    document.getElementById('ticketIssue').value = '';
-                    document.getElementById('ticketForm').style.display = 'none';
-                    fetchMyTickets();
-                } catch (e) { alert('Failed to create ticket'); }
-
-                btn.innerText = 'Submit Ticket 🎫';
+                    if (data.success) {
+                        swActiveTicket = data.ticket;
+                        document.getElementById('swReopenArea').style.display = 'none';
+                        document.getElementById('swInputArea').style.display  = 'flex';
+                        const pillEl = document.getElementById('swChatStatusPill');
+                        pillEl.textContent = 'Pending';
+                        pillEl.style.cssText = swStatusStyle('Pending').replace(/;/g, '; ');
+                        swBubble('system', 'System', 'User reopened this ticket.', new Date());
+                        if (window.socket) {
+                            window.socket.emit('join_support_room', { ticketId: swActiveTicket._id, email: user.email, name: user.name });
+                        }
+                    } else {
+                        alert(data.message || 'Failed to reopen ticket.');
+                    }
+                } catch(e) { alert('Error reopening ticket.'); }
+                btn.textContent = '🔄 Reopen Chat';
                 btn.disabled = false;
             }
 
-            async function fetchMyTickets() {
+            // ---- New Conversation Wizard ----
+            function swStartNewConversation() {
+                document.getElementById('swHomeView').style.display = 'none';
+                document.getElementById('swChatView').style.display = 'flex';
+                swCurrentView = 'chat';
+                swActiveTicket = null;
+                swCurrentVerifiedOrder = null;
+
+                document.getElementById('swChatTitle').textContent = 'New Conversation';
+                document.getElementById('swChatSubtitle').textContent = 'VibeSphere Support';
+                document.getElementById('swChatStatusPill').textContent = '';
+                document.getElementById('swChatMessages').innerHTML = '';
+                document.getElementById('swInputArea').style.display  = 'none';
+                document.getElementById('swReopenArea').style.display = 'none';
+                document.getElementById('swBotOptions').innerHTML = '';
+
+                setTimeout(() => {
+                    swBotTyping();
+                    setTimeout(() => {
+                        swRemoveTyping();
+                        swBubble('bot', '🤖 VibeSphere Bot', "Hi! I'm your support assistant. To help you faster, could you share your <strong>Order ID</strong>?", new Date());
+                        swShowOrderInput();
+                    }, 900);
+                }, 200);
+            }
+
+            function swShowOrderInput() {
+                const el = document.getElementById('swBotOptions');
+                el.innerHTML = `
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input id="swOrderInput" type="text" placeholder="e.g. ORD-123456"
+                            style="flex:1;padding:9px 13px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.85rem;outline:none;font-family:inherit;background:#f8fafc;"
+                            onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#e2e8f0'"
+                            onkeypress="if(event.key==='Enter')swVerifyOrder()">
+                        <button onclick="swVerifyOrder()" style="padding:9px 14px;background:linear-gradient(135deg,#6c63ff,#4f46e5);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.85rem;">Verify</button>
+                    </div>
+                    <button class="sw-choice-btn" onclick="swSkipOrder()" style="border-color:#e2e8f0;color:#94a3b8;font-size:0.82rem;">I don't have an Order ID</button>
+                `;
+            }
+
+            async function swVerifyOrder() {
+                const orderId = (document.getElementById('swOrderInput')?.value || '').trim();
+                if (!orderId) return;
+                document.getElementById('swBotOptions').innerHTML = '';
+                swBubble('user', user.name || 'You', orderId, new Date());
+                swBotTyping();
                 try {
-                    const res = await fetch('/api/client/my-tickets', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: user.email }), credentials: 'include'
+                    const res  = await fetch('/api/client/verify-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ orderId }), credentials:'include' });
+                    const data = await res.json();
+                    swRemoveTyping();
+                    if (data.success) {
+                        swCurrentVerifiedOrder = data;
+                        swBubble('bot', '🤖 VibeSphere Bot', `✅ Order <strong>${data.orderId}</strong> found! Package: <strong>${data.packageName}</strong>. What issue are you facing?`, new Date());
+                        if (data.orderType === 'smm') swShowSmmOptions(data.orderId);
+                        else swShowCustomOptions(data.orderId);
+                    } else {
+                        swBubble('bot', '🤖 VibeSphere Bot', `❌ ${data.message || 'Order not found.'} Please check the ID or skip to describe your issue directly.`, new Date());
+                        swShowOrderInput();
+                    }
+                } catch(e) {
+                    swRemoveTyping();
+                    swBubble('bot', '🤖 VibeSphere Bot', 'Something went wrong verifying the order. Please try again.', new Date());
+                    swShowOrderInput();
+                }
+            }
+
+            function swSkipOrder() {
+                swCurrentVerifiedOrder = { orderId: 'N/A', orderType: 'general', packageName: 'General Support Query' };
+                document.getElementById('swBotOptions').innerHTML = '';
+                swBubble('user', user.name || 'You', "I don't have an Order ID", new Date());
+                swBotTyping();
+                setTimeout(() => {
+                    swRemoveTyping();
+                    swBubble('bot', '🤖 VibeSphere Bot', "No problem! How can we help you today?", new Date());
+                    swShowFallback();
+                }, 700);
+            }
+
+            function swShowSmmOptions(orderId) {
+                swSetOptions([
+                    { icon:'💧', label:'Refill Request (Auto-Queued)',  action: () => swHandleSmmChoice('Refill Request', orderId) },
+                    { icon:'📉', label:'Order Dropped / Drop Issue',     action: () => swHandleSmmChoice('Order Dropped', orderId) },
+                    { icon:'⚡', label:'Speed / Delivery Delay',         action: () => swHandleSmmChoice('Speed Issue', orderId) },
+                    { icon:'💸', label:'Cancel / Refund Request',        action: () => swHandleSmmChoice('Cancel/Refund', orderId) },
+                    { icon:'❓', label:'My issue is not listed',          action: () => swHandleSmmChoice('Issue Not Listed', orderId) }
+                ]);
+            }
+
+            async function swHandleSmmChoice(choice, orderId) {
+                swBubble('user', user.name || 'You', choice, new Date());
+                if (choice === 'Refill Request') {
+                    swBotTyping();
+                    try {
+                        const res  = await fetch('/api/client/create-ticket', {
+                            method:'POST', headers:{'Content-Type':'application/json'},
+                            // Status: Pending so the thread stays open for follow-ups.
+                            // chatActive: true so socket room is live for admin replies.
+                            body: JSON.stringify({ email:user.email, name:user.name||'', subject:`SMM Refill - Order ${orderId}`, issue:`Refill request for order ${orderId}.`, orderId, category:'SMM', subcategory:'Refill Request', actionRequired:'Refill', status:'Open', chatActive:true }),
+                            credentials:'include'
+                        });
+                        const data = await res.json();
+                        swRemoveTyping();
+                        if (data.success) {
+                            swActiveTicket = { _id: data.ticketId, subject: `SMM Refill - Order ${orderId}`, status: 'Open', chatActive: true, actionRequired: 'Refill' };
+                            swBubble('bot','🤖 VibeSphere Bot','💧 <strong>Refill request received!</strong> It has been queued. You can send follow-up messages here — our team will update you once it is processed.', new Date());
+                            // Keep input open so user can send follow-up messages
+                            document.getElementById('swInputArea').style.display = 'flex';
+                            document.getElementById('swReopenArea').style.display = 'none';
+                            if (window.socket) window.socket.emit('join_support_room', { ticketId: data.ticketId, email: user.email, name: user.name });
+                        } else { swBubble('bot','🤖 VibeSphere Bot','❌ Failed to submit refill request. Please try again.', new Date()); }
+                    } catch(e) { swRemoveTyping(); swBubble('bot','🤖 VibeSphere Bot','Error submitting request.', new Date()); }
+                } else if (choice === 'Issue Not Listed') {
+                    swBotTyping();
+                    setTimeout(() => { swRemoveTyping(); swBubble('bot','🤖 VibeSphere Bot',"Let's connect you with our team!", new Date()); swShowFallback(); }, 600);
+                } else {
+                    swBotTyping();
+                    setTimeout(() => {
+                        swRemoveTyping();
+                        swBubble('bot','🤖 VibeSphere Bot',`Please describe your <strong>${choice}</strong> issue in detail:`, new Date());
+                        swShowFreeTextInput(async (text) => {
+                            await swSubmitTicket(`SMM: ${choice} - Order ${orderId}`, text, choice, 'SMM', orderId, '');
+                        });
+                    }, 700);
+                }
+            }
+
+            function swShowCustomOptions(orderId) {
+                swSetOptions([
+                    { icon:'🐛', label:'Bug / Error Fix',              action: () => swAskCustomDetail('Bug/Error Fix', orderId) },
+                    { icon:'🎨', label:'Design Revision',              action: () => swAskCustomDetail('Design Revision', orderId) },
+                    { icon:'🚀', label:'Deployment / Hosting Issue',   action: () => swAskCustomDetail('Deployment Issue', orderId) },
+                    { icon:'💳', label:'Billing / Invoice Query',      action: () => swAskCustomDetail('Billing Query', orderId) },
+                    { icon:'❓', label:'My issue is not listed',        action: () => swShowFallback() }
+                ]);
+            }
+
+            function swAskCustomDetail(choice, orderId) {
+                swBubble('user', user.name||'You', choice, new Date());
+                swBotTyping();
+                setTimeout(() => {
+                    swRemoveTyping();
+                    swBubble('bot','🤖 VibeSphere Bot',`Please describe your <strong>${choice}</strong> issue:`, new Date());
+                    swShowFreeTextInput(async (text) => {
+                        await swSubmitTicket(`Custom Project: ${choice} - Order ${orderId}`, text, choice, 'Custom Project', orderId, '');
+                    });
+                }, 700);
+            }
+
+            function swShowFallback() {
+                swSetOptions([
+                    { icon:'💬', label:'Connect with Live Support Executive', action: () => swConnectLive() },
+                    { icon:'📧', label:'Leave an Offline Message',             action: () => swShowOfflineInput() }
+                ]);
+            }
+
+            function swShowFreeTextInput(onSubmit) {
+                const el = document.getElementById('swBotOptions');
+                el.innerHTML = `
+                    <div style="display:flex;gap:6px;align-items:flex-end;">
+                        <textarea id="swFreeText" rows="2" placeholder="Describe your issue..." style="flex:1;padding:9px 13px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.85rem;outline:none;resize:none;font-family:inherit;background:#f8fafc;"
+                            onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+                        <button id="swFreeSubmitBtn" style="padding:9px 14px;background:linear-gradient(135deg,#6c63ff,#4f46e5);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.85rem;height:fit-content;">Send</button>
+                    </div>
+                `;
+                const btn = document.getElementById('swFreeSubmitBtn');
+                btn.onclick = () => {
+                    const text = (document.getElementById('swFreeText')?.value || '').trim();
+                    if (!text) return;
+                    el.innerHTML = '';
+                    swBubble('user', user.name||'You', text, new Date());
+                    onSubmit(text);
+                };
+            }
+
+            function swShowOfflineInput() {
+                swBubble('user', user.name||'You', 'Leave an Offline Message', new Date());
+                swBotTyping();
+                setTimeout(() => {
+                    swRemoveTyping();
+                    swBubble('bot','🤖 VibeSphere Bot','Sure! Please describe your query and we will get back to you shortly.', new Date());
+                    swShowFreeTextInput(async (text) => {
+                        await swSubmitTicket(
+                            `Offline Query - ${user.name||user.email}`,
+                            text, 'Offline Query', 'Offline Support',
+                            swCurrentVerifiedOrder?.orderId || 'N/A', ''
+                        );
+                    });
+                }, 700);
+            }
+
+            async function swConnectLive() {
+                swBubble('user', user.name||'You', 'Connect with Live Support', new Date());
+                swBotTyping();
+                try {
+                    const res  = await fetch('/api/client/create-ticket', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ email:user.email, name:user.name||'', subject:`💬 Live Support Chat - Order ${swCurrentVerifiedOrder?.orderId||'N/A'}`, issue:'Live support chat session requested.', orderId:swCurrentVerifiedOrder?.orderId||'N/A', category:'Live Chat', subcategory:'', status:'Open', chatActive:true, isLiveChat:true }),
+                        credentials:'include'
                     });
                     const data = await res.json();
-                    const list = document.getElementById('ticketsList');
+                    swRemoveTyping();
+                    if (data.success) {
+                        swActiveTicket = { _id: data.ticketId, subject:'Live Support Chat', status:'Open', chatActive:true };
 
-                    if (!data.tickets || data.tickets.length === 0) {
-                        list.innerHTML = `<div style="text-align:center;padding:30px;background:white;border-radius:12px;border:1px dashed #cbd5e1;color:#94a3b8;">
-                        <i class="ri-customer-service-2-line" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
-                        No support tickets yet. Click '+ New Ticket' if you need help!
-                    </div>`;
-                        return;
-                    }
+                        // Show the 2-minute connection buffer spinner (bot typing indicator reused as spinner placeholder)
+                        swBubble('bot','🤖 VibeSphere Bot','Searching for an available executive... Please wait.', new Date());
 
-                    list.innerHTML = '';
-                    data.tickets.forEach(t => {
-                        const statusStyle = {
-                            'Open': 'background:#fff7ed;color:#c2410c;',
-                            'In Progress': 'background:#eff6ff;color:#1d4ed8;',
-                            'Resolved': 'background:#f0fdf4;color:#15803d;'
-                        };
-                        const repliesHtml = t.replies.map(r => `
-                        <div style="background:#f8fafc;padding:10px 14px;border-radius:8px;margin-top:8px;border-left:3px solid #6c63ff;">
-                            <div style="font-size:12px;font-weight:bold;color:#6c63ff;margin-bottom:3px;">${r.sender}</div>
-                            <div style="font-size:13px;color:#334155;">${r.message}</div>
-                            <div style="font-size:11px;color:#94a3b8;margin-top:3px;">${new Date(r.date).toLocaleString()}</div>
-                        </div>
-                    `).join('');
+                        // Render a dedicated inline spinner bubble
+                        const msgs = document.getElementById('swChatMessages');
+                        const spinnerEl = document.createElement('div');
+                        spinnerEl.id = 'swAgentSearchSpinner';
+                        spinnerEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 0;';
+                        spinnerEl.innerHTML = `
+                            <div style="width:36px;height:36px;border:3px solid #e0e7ff;border-top:3px solid #6c63ff;border-radius:50%;animation:swDot 0.9s linear infinite;"></div>
+                            <span id="swAgentCountdownText" style="font-size:0.8rem;color:#94a3b8;">Connecting... 2:00</span>
+                        `;
+                        msgs.appendChild(spinnerEl);
+                        msgs.scrollTop = msgs.scrollHeight;
 
-                        list.innerHTML += `
-                    <div class="order-card" style="display:block;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <h4 style="margin:0;color:#1e293b;">${t.subject}</h4>
-                            <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;${statusStyle[t.status] || ''}">${t.status}</span>
-                        </div>
-                        <p style="font-size:14px;color:#64748b;margin-bottom:5px;">${t.issue}</p>
-                        <div style="font-size:12px;color:#94a3b8;">📅 ${new Date(t.date).toLocaleDateString()}</div>
-                        ${repliesHtml}
-                    </div>`;
+                        // Emit join event so server notifies admin of waiting client
+                        if (window.socket) window.socket.emit('join_support_room', { ticketId: data.ticketId, email: user.email, name: user.name });
+
+                        // 2-minute countdown — auto-fallback to offline message if no agent joins
+                        let secondsLeft = 120;
+                        window.swAgentSearchTimer = setInterval(() => {
+                            secondsLeft--;
+                            const mins = String(Math.floor(secondsLeft / 60)).padStart(1,'0');
+                            const secs = String(secondsLeft % 60).padStart(2,'0');
+                            const countEl = document.getElementById('swAgentCountdownText');
+                            if (countEl) countEl.textContent = `Connecting... ${mins}:${secs}`;
+                            if (secondsLeft <= 0) {
+                                clearInterval(window.swAgentSearchTimer);
+                                window.swAgentSearchTimer = null;
+                                const spinner = document.getElementById('swAgentSearchSpinner');
+                                if (spinner) spinner.remove();
+                                swBubble('system', 'System', '⏱️ No agents are available right now. Routing you to offline support.', new Date());
+                                // Auto-route to offline message form
+                                setTimeout(() => swShowOfflineInput(), 800);
+                            }
+                        }, 1000);
+
+                    } else { swBubble('bot','🤖 VibeSphere Bot','Failed to start live chat. Please try again.', new Date()); }
+                } catch(e) { swRemoveTyping(); swBubble('bot','🤖 VibeSphere Bot','Error starting live chat.', new Date()); }
+            }
+
+            async function swSubmitTicket(subject, issue, subcategory, category, orderId, actionRequired) {
+                swBotTyping();
+                try {
+                    const res  = await fetch('/api/client/create-ticket', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ email:user.email, name:user.name||'', subject, issue, orderId, category, subcategory, actionRequired: actionRequired||'', status:'Open', chatActive:false }),
+                        credentials:'include'
                     });
-                } catch (e) { console.error('Tickets fetch error:', e); }
+                    const data = await res.json();
+                    swRemoveTyping();
+                    if (data.success) {
+                        swBubble('bot','🤖 VibeSphere Bot',`✅ Your request has been submitted! Our team will respond soon. You can track it in <strong>Your Conversations</strong>.`, new Date());
+                        swGoHomeDelayed(2500);
+                    } else { swBubble('bot','🤖 VibeSphere Bot','❌ Failed to submit your request. Please try again.', new Date()); }
+                } catch(e) { swRemoveTyping(); swBubble('bot','🤖 VibeSphere Bot','Submission error. Please try again.', new Date()); }
             }
 
-            function showSupportTickets() {
-                document.getElementById('supportTicketsModal').style.display = 'flex';
-                document.getElementById('profileDropdown').style.display = 'none';
-                fetchMyTickets();
+            function swGoHomeDelayed(ms = 2000) {
+                setTimeout(() => swGoHome(), ms);
             }
 
-            function closeSupportTicketsModal() {
-                document.getElementById('supportTicketsModal').style.display = 'none';
-                document.getElementById('ticketForm').style.display = 'none';
-                document.getElementById('ticketSubject').value = '';
-                document.getElementById('ticketIssue').value = '';
+            // ---- Socket Listeners (Support only — no team_ events) ----
+            function initSupportSocketListeners() {
+                if (!window.socket) return;
+
+                // Fix 3: Agent joined — clear spinner, reveal chat input, show system bubble
+                window.socket.on('support_agent_joined', (data) => {
+                    // Clear the 2-minute countdown timer if it's still running
+                    if (window.swAgentSearchTimer) {
+                        clearInterval(window.swAgentSearchTimer);
+                        window.swAgentSearchTimer = null;
+                    }
+                    // Remove the inline spinner bubble
+                    const spinner = document.getElementById('swAgentSearchSpinner');
+                    if (spinner) spinner.remove();
+
+                    if (swCurrentView === 'chat' && swActiveTicket) {
+                        // Show prominent agent-joined notification
+                        const agentName = (data && data.agentName) ? data.agentName : 'Support Executive';
+                        swBubble('system', 'System', `💼 ${agentName} has joined the conversation.`, new Date());
+
+                        swUpdateFooterState('Pending');
+                        const inp = document.getElementById('swChatInput');
+                        if (inp) { inp.disabled = false; inp.focus(); }
+                    }
+                });
+
+                window.socket.on('support_receive_msg', (msg) => {
+                    if (swCurrentView === 'chat' && swActiveTicket && msg.ticketId === String(swActiveTicket._id)) {
+                        const isUser = msg.sender === user.name || msg.sender === user.email;
+                        if (!isUser) {
+                            const isSys = msg.sender && (msg.sender.startsWith('System') || msg.sender === 'System/Admin' || msg.sender === 'System/Bot');
+                            const type = isSys ? 'system' : 'admin';
+                            swBubble(type, msg.sender || 'Agent', msg.text, msg.createdAt || new Date());
+                        }
+                    } else {
+                        // Show badge on FAB for background messages
+                        const badge = document.getElementById('supportFabBadge');
+                        if (badge && !swIsOpen) { badge.style.display = 'flex'; }
+                    }
+                });
+
+                window.socket.on('support_chat_closed', (data) => {
+                    if (window.swAgentSearchTimer) {
+                        clearInterval(window.swAgentSearchTimer);
+                        window.swAgentSearchTimer = null;
+                    }
+                    if (swCurrentView === 'chat' && swActiveTicket) {
+                        swBubble('system','System','This support session has been ended by the agent.', new Date());
+                        swUpdateFooterState('Resolved');
+                    }
+                });
+
+                window.socket.on('support_chat_terminated', (data) => {
+                    if (window.swAgentSearchTimer) {
+                        clearInterval(window.swAgentSearchTimer);
+                        window.swAgentSearchTimer = null;
+                    }
+                    if (swCurrentView === 'chat' && swActiveTicket && String(swActiveTicket._id) === data.ticketId) {
+                        const isResolved = data.status === 'Resolved';
+                        const isClosed = data.status === 'Closed';
+                        const msg = isResolved 
+                            ? '*Support Executive marked this ticket as Resolved.*'
+                            : isClosed
+                                ? '*This ticket is permanently closed. Please open a new ticket for further assistance.*'
+                                : '*Live chat session ended. Ticket remains open for processing.*';
+
+                        swBubble('system', 'System', msg, new Date());
+                        
+                        const endBtn = document.getElementById('swEndChatBtn');
+                        if (endBtn) endBtn.style.display = 'none';
+
+                        if (isResolved) {
+                            const pillEl = document.getElementById('swChatStatusPill');
+                            if (pillEl) {
+                                pillEl.textContent = 'Resolved';
+                                pillEl.style.cssText = swStatusStyle('Resolved').replace(/;/g, '; ');
+                            }
+                            swActiveTicket.status = 'Resolved';
+                        } else if (isClosed) {
+                            const pillEl = document.getElementById('swChatStatusPill');
+                            if (pillEl) {
+                                pillEl.textContent = 'Closed';
+                                pillEl.style.cssText = swStatusStyle('Closed').replace(/;/g, '; ');
+                            }
+                            swActiveTicket.status = 'Closed';
+                        }
+                        swActiveTicket.chatActive = false;
+                        swUpdateFooterState(swActiveTicket.status);
+                    }
+                    
+                    if (typeof swLoadTicketList === 'function') {
+                        swLoadTicketList();
+                    }
+                });
             }
 
-            function toggleTicketForm() {
-                const form = document.getElementById('ticketForm');
-                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            // ---- Utility ----
+            function swReset() {
+                swActiveTicket = null;
+                swCurrentVerifiedOrder = null;
+                swWizardStep = null;
             }
+
+            function swTimeAgo(date) {
+                const diff = Date.now() - date.getTime();
+                const mins = Math.floor(diff / 60000);
+                if (mins < 1)  return 'Just now';
+                if (mins < 60) return `${mins}m ago`;
+                const hrs = Math.floor(mins / 60);
+                if (hrs < 24)  return `${hrs}h ago`;
+                return `${Math.floor(hrs/24)}d ago`;
+            }
+
+            window.swEndActiveChat = function () {
+                if (!swActiveTicket) return;
+                if (confirm('Are you sure you want to end this live chat session?')) {
+                    if (window.socket) {
+                        window.socket.emit('support_close_chat', { ticketId: swActiveTicket._id, userType: 'User' });
+                    }
+                }
+            };
+
+            // Legacy stubs (so any remaining inline onclick="..." calls don't throw errors)
+            function resetSupportWizard() {}
+            function closeSupportTicketsModal() { if (swIsOpen) toggleSupportWidget(); }
+            function toggleTicketForm() { swStartNewConversation(); }
+            function fetchMyTickets() { swLoadTicketList(); }
+            function verifySupportOrder() { swVerifyOrder(); }
+            function skipOrderVerification() { swSkipOrder(); }
+            function connectLiveSupport() { swConnectLive(); }
+            function showOfflineQueryForm() { swShowOfflineInput(); }
+            function sendClientChatMessage() { swSendMessage(); }
+            function handleClientChatKey(e) { if (e.key==='Enter') swSendMessage(); }
+            function closeLiveChatClient() { swGoHome(); }
+            function submitSmmIssue() {}
+            function submitCustomIssue() {}
+            function submitOfflineQuery() {}
+            function toggleSmmProblemFields() {}
+            function toggleCustomProblemFields() {}
+            function postTicketData() {}
 
             // --- PASSWORD CHANGE LOGIC ---
             function showChangePassword() {

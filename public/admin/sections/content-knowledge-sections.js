@@ -241,43 +241,681 @@ window.deleteBlog = async function (id) {
 // ==========================================
 // 🎧 HELPDESK FUNCTIONS
 // ==========================================
+let activeAdminTicketId = null;
+let helpdeskSocket = null;
+let adminChatCurrentTicket = null; // full ticket object currently open in admin chat modal
+
+// ---- Admin Socket ----
+window.adminSocket = io();
+window.adminSocket.on('connect', () => {
+    console.log('Admin Socket Connected:', window.adminSocket.id);
+    window.adminSocket.emit('join_admin_room');
+});
+
+window.adminSocket.on('new_support_ticket', (ticketData) => {
+    // 1. Prepend to _adminAllTickets if not already present
+    if (!_adminAllTickets.some(t => t._id === ticketData._id)) {
+        _adminAllTickets.unshift(ticketData);
+    }
+    
+    // 2. Play notification sound
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {}
+
+    // 3. Show notification toast
+    if (window.notificationManager) {
+        window.notificationManager.notify('🎫 New Ticket Received', `${ticketData.clientName || 'Client'}: ${ticketData.subject}`);
+    }
+
+    // 4. If current subtab matches the ticket status or is 'All', dynamically prepend to the table
+    if (typeof _adminTicketSubTab !== 'undefined' && (_adminTicketSubTab === 'All' || _adminTicketSubTab === ticketData.status)) {
+        const tbody = document.getElementById('ticketsTable');
+        if (tbody) {
+            // If empty table placeholder is currently displayed, clear it
+            const activeSubTabCount = _adminTicketSubTab === 'All' ? _adminAllTickets.length : _adminAllTickets.filter(t => t.status === _adminTicketSubTab).length;
+            if (activeSubTabCount === 1) {
+                tbody.innerHTML = '';
+            }
+
+            const statusColors = {
+                'Open':        { bg: '#fef3c7', text: '#92400e' },
+                'Pending':     { bg: '#fef3c7', text: '#92400e' },
+                'In Progress': { bg: '#eff6ff', text: '#1d4ed8' },
+                'Resolved':    { bg: '#f0fdf4', text: '#15803d' },
+                'Closed':      { bg: '#f1f5f9', text: '#64748b' }
+            };
+            const style = statusColors[ticketData.status] || { bg: '#f1f5f9', text: '#64748b' };
+            let contextMeta = '';
+            if (ticketData.orderId && ticketData.orderId !== 'N/A') contextMeta = `<br><span style="background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">Order: ${ticketData.orderId}</span>`;
+            if (ticketData.category) contextMeta += ` <span style="background:#e0e7ff;color:#4f46e5;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">${ticketData.category}</span>`;
+            if (ticketData.subcategory) contextMeta += ` <span style="background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">${ticketData.subcategory}</span>`;
+            const ticketNum = ticketData.ticketNumber || ('#' + String(ticketData._id).slice(-6).toUpperCase());
+
+            let liveBadge = '';
+            if (ticketData.chatActive && (ticketData.isLiveChat || ticketData.category === 'Live Chat')) {
+                liveBadge = ` <span class="live-chat-glow-badge"><span style="width:6px;height:6px;background:#ef4444;border-radius:50%;display:inline-block;"></span>🔴 Live Chat</span>`;
+            }
+
+            let refillBadge = '';
+            if (ticketData.actionRequired === 'Refill') {
+                refillBadge = ` <span class="refill-glow-badge"><span style="width:6px;height:6px;background:#0369a1;border-radius:50%;display:inline-block;"></span>🔄 Refill Request</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${ticketData.clientName || 'Client'}</strong><br><small style="color:#94a3b8;">${ticketData.clientEmail}</small></td>
+                <td style="font-weight:600;">${ticketNum}${liveBadge}${refillBadge}<br>${ticketData.subject}${contextMeta}</td>
+                <td style="max-width:160px;font-size:13px;color:#475569;">${(ticketData.issue||'').substring(0,80)}...</td>
+                <td>
+                    <select onchange="updateTicketStatus('${ticketData._id}', this.value)" style="padding:6px 12px;border:none;border-radius:20px;font-weight:bold;font-size:12px;background:${style.bg};color:${style.text};outline:none;cursor:pointer;">
+                        <option value="Open" ${ticketData.status==='Open'?'selected':''} style="background:#ffffff;color:#92400e;">🟡 Open</option>
+                        <option value="Pending" ${ticketData.status==='Pending'?'selected':''} style="background:#ffffff;color:#92400e;">🟣 Processing/Pending</option>
+                        <option value="Resolved" ${ticketData.status==='Resolved'?'selected':''} style="background:#ffffff;color:#15803d;">✅ Resolved</option>
+                        <option value="Closed" ${ticketData.status==='Closed'?'selected':''} style="background:#ffffff;color:#64748b;">⛔ Closed</option>
+                    </select>
+                </td>
+                <td>
+                    <button onclick="openAdminTicketChat('${ticketData._id}')" style="background:linear-gradient(135deg,#6c63ff,#4f46e5);color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;"><i class="ri-chat-3-line"></i> Open Chat</button>
+                </td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild);
+
+            const filteredCount = _adminTicketSubTab === 'All' ? _adminAllTickets.length : _adminAllTickets.filter(t => t.status === _adminTicketSubTab).length;
+            const countEl = document.getElementById('ticketCount');
+            if (countEl) countEl.innerText = filteredCount + ' Tickets';
+        }
+    }
+});
+
+// ---- Shared chat bubble renderer (used in admin chat modal) ----
+function adminAppendBubble(text, sender, ts) {
+    const el = document.getElementById('adminChatHistory');
+    if (!el) return;
+    const isAdmin = sender === 'Admin' || sender === 'Admin Support';
+    const isSystem = sender === 'System' || sender === 'System/Admin' || sender === 'System/Bot';
+    const time = ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+    let bubbleStyle, wrapStyle;
+    if (isSystem) {
+        wrapStyle = 'justify-content:center;';
+        bubbleStyle = 'background:#fef9c3;border:1px solid #fde047;color:#713f12;border-radius:10px;font-size:0.8rem;font-style:italic;padding:8px 14px;max-width:90%;text-align:center;';
+    } else if (isAdmin) {
+        wrapStyle = 'justify-content:flex-end;';
+        bubbleStyle = 'background:linear-gradient(135deg,#6c63ff,#4f46e5);color:#fff;border-radius:16px 16px 4px 16px;padding:9px 14px;max-width:78%;font-size:0.85rem;';
+    } else {
+        wrapStyle = 'justify-content:flex-start;';
+        bubbleStyle = 'background:#fff;border:1.5px solid #e2e8f0;color:#334155;border-radius:16px 16px 16px 4px;padding:9px 14px;max-width:78%;font-size:0.85rem;';
+    }
+
+    const div = document.createElement('div');
+    div.style.cssText = `display:flex;${wrapStyle}margin-bottom:8px;`;
+    div.innerHTML = `<div style="${bubbleStyle}">
+        ${!isSystem ? `<div style="font-size:10px;font-weight:700;opacity:0.7;margin-bottom:3px;">${sender}</div>` : ''}
+        <div>${escAdminText(text)}</div>
+        <div style="font-size:10px;opacity:0.5;margin-top:3px;text-align:right;">${time}</div>
+    </div>`;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+}
+
+function escAdminText(t) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(t || ''));
+    return d.innerHTML;
+}
+
+// ---- Global incoming message listener ----
+window.adminSocket.on('support_receive_msg', (message) => {
+    // Append to admin chat modal if it is open for this ticket
+    if (adminChatCurrentTicket && message.ticketId === String(adminChatCurrentTicket._id)) {
+        adminAppendBubble(message.text || message.message, message.sender, message.createdAt);
+    } else {
+        // Notification for background messages
+        if (window.notificationManager) {
+            window.notificationManager.notify('💬 New Support Message', `${message.sender}: ${(message.text||'').substring(0,60)}`);
+        }
+    }
+});
+
+window.adminSocket.on('support_client_waiting', (data) => {
+    if (window.notificationManager) {
+        window.notificationManager.notify('💬 Live Support Request', `${data.name} is requesting assistance.`);
+    }
+    if (document.getElementById('live-chats-view') && document.getElementById('live-chats-view').style.display !== 'none') {
+        fetchLiveChats();
+    }
+});
+
+window.adminSocket.on('support_chat_closed', () => {
+    if (adminChatCurrentTicket) {
+        adminAppendBubble('This support session has been ended.', 'System', new Date());
+        const inp = document.getElementById('adminChatInput');
+        const btn = document.getElementById('adminChatSendBtn');
+        if (inp) inp.disabled = true;
+        if (btn) btn.disabled = true;
+    }
+});
+
+window.adminSocket.on('support_chat_terminated', (data) => {
+    if (adminChatCurrentTicket && String(adminChatCurrentTicket._id) === data.ticketId) {
+        const isResolved = data.status === 'Resolved';
+        const msg = isResolved 
+            ? '*Support Executive marked this ticket as Resolved.*'
+            : '*Live chat session ended. Ticket remains open for processing.*';
+
+        adminAppendBubble(msg, 'System', new Date());
+        const inp = document.getElementById('adminChatInput');
+        const btn = document.getElementById('adminChatSendBtn');
+        if (inp) inp.disabled = true;
+        if (btn) btn.disabled = true;
+
+        const endChatBtn = document.getElementById('adminEndChatBtn');
+        if (endChatBtn) endChatBtn.style.display = 'none';
+
+        if (isResolved) {
+            const resolveBtn = document.getElementById('adminResolveBtn');
+            if (resolveBtn) resolveBtn.style.display = 'none';
+
+            const pillEl = document.getElementById('adminChatModalStatusPill');
+            if (pillEl) {
+                pillEl.textContent = 'Resolved';
+                pillEl.style.cssText = 'background:#f0fdf4;color:#15803d;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;';
+            }
+            adminChatCurrentTicket.status = 'Resolved';
+        }
+        adminChatCurrentTicket.chatActive = false;
+    }
+    
+    if (typeof fetchAdminTickets === 'function') {
+        fetchAdminTickets();
+    }
+});
+
+// ---- Tab switching ----
+window.switchHelpdeskTab = function (tabId) {
+    document.querySelectorAll('.helpdesk-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.helpdesk-tab-content').forEach(view => view.style.display = 'none');
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.getElementById(tabId + '-view').style.display = 'block';
+    if (tabId === 'active-tickets') fetchAdminTickets();
+    else if (tabId === 'live-chats') fetchLiveChats();
+};
+
+// ==========================================
+// 🗂️  ACTIVE TICKETS TAB
+// ==========================================
+let _adminAllTickets = [];
+let _adminTicketSubTab = 'All';
+let _adminTicketSearchQuery = '';
+let _adminSearchTimeout = null;
+
+window.handleAdminTicketSearchInput = function (event) {
+    const val = event.target.value;
+    const clearBtn = document.getElementById('adminTicketSearchClear');
+    if (clearBtn) {
+        clearBtn.style.display = val ? 'block' : 'none';
+    }
+
+    if (_adminSearchTimeout) {
+        clearTimeout(_adminSearchTimeout);
+    }
+
+    _adminSearchTimeout = setTimeout(() => {
+        _adminTicketSearchQuery = val;
+        fetchAdminTickets();
+    }, 400);
+};
+
+window.handleAdminTicketSearchKey = function (event) {
+    if (event.key === 'Enter') {
+        if (_adminSearchTimeout) {
+            clearTimeout(_adminSearchTimeout);
+        }
+        _adminTicketSearchQuery = event.target.value;
+        fetchAdminTickets();
+    }
+};
+
+window.clearAdminTicketSearch = function () {
+    const input = document.getElementById('adminTicketSearch');
+    if (input) {
+        input.value = '';
+    }
+    const clearBtn = document.getElementById('adminTicketSearchClear');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    if (_adminSearchTimeout) {
+        clearTimeout(_adminSearchTimeout);
+    }
+    _adminTicketSearchQuery = '';
+    fetchAdminTickets();
+};
+
+window.setAdminTicketSubTab = function (subtab) {
+    _adminTicketSubTab = subtab;
+    const tabs = ['All', 'Open', 'Pending', 'Resolved', 'Closed'];
+    tabs.forEach(t => {
+        const btn = document.getElementById('adminTicketSubTab-' + t);
+        if (btn) {
+            if (t === subtab) {
+                btn.style.background = '#ffffff';
+                btn.style.color = '#4f46e5';
+                btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+            } else {
+                btn.style.background = 'none';
+                btn.style.color = '#64748b';
+                btn.style.boxShadow = 'none';
+            }
+        }
+    });
+    renderAdminTicketsTable();
+};
+
 async function fetchAdminTickets() {
+    try {
+        let url = '/api/admin/tickets';
+        if (_adminTicketSearchQuery && _adminTicketSearchQuery.trim() !== '') {
+            url += '?search=' + encodeURIComponent(_adminTicketSearchQuery.trim());
+        }
+        const res = await fetch(url, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) return;
+
+        // Unified list: Keep all tickets including SMM Refills in the main flow
+        _adminAllTickets = data.tickets;
+
+        renderAdminTicketsTable();
+    } catch (e) { console.error('Ticket fetch error:', e); }
+}
+
+function renderAdminTicketsTable() {
+    let filtered = _adminAllTickets;
+    if (_adminTicketSubTab === 'Open') {
+        filtered = _adminAllTickets.filter(t => t.status === 'Open');
+    } else if (_adminTicketSubTab === 'Pending') {
+        filtered = _adminAllTickets.filter(t => t.status === 'Pending' || t.status === 'In Progress');
+    } else if (_adminTicketSubTab === 'Resolved') {
+        filtered = _adminAllTickets.filter(t => t.status === 'Resolved');
+    } else if (_adminTicketSubTab === 'Closed') {
+        filtered = _adminAllTickets.filter(t => t.status === 'Closed');
+    }
+
+    document.getElementById('ticketCount').innerText = filtered.length + ' Tickets';
+    const tbody = document.getElementById('ticketsTable');
+    tbody.innerHTML = '';
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No tickets found here 🎉</td></tr>';
+        return;
+    }
+    
+    const statusColors = {
+        'Open':        { bg: '#fef3c7', text: '#92400e' },
+        'Pending':     { bg: '#fef3c7', text: '#92400e' },
+        'In Progress': { bg: '#eff6ff', text: '#1d4ed8' },
+        'Resolved':    { bg: '#f0fdf4', text: '#15803d' },
+        'Closed':      { bg: '#f1f5f9', text: '#64748b' }
+    };
+
+    filtered.forEach(t => {
+        const style = statusColors[t.status] || { bg: '#f1f5f9', text: '#64748b' };
+        let contextMeta = '';
+        if (t.orderId && t.orderId !== 'N/A') contextMeta = `<br><span style="background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">Order: ${t.orderId}</span>`;
+        if (t.category) contextMeta += ` <span style="background:#e0e7ff;color:#4f46e5;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">${t.category}</span>`;
+        if (t.subcategory) contextMeta += ` <span style="background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">${t.subcategory}</span>`;
+        const ticketNum = t.ticketNumber || ('#' + String(t._id).slice(-6).toUpperCase());
+
+        let liveBadge = '';
+        if (t.chatActive && t.category === 'Live Chat') {
+            liveBadge = ` <span class="live-chat-glow-badge"><span style="width:6px;height:6px;background:#ef4444;border-radius:50%;display:inline-block;"></span>🔴 Live Chat</span>`;
+        }
+
+        let refillBadge = '';
+        if (t.actionRequired === 'Refill') {
+            refillBadge = ` <span class="refill-glow-badge"><span style="width:6px;height:6px;background:#0369a1;border-radius:50%;display:inline-block;"></span>🔄 Refill Request</span>`;
+        }
+
+        tbody.innerHTML += `
+        <tr>
+            <td><strong>${t.clientName || 'Client'}</strong><br><small style="color:#94a3b8;">${t.clientEmail}</small></td>
+            <td style="font-weight:600;">${ticketNum}${liveBadge}${refillBadge}<br>${t.subject}${contextMeta}</td>
+            <td style="max-width:160px;font-size:13px;color:#475569;">${(t.issue||'').substring(0,80)}...</td>
+            <td>
+                <select onchange="updateTicketStatus('${t._id}', this.value)" style="padding:6px 12px;border:none;border-radius:20px;font-weight:bold;font-size:12px;background:${style.bg};color:${style.text};outline:none;cursor:pointer;">
+                    <option value="Open" ${t.status==='Open'?'selected':''} style="background:#ffffff;color:#92400e;">🟡 Open</option>
+                    <option value="Pending" ${t.status==='Pending'?'selected':''} style="background:#ffffff;color:#92400e;">🟣 Processing/Pending</option>
+                    <option value="Resolved" ${t.status==='Resolved'?'selected':''} style="background:#ffffff;color:#15803d;">✅ Resolved</option>
+                    <option value="Closed" ${t.status==='Closed'?'selected':''} style="background:#ffffff;color:#64748b;">⛔ Closed</option>
+                </select>
+            </td>
+            <td>
+                <button onclick="openAdminTicketChat('${t._id}')" style="background:linear-gradient(135deg,#6c63ff,#4f46e5);color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;"><i class="ri-chat-3-line"></i> Open Chat</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ==========================================
+// 💬  LIVE CHATS TAB
+// ==========================================
+async function fetchLiveChats() {
     try {
         const res = await fetch('/api/admin/tickets', { credentials: 'include' });
         const data = await res.json();
         if (!data.success) return;
-        document.getElementById('ticketCount').innerText = data.tickets.length + ' Tickets';
-        const tbody = document.getElementById('ticketsTable');
+
+        const liveChats = data.tickets.filter(t => t.category === 'Live Chat' && t.chatActive);
+        const tbody = document.getElementById('liveChatsTableBody');
         tbody.innerHTML = '';
-        if (data.tickets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No tickets yet 🎉</td></tr>';
+        if (liveChats.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No active live chat requests 💬</td></tr>';
             return;
         }
-        data.tickets.forEach(t => {
-            const statusColors = { 'Open': '#f59e0b', 'In Progress': '#3b82f6', 'Resolved': '#10b981' };
-            const repliesHtml = t.replies.map(r => `<div style="font-size:11px;color:#475569;background:#f8fafc;padding:5px 8px;border-radius:6px;margin-top:4px;"><strong>${r.sender}:</strong> ${r.message}</div>`).join('');
+        liveChats.forEach(t => {
+            const isActive = activeAdminTicketId === t._id;
+            const btnHtml = isActive
+                ? `<span style="color:#10b981;font-weight:bold;animation:pulse 1.5s infinite;">Active Chatting...</span>`
+                : `<button onclick="openAdminTicketChat('${t._id}')" style="background:#10b981;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:12px;">Join Chat 💬</button>`;
+
             tbody.innerHTML += `
         <tr>
-            <td><strong>${t.clientName || 'Client'}</strong><br><small style="color:#94a3b8;">${t.clientEmail}</small></td>
-            <td style="font-weight:600;">${t.subject}</td>
-            <td style="max-width:200px;font-size:13px;">${t.issue}${repliesHtml}</td>
-            <td>
-                <select onchange="updateTicketStatus('${t._id}', this.value)" style="padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-weight:bold;color:${statusColors[t.status] || '#333'};">
-                    <option value="Open" ${t.status === 'Open' ? 'selected' : ''}>🟡 Open</option>
-                    <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>🔵 In Progress</option>
-                    <option value="Resolved" ${t.status === 'Resolved' ? 'selected' : ''}>✅ Resolved</option>
-                </select>
-            </td>
-            <td>
-                <div style="display:flex;gap:5px;">
-                    <input type="text" id="reply-${t._id}" placeholder="Type reply..." style="flex:1;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;">
-                    <button onclick="replyToTicket('${t._id}')" style="background:#6c63ff;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">Reply</button>
-                </div>
-            </td>
+            <td><strong>${t.clientName||'Client'}</strong><br><small style="color:#94a3b8;">${t.clientEmail}</small></td>
+            <td style="font-weight:700;">${t.orderId}</td>
+            <td>${t.subject}</td>
+            <td><span style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:bold;">Waiting</span></td>
+            <td>${btnHtml}</td>
         </tr>`;
         });
-    } catch (e) { console.error('Ticket fetch error:', e); }
+    } catch (e) { console.error('Live chats fetch error:', e); }
 }
+
+// ==========================================
+// 💬  ADMIN CHAT MODAL  (unified for all ticket types)
+// ==========================================
+window.openAdminTicketChat = async function (ticketId) {
+    // Fetch the full ticket
+    try {
+        const res  = await fetch('/api/admin/tickets', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) return;
+        const ticket = data.tickets.find(t => t._id === ticketId);
+        if (!ticket) return alert('Ticket not found');
+        adminOpenChatModal(ticket);
+    } catch (e) { alert('Error loading ticket'); }
+};
+
+function adminOpenChatModal(ticket) {
+    adminChatCurrentTicket = ticket;
+    window.currentActiveChatId = ticket._id;
+    activeAdminTicketId = ticket._id;
+
+    // Build or reuse modal
+    let modal = document.getElementById('adminTicketChatModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'adminTicketChatModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(4px);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+        <div style="background:#fff;width:95%;max-width:620px;border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,0.2);display:flex;flex-direction:column;overflow:hidden;max-height:90vh;">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#6c63ff,#4f46e5);padding:16px 20px;display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;flex-shrink:0;">🎧</div>
+                <div style="flex:1;">
+                    <h4 id="adminChatModalTitle" style="margin:0;color:#fff;font-size:1rem;font-weight:700;"></h4>
+                    <span id="adminChatModalMeta" style="color:rgba(255,255,255,0.75);font-size:0.78rem;"></span>
+                </div>
+                <div id="adminChatModalStatusPill" style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;"></div>
+                <button id="adminEndChatBtn" onclick="adminEndActiveChat()" style="background:#fee2e2;color:#ef4444;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:3px;"><i class="ri-close-circle-line"></i> End Live Chat Session</button>
+                <button id="adminResolveBtn" onclick="adminResolveActiveTicket()" style="background:#d1fae5;color:#065f46;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:3px;"><i class="ri-checkbox-circle-line"></i> Mark Resolved</button>
+                <button onclick="adminCloseTicketModal()" style="background:rgba(255,255,255,0.15);border:none;width:30px;height:30px;border-radius:50%;color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+            <!-- Ticket context strip -->
+            <div id="adminChatContextStrip" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:10px 20px;font-size:12px;color:#475569;display:flex;gap:8px;flex-wrap:wrap;"></div>
+            <!-- Messages -->
+            <div id="adminChatHistory" style="flex:1;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:4px;min-height:260px;max-height:380px;"></div>
+            <!-- Input -->
+            <div id="adminChatInputRow" style="border-top:1px solid #f1f5f9;padding:12px 14px;display:flex;gap:8px;align-items:center;background:#fff;">
+                <input type="text" id="adminChatInput" placeholder="Type a reply to the client..."
+                    style="flex:1;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:0.88rem;outline:none;font-family:inherit;background:#f8fafc;"
+                    onfocus="this.style.borderColor='#6c63ff'" onblur="this.style.borderColor='#e2e8f0'"
+                    onkeypress="if(event.key==='Enter')adminSendChatMessage()">
+                <button id="adminChatSendBtn" onclick="adminSendChatMessage()"
+                    style="width:42px;height:42px;border-radius:12px;border:none;background:linear-gradient(135deg,#6c63ff,#4f46e5);color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="ri-send-plane-fill"></i></button>
+            </div>
+            <!-- Refill Action Bar (visible only for Refill tickets) -->
+            <div id="adminRefillActionBar" style="display:none;border-top:1px solid #fde68a;background:#fffbeb;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <span style="font-size:0.85rem;color:#92400e;font-weight:600;">💧 This is a Refill ticket.</span>
+                <div style="display:flex;gap:8px;">
+                    <button id="adminStartRefillBtn" onclick="adminStartRefillFromChat()" style="background:linear-gradient(135deg,#6c63ff,#4f46e5);color:#fff;border:none;padding:9px 18px;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;">🚀 Refill Started</button>
+                    <button id="adminProcessRefillBtn" onclick="adminProcessRefillFromChat()" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:9px 18px;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;">✅ Refill Completed</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => { if (e.target === modal) adminCloseTicketModal(); });
+    }
+
+    // Toggle End Chat button visibility based on ticket.chatActive status
+    const endChatBtn = document.getElementById('adminEndChatBtn');
+    if (endChatBtn) {
+        endChatBtn.style.display = ticket.chatActive ? 'flex' : 'none';
+    }
+
+    // Always show Mark Resolved button if the ticket is not already Resolved or Closed
+    const resolveBtn = document.getElementById('adminResolveBtn');
+    if (resolveBtn) {
+        const isOpenOrWaiting = ticket.status !== 'Resolved' && ticket.status !== 'Closed';
+        resolveBtn.style.display = isOpenOrWaiting ? 'flex' : 'none';
+    }
+
+    // Populate header
+    const ticketNum = ticket.ticketNumber || ('#' + String(ticket._id).slice(-6).toUpperCase());
+    document.getElementById('adminChatModalTitle').textContent = ticket.subject;
+    document.getElementById('adminChatModalMeta').textContent = `${ticketNum} · ${ticket.clientName || ticket.clientEmail}`;
+
+    // Status pill
+    const pillEl = document.getElementById('adminChatModalStatusPill');
+    const pillColors = { Open:'background:#fff7ed;color:#c2410c;', Pending:'background:#ede9fe;color:#6d28d9;', 'In Progress':'background:#eff6ff;color:#1d4ed8;', Resolved:'background:#f0fdf4;color:#15803d;', Closed:'background:#f1f5f9;color:#64748b;' };
+    pillEl.style.cssText = (pillColors[ticket.status]||'background:#f1f5f9;color:#64748b;') + 'font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;';
+    pillEl.textContent = ticket.status;
+
+    // Context strip
+    const strip = document.getElementById('adminChatContextStrip');
+    strip.innerHTML = '';
+    if (ticket.orderId && ticket.orderId !== 'N/A') strip.innerHTML += `<span style="background:#e0e7ff;color:#4f46e5;padding:2px 8px;border-radius:20px;font-weight:700;">Order: ${ticket.orderId}</span>`;
+    if (ticket.category) strip.innerHTML += `<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:20px;font-weight:700;">${ticket.category}</span>`;
+    if (ticket.subcategory) strip.innerHTML += `<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:20px;font-weight:700;">${ticket.subcategory}</span>`;
+    if (ticket.clientEmail) strip.innerHTML += `<span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:20px;">✉️ ${ticket.clientEmail}</span>`;
+
+    // Refill action bar
+    const refillBar = document.getElementById('adminRefillActionBar');
+    const isRefill  = ticket.actionRequired === 'Refill';
+    const isRefillDone = ticket.actionRequired === 'Completed' || ticket.status === 'Resolved' || ticket.status === 'Closed';
+    if (refillBar) {
+        refillBar.style.display = isRefill ? 'flex' : 'none';
+        const startBtn = document.getElementById('adminStartRefillBtn');
+        const processBtn = document.getElementById('adminProcessRefillBtn');
+        if (startBtn && processBtn) {
+            if (isRefillDone) {
+                startBtn.style.display = 'none';
+                processBtn.disabled = true;
+                processBtn.textContent = '✅ Refill Completed';
+                processBtn.style.background = '#e2e8f0';
+                processBtn.style.color = '#94a3b8';
+            } else {
+                startBtn.style.display = 'inline-block';
+                processBtn.disabled = false;
+                processBtn.textContent = '✅ Refill Completed';
+                processBtn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                processBtn.style.color = '#fff';
+                
+                if (ticket.status === 'Pending') {
+                    startBtn.disabled = true;
+                    startBtn.textContent = '🚀 Refill In Progress';
+                    startBtn.style.background = '#e2e8f0';
+                    startBtn.style.color = '#94a3b8';
+                } else {
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🚀 Refill Started';
+                    startBtn.style.background = 'linear-gradient(135deg,#6c63ff,#4f46e5)';
+                    startBtn.style.color = '#fff';
+                }
+            }
+        }
+    }
+
+    // Render message history
+    const history = document.getElementById('adminChatHistory');
+    history.innerHTML = '';
+    adminAppendBubble(`Ticket opened: ${ticket.subject}`, 'System/Bot', ticket.date);
+    if (ticket.issue) adminAppendBubble(ticket.issue, ticket.clientName || 'Client', ticket.date);
+    (ticket.replies || []).forEach(r => adminAppendBubble(r.text || r.message, r.sender, r.createdAt || r.date));
+
+    // Input state
+    const isClosed = ticket.status === 'Closed' || ticket.status === 'Resolved';
+    document.getElementById('adminChatInput').disabled = isClosed;
+    document.getElementById('adminChatSendBtn').disabled = isClosed;
+
+    // Join the socket room
+    if (window.adminSocket) {
+        window.adminSocket.emit('support_agent_join', { ticketId: ticket._id, agentName: 'Admin Support', agentEmail: 'admin@vibesphere.in' });
+    }
+
+    modal.style.display = 'flex';
+}
+
+window.adminCloseTicketModal = function () {
+    const modal = document.getElementById('adminTicketChatModal');
+    if (modal) modal.style.display = 'none';
+    adminChatCurrentTicket = null;
+    window.currentActiveChatId = null;
+    activeAdminTicketId = null;
+};
+
+window.adminSendChatMessage = function () {
+    const inp  = document.getElementById('adminChatInput');
+    const text = (inp?.value || '').trim();
+    if (!text || !adminChatCurrentTicket) return;
+    if (window.adminSocket) {
+        window.adminSocket.emit('support_send_msg', { ticketId: adminChatCurrentTicket._id, text, sender: 'Admin' });
+    }
+    adminAppendBubble(text, 'Admin', new Date());
+    inp.value = '';
+};
+
+window.adminStartRefillFromChat = async function () {
+    if (!adminChatCurrentTicket) return;
+    const btn = document.getElementById('adminStartRefillBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Initiating...';
+    try {
+        const res = await fetch('/api/admin/start-refill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId: adminChatCurrentTicket._id }),
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.textContent = '🚀 Refill In Progress';
+            btn.style.background = '#e2e8f0';
+            btn.style.color = '#94a3b8';
+            const pillEl = document.getElementById('adminChatModalStatusPill');
+            if (pillEl) {
+                pillEl.textContent = 'Pending';
+                pillEl.style.cssText = 'background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;';
+            }
+            adminChatCurrentTicket.status = 'Pending';
+            if (typeof fetchAdminTickets === 'function') fetchAdminTickets();
+        } else {
+            btn.disabled = false;
+            btn.textContent = '🚀 Refill Started';
+            alert(data.message || 'Failed to start refill');
+        }
+    } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '🚀 Refill Started';
+        alert('Error starting refill');
+    }
+};
+
+window.adminProcessRefillFromChat = async function () {
+    if (!adminChatCurrentTicket) return;
+    const btn = document.getElementById('adminProcessRefillBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    try {
+        const res  = await fetch('/api/admin/process-refill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId: adminChatCurrentTicket._id }),
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.textContent = '✅ Refill Completed';
+            btn.style.background = '#e2e8f0';
+            btn.style.color = '#94a3b8';
+            const startBtn = document.getElementById('adminStartRefillBtn');
+            if (startBtn) startBtn.style.display = 'none';
+            const pillEl = document.getElementById('adminChatModalStatusPill');
+            if (pillEl) { pillEl.textContent = 'Resolved'; pillEl.style.cssText = 'background:#f0fdf4;color:#15803d;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;'; }
+            document.getElementById('adminChatInput').disabled = true;
+            document.getElementById('adminChatSendBtn').disabled = true;
+            adminChatCurrentTicket.status = 'Resolved';
+            adminChatCurrentTicket.actionRequired = 'Completed';
+            if (typeof fetchAdminTickets === 'function') fetchAdminTickets();
+        } else {
+            btn.disabled = false;
+            btn.textContent = '✅ Refill Completed';
+            alert(data.message || 'Failed to process refill');
+        }
+    } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '✅ Refill Completed';
+        alert('Error processing refill');
+    }
+};
+
+// ---- Legacy function stubs kept for backward compat ----
+
+window.joinLiveChat = async function (ticketId, clientName) {
+    await window.openAdminTicketChat(ticketId);
+};
+
+window.handleAdminChatKey = function (event) {
+    if (event.key === 'Enter') { event.preventDefault(); window.adminSendChatMessage(); }
+};
+
+window.sendAdminChatMessage = function (event) {
+    if (event) event.preventDefault();
+    window.adminSendChatMessage();
+};
+
+window.closeAdminChat = function () {
+    window.adminCloseTicketModal();
+};
+
+window.initHelpdeskRealtime = function (socket) {
+    helpdeskSocket = socket;
+    window.socket = socket;
+};
+
 async function updateTicketStatus(id, status) {
     try {
         await fetch('/api/admin/update-ticket', {
@@ -288,8 +926,9 @@ async function updateTicketStatus(id, status) {
         fetchAdminTickets();
     } catch (e) { alert('Failed to update ticket'); }
 }
+
 async function replyToTicket(id) {
-    const reply = document.getElementById('reply-' + id).value.trim();
+    const reply = (document.getElementById('reply-' + id)?.value || '').trim();
     if (!reply) return alert('Please type a reply');
     try {
         await fetch('/api/admin/update-ticket', {
@@ -300,6 +939,8 @@ async function replyToTicket(id) {
         fetchAdminTickets();
     } catch (e) { alert('Failed to send reply'); }
 }
+
+window.fetchAdminTickets = fetchAdminTickets;
 // ==========================================
 // 📚 RESOURCE HUB FUNCTIONS
 // ==========================================
@@ -613,3 +1254,64 @@ window.scheduleMeeting = scheduleMeeting;
 window.fetchMeetings = fetchMeetings;
 window.deleteMeeting = deleteMeeting;
 window.joinMeeting = joinMeeting;
+
+window.adminEndActiveChat = function () {
+    if (!adminChatCurrentTicket) return;
+    if (confirm('Are you sure you want to end this live chat session?')) {
+        window.adminSocket.emit('support_close_chat', { ticketId: adminChatCurrentTicket._id, userType: 'Admin' });
+    }
+};
+
+window.adminResolveActiveTicket = async function () {
+    if (!adminChatCurrentTicket) return;
+    if (confirm('Are you sure you want to mark this ticket as Resolved?')) {
+        try {
+            const res = await fetch('/api/admin/resolve-ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: adminChatCurrentTicket._id }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Ticket resolved successfully!');
+
+                const endChatBtn = document.getElementById('adminEndChatBtn');
+                const resolveBtn = document.getElementById('adminResolveBtn');
+                if (endChatBtn) endChatBtn.style.display = 'none';
+                if (resolveBtn) resolveBtn.style.display = 'none';
+
+                const pillEl = document.getElementById('adminChatModalStatusPill');
+                if (pillEl) {
+                    pillEl.textContent = 'Resolved';
+                    pillEl.style.cssText = 'background:#f0fdf4;color:#15803d;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;';
+                }
+
+                adminChatCurrentTicket.status = 'Resolved';
+                adminChatCurrentTicket.chatActive = false;
+
+                if (typeof fetchAdminTickets === 'function') fetchAdminTickets();
+            } else {
+                alert(data.error || 'Failed to resolve ticket.');
+            }
+        } catch (e) {
+            alert('Failed to connect to resolve endpoint.');
+        }
+    }
+};
+
+window.triggerAdminTicketRefresh = async function () {
+    const btn = document.getElementById('refreshTicketsBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="refresh-spinning">🔄</span> Refreshing...`;
+    
+    if (typeof fetchAdminTickets === 'function') {
+        await fetchAdminTickets();
+    }
+    
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `🔄 Refresh`;
+    }, 400);
+};
