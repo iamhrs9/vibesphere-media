@@ -517,6 +517,32 @@
             color: #64748b;
         }
 
+        .variant-price-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+            line-height: 1;
+        }
+
+        .variant-price-old {
+            color: #94a3b8;
+            font-size: 0.8em;
+            font-weight: 700;
+            text-decoration: line-through;
+        }
+
+        .variant-price-current {
+            color: #16a34a;
+            font-weight: 900;
+        }
+
+        .variant-option-price.is-discounted,
+        .variant-dropdown-selected-price.is-discounted {
+            gap: 2px;
+        }
+
         .variant-dropdown-chevron {
             width: 20px;
             height: 20px;
@@ -668,6 +694,25 @@
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #64748b;
+        }
+
+        .variant-option-price .variant-price-old,
+        .variant-dropdown-selected-price .variant-price-old {
+            margin-top: 0;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            text-decoration: line-through;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .variant-option-price .variant-price-current,
+        .variant-dropdown-selected-price .variant-price-current {
+            margin-top: 0;
+            color: #16a34a;
+            font-size: 1rem;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         .variant-option-empty {
@@ -1118,6 +1163,34 @@
             return normalizeText(variant?.variantId) || normalizeText(variant?._id) || 'variant';
         }
 
+        function getVariantPricing(variant) {
+            const basePrice = Number(variant?.price || 0);
+            const discountPercent = Math.min(100, Math.max(0, Number(variant?.discountPercent || 0)));
+            const discountedPrice = discountPercent > 0
+                ? Number((basePrice * (1 - (discountPercent / 100))).toFixed(2))
+                : Number(basePrice.toFixed(2));
+            return {
+                basePrice: Number(basePrice.toFixed(2)),
+                discountPercent,
+                discountedPrice
+            };
+        }
+
+        function renderVariantPriceMarkup(variant) {
+            const pricing = getVariantPricing(variant);
+            if (pricing.discountPercent > 0) {
+                return `
+                    <div class="variant-price-row">
+                        <span class="variant-price-old">₹${pricing.basePrice.toFixed(2)}</span>
+                        <span class="variant-price-current">₹${pricing.discountedPrice.toFixed(2)}</span>
+                    </div>
+                    <span>/ 1K</span>
+                `;
+            }
+
+            return `₹${pricing.discountedPrice.toFixed(2)}<span>/ 1K</span>`;
+        }
+
         function closeVariantDropdown() {
             const trigger = document.getElementById("variantDropdownTrigger");
             const menu = document.getElementById("variantDropdownMenu");
@@ -1163,7 +1236,6 @@
 
             const variantKey = getVariantDisplayId(service, variant);
             const displayName = normalizeText(variant?.name) || `Variant ${index + 1}`;
-            const price = Number(variant?.price || 0);
             const refill = normalizeText(variant?.refill);
             const speed = normalizeText(variant?.speed);
             let refillText = refill;
@@ -1183,8 +1255,7 @@
                     </div>
                 </div>
                 <div class="variant-dropdown-selected-price">
-                    ₹${price.toFixed(2)}
-                    <span>/ 1K</span>
+                    ${renderVariantPriceMarkup(variant)}
                 </div>
             `;
             trigger.disabled = false;
@@ -1273,7 +1344,7 @@
             menu.innerHTML = service.variants.map((variant, index) => {
                 const variantKey = getVariantDisplayId(service, variant);
                 const displayName = normalizeText(variant?.name) || `Variant ${index + 1}`;
-                const price = Number(variant?.price || 0);
+                const pricing = getVariantPricing(variant);
                 const refill = normalizeText(variant?.refill);
                 const speed = normalizeText(variant?.speed);
                 let refillText = refill;
@@ -1301,9 +1372,8 @@
                                 ${speed ? `<span class="variant-pill variant-pill--speed">${escapeHtml(speed)}</span>` : ''}
                             </div>
                         </div>
-                        <div class="variant-option-price">
-                            ₹${price.toFixed(2)}
-                            <span>/ 1K</span>
+                        <div class="variant-option-price ${pricing.discountPercent > 0 ? 'is-discounted' : ''}">
+                            ${renderVariantPriceMarkup(variant)}
                         </div>
                     </button>
                 `;
@@ -1652,12 +1722,15 @@
             const qty = parseInt(qtyInput.value || 0, 10);
             const minQty = variant.minQty != null ? Number(variant.minQty) : 10;
             const maxQty = variant.maxQty != null ? Number(variant.maxQty) : 10000;
-            const rate = Number(variant.price || 0);
+            const pricing = getVariantPricing(variant);
+            const rate = pricing.discountedPrice;
             const effectiveQty = Number.isFinite(qty) && qty > 0 ? Math.min(maxQty, Math.max(minQty, qty)) : 0;
             const totalPrice = effectiveQty > 0 ? parseFloat(((effectiveQty / 1000) * rate).toFixed(2)) : 0;
 
             priceDisplay.innerText = `₹${totalPrice.toFixed(2)}`;
-            rateHint.innerText = `Base rate: ₹${rate.toFixed(2)} per 1,000 units`;
+            rateHint.innerText = pricing.discountPercent > 0
+                ? `Base rate: ₹${pricing.basePrice.toFixed(2)} per 1,000 units • ${pricing.discountPercent.toFixed(0)}% auto discount`
+                : `Base rate: ₹${pricing.basePrice.toFixed(2)} per 1,000 units`;
             validateQuantityLimits();
 
             const dripEnabled = document.getElementById("enableDripFeed")?.checked;
@@ -1753,11 +1826,9 @@
 
             const urlParams = new URLSearchParams({
                 isSmm: 'true',
-                serviceId: service.serviceId,
                 variantId: Number.isInteger(Number(variant?.variantId)) ? String(Number(variant.variantId)) : '',
                 quantity: qty,
                 targetLink,
-                variantIndex: String(Number.isInteger(window.currentVariantIndex) ? window.currentVariantIndex : 0),
                 isDripFeed: dripEnabled ? 'true' : 'false',
                 runs: String(runs),
                 interval: String(interval),

@@ -3503,6 +3503,10 @@ const orderSchema = new mongoose.Schema({
     selectedQuality: { type: String, default: '' },
     selectedSpeed: { type: String, default: '' },
     selectedRefill: { type: String, default: '' },
+    selectedVariantBasePrice: { type: Number, default: 0 },
+    selectedVariantDiscountPercent: { type: Number, default: 0 },
+    selectedVariantDiscountAmount: { type: Number, default: 0 },
+    selectedVariantEffectivePrice: { type: Number, default: 0 },
     isDripFeed: { type: Boolean, default: false },
     runs: { type: Number, default: 1 },
     interval: { type: Number, default: 0 }, // in minutes
@@ -3511,6 +3515,10 @@ const orderSchema = new mongoose.Schema({
     nextRunAt: { type: Date, default: null },
     extraInput: { type: String, default: '' },
     extraInputType: { type: String, default: 'none' },
+    couponCode: { type: String, default: '' },
+    couponModule: { type: String, default: '' },
+    couponDiscountAmount: { type: Number, default: 0 },
+    couponFinalTotal: { type: Number, default: 0 },
 
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
@@ -3519,6 +3527,25 @@ const orderSchema = new mongoose.Schema({
     payoutStatus: { type: String, default: 'Unpaid' } // Unpaid ya Paid
 }, { timestamps: true });
 const Order = mongoose.model('Order', orderSchema);
+
+const couponSchema = new mongoose.Schema({
+    code: { type: String, required: true, unique: true, trim: true },
+    discountType: { type: String, enum: ['percent', 'fixed'], default: 'percent' },
+    discountValue: { type: Number, required: true, default: 0 },
+    isGlobal: { type: Boolean, default: true },
+    allowedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    isActive: { type: Boolean, default: true },
+    expiresAt: { type: Date, default: null }
+}, { timestamps: true });
+
+couponSchema.pre('save', function (next) {
+    if (this.code) {
+        this.code = String(this.code).trim().toUpperCase();
+    }
+    next();
+});
+
+const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
 // --- Blog Schema (UPDATED WITH SEO) ---
 const blogSchema = new mongoose.Schema({
     slug: String,
@@ -5587,6 +5614,7 @@ const smmVariantSchema = new mongoose.Schema({
     hasDynamicInput: { type: Boolean, default: false },
     inputType: { type: String, enum: ['none', 'text', 'textarea'], default: 'none' },
     inputLabel: { type: String, default: '' },
+    discountPercent: { type: Number, default: 0 },
     price: { type: Number, required: true },
     minQty: { type: Number, required: true },
     maxQty: { type: Number, required: true },
@@ -5639,6 +5667,30 @@ function normalizeSmmPrice(value, fallback = 0) {
     return Number(parsed.toFixed(2));
 }
 
+function normalizeSmmDiscountPercent(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return fallback;
+    }
+    return Number(Math.min(100, parsed).toFixed(2));
+}
+
+function getSmmVariantPricing(variant = {}) {
+    const basePrice = normalizeSmmPrice(variant?.price, 0);
+    const discountPercent = normalizeSmmDiscountPercent(variant?.discountPercent, 0);
+    const discountAmount = discountPercent > 0
+        ? Number((basePrice * (discountPercent / 100)).toFixed(2))
+        : 0;
+    const effectivePrice = Number(Math.max(0, basePrice - discountAmount).toFixed(2));
+
+    return {
+        basePrice,
+        discountPercent,
+        discountAmount,
+        effectivePrice
+    };
+}
+
 function buildSmmPlatformPrefix(platform) {
     const normalized = trimSmmText(platform).toLowerCase();
     if (normalized.includes('insta')) return 'ig';
@@ -5664,70 +5716,54 @@ function normalizeSmmServiceIdValue(value) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function collectSmmVariantIdState(services = []) {
+function collectSmmGlobalIdState(services = []) {
     const state = {
-        usedIds: new Set(),
         maxId: 1097
     };
 
     const register = (value) => {
         const parsed = Number(value);
-        if (Number.isInteger(parsed) && parsed >= 1098) {
-            state.usedIds.add(parsed);
-            if (parsed > state.maxId) {
-                state.maxId = parsed;
-            }
+        if (Number.isInteger(parsed) && parsed >= 1098 && parsed > state.maxId) {
+            state.maxId = parsed;
         }
     };
 
     (Array.isArray(services) ? services : []).forEach((service) => {
+        register(service?.serviceId);
         (Array.isArray(service?.variants) ? service.variants : []).forEach((variant) => register(variant?.variantId));
     });
 
     return state;
 }
 
-function assignSmmVariantIdsInPlace(variants = [], state = collectSmmVariantIdState()) {
-    const nextState = state || collectSmmVariantIdState();
+function assignSmmVariantIdsInPlace(variants = [], state = collectSmmGlobalIdState()) {
+    const nextState = state || collectSmmGlobalIdState();
 
     return (Array.isArray(variants) ? variants : []).map((variant) => {
-        let variantId = normalizeSmmServiceIdValue(variant?.variantId);
-        if (!Number.isInteger(variantId) || variantId < 1098 || nextState.usedIds.has(variantId)) {
-            do {
-                nextState.maxId += 1;
-                variantId = nextState.maxId;
-            } while (nextState.usedIds.has(variantId));
+        const existingVariantId = normalizeSmmServiceIdValue(variant?.variantId);
+
+        if (Number.isInteger(existingVariantId) && existingVariantId > 0) {
+            if (existingVariantId > nextState.maxId) {
+                nextState.maxId = existingVariantId;
+            }
+
+            return {
+                ...variant,
+                variantId: existingVariantId
+            };
         }
 
-        nextState.usedIds.add(variantId);
-        if (variantId > nextState.maxId) {
-            nextState.maxId = variantId;
-        }
-
+        nextState.maxId += 1;
         return {
             ...variant,
-            variantId
+            variantId: nextState.maxId
         };
     });
 }
 
-async function getNextSmmServiceId(startAt = 1098) {
-    const lastService = await SmmService.findOne({ serviceId: { $type: 'number' } })
-        .sort({ serviceId: -1 })
-        .lean();
-    const lastServiceId = Number(lastService?.serviceId);
-    if (Number.isFinite(lastServiceId) && lastServiceId >= startAt) {
-        return lastServiceId + 1;
-    }
-    return startAt;
-}
-
-async function getSmmVariantIdState(excludeServiceId = null) {
-    const query = Number.isInteger(Number(excludeServiceId))
-        ? { serviceId: { $ne: Number(excludeServiceId) } }
-        : {};
-    const services = await SmmService.find(query, 'variants.variantId').lean();
-    return collectSmmVariantIdState(services);
+async function getSmmGlobalIdState() {
+    const services = await SmmService.find({}, 'serviceId variants.variantId').lean();
+    return collectSmmGlobalIdState(services);
 }
 
 async function findSmmServiceByAnyId(anyServiceId) {
@@ -5842,11 +5878,13 @@ function normalizeSmmVariant(rawVariant = {}, fallback = {}) {
     }
 
     return {
+        variantId: rawVariant.variantId || fallback.variantId,
         name,
         country: trimSmmText(rawVariant.country || fallback.country),
         speed: trimSmmText(rawVariant.speed || fallback.speed),
         refill: trimSmmText(rawVariant.refill ?? rawVariant.refillGuarantee ?? fallback.refill),
         ...normalizeSmmVariantDynamicInput(rawVariant, fallback),
+        discountPercent: normalizeSmmDiscountPercent(rawVariant.discountPercent ?? fallback.discountPercent, normalizeSmmDiscountPercent(fallback.discountPercent, 0)),
         price: normalizeSmmPrice(rawVariant.price, normalizeSmmPrice(fallback.price, 0)),
         minQty,
         maxQty,
@@ -5860,245 +5898,12 @@ function getSmmVariantSignature(variant = {}) {
         trimSmmText(variant.country).toLowerCase(),
         trimSmmText(variant.speed).toLowerCase(),
         trimSmmText(variant.refill).toLowerCase(),
+        Number(variant.discountPercent || 0).toFixed(2),
         Number(variant.price || 0).toFixed(2),
         Number(variant.minQty || 0),
         Number(variant.maxQty || 0)
     ].join('|');
 }
-
-function buildCanonicalSmmDefaults() {
-    let nextServiceId = 1098;
-    const defaults = [
-        {
-            platform: 'Instagram',
-            category: 'Followers',
-            variants: [{ name: 'Standard Followers', country: 'Global', speed: '1K-5K/day', refill: '30 Days Refill', price: 150, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'Instagram',
-            category: 'Likes',
-            variants: [{ name: 'Real Likes', country: 'Global', speed: 'Instant', refill: 'No Refill', price: 80, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'Instagram',
-            category: 'Comments',
-            variants: [{ name: 'Custom Text Comments', country: 'Global', speed: 'Custom', refill: 'No Refill', hasDynamicInput: true, inputType: 'textarea', inputLabel: 'Enter Custom Comments (1 per line)', price: 350, minQty: 1, maxQty: 10000 }]
-        },
-        {
-            platform: 'Instagram',
-            category: 'Views',
-            variants: [{ name: 'Video Views', country: 'Global', speed: 'Instant', refill: 'No Refill', price: 50, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'YouTube',
-            category: 'Subscribers',
-            variants: [{ name: 'Channel Subscribers', country: 'Global', speed: '100-500/day', refill: '30 Days Refill', price: 800, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'YouTube',
-            category: 'Likes',
-            variants: [{ name: 'Video Likes', country: 'Global', speed: '1K/day', refill: 'No Refill', price: 200, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'YouTube',
-            category: 'Views',
-            variants: [{ name: 'High Retention Views', country: 'Global', speed: '10K/day', refill: 'No Refill', price: 300, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'Facebook',
-            category: 'Followers',
-            variants: [{ name: 'Profile Followers', country: 'Global', speed: '1K-2K/day', refill: '30 Days Refill', price: 180, minQty: 10, maxQty: 10000 }]
-        },
-        {
-            platform: 'Facebook',
-            category: 'Likes',
-            variants: [{ name: 'Post Likes', country: 'Global', speed: '1K-2K/day', refill: '30 Days Refill', price: 100, minQty: 10, maxQty: 10000 }]
-        }
-    ];
-
-    return defaults.map((service) => ({
-        serviceId: nextServiceId++,
-        legacyServiceIds: [],
-        platform: service.platform,
-        category: service.category,
-        description: '',
-        variants: assignSmmVariantIdsInPlace(service.variants.map((variant) => normalizeSmmVariant(variant)))
-    }));
-}
-
-function buildCanonicalSmmDocuments(sourceDocs = []) {
-    const buckets = new Map();
-    const conflicts = [];
-    const now = new Date();
-
-    for (const rawDoc of sourceDocs) {
-        const platform = trimSmmText(rawDoc?.platform, 'Instagram');
-        const category = trimSmmText(rawDoc?.category || rawDoc?.serviceType, 'General');
-        const bucketKey = `${platform.toLowerCase()}::${category.toLowerCase()}`;
-        const sourceServiceId = trimSmmText(rawDoc?.serviceId);
-        const numericSourceServiceId = normalizeSmmServiceIdValue(sourceServiceId);
-        const dynamicConfig = buildLegacyDynamicInput(rawDoc);
-        const defaultMinQty = rawDoc?.minQty ?? (dynamicConfig.inputType === 'textarea' ? 1 : 10);
-        const defaultMaxQty = rawDoc?.maxQty ?? 10000;
-
-        if (!buckets.has(bucketKey)) {
-            buckets.set(bucketKey, {
-                platform,
-                category,
-                description: '',
-                legacyServiceIds: new Set(),
-                preferredServiceId: null,
-                variants: new Map(),
-                createdAt: rawDoc?.createdAt ? new Date(rawDoc.createdAt) : now
-            });
-        }
-
-        const bucket = buckets.get(bucketKey);
-        if (numericSourceServiceId !== null && numericSourceServiceId >= 1098 && bucket.preferredServiceId === null) {
-            bucket.preferredServiceId = numericSourceServiceId;
-        }
-        const createdAt = rawDoc?.createdAt ? new Date(rawDoc.createdAt) : null;
-        if (createdAt && !Number.isNaN(createdAt.getTime()) && createdAt < bucket.createdAt) {
-            bucket.createdAt = createdAt;
-        }
-
-        uniqueSmmStrings([sourceServiceId, ...(Array.isArray(rawDoc?.legacyServiceIds) ? rawDoc.legacyServiceIds : [])]).forEach((legacyId) => {
-            bucket.legacyServiceIds.add(legacyId);
-        });
-
-        const description = buildLegacySmmDescription(rawDoc);
-        if (description && !bucket.description) {
-            bucket.description = description;
-        } else if (description && bucket.description && bucket.description !== description) {
-            conflicts.push(`SMM migration kept the first description for ${platform} / ${category} and ignored a conflicting description from ${sourceServiceId || rawDoc?._id}.`);
-        }
-
-        let sourceVariants = [];
-        if (Array.isArray(rawDoc?.variants) && rawDoc.variants.length > 0) {
-            sourceVariants = rawDoc.variants.map((variant) => ({ ...variant }));
-        } else if (Array.isArray(rawDoc?.pricingVariants) && rawDoc.pricingVariants.length > 0) {
-            sourceVariants = rawDoc.pricingVariants.map((variant, index) => ({
-                name: buildLegacyVariantName(rawDoc, variant, category),
-                country: trimSmmText(variant?.country || (index === 0 ? rawDoc?.targetCountries?.[0] : '')),
-                speed: trimSmmText(variant?.speed || rawDoc?.serviceDetails?.speed),
-                refill: trimSmmText(variant?.refill ?? variant?.refillGuarantee ?? rawDoc?.serviceDetails?.refillGuarantee),
-                price: variant?.price ?? rawDoc?.ratePer1000 ?? 0,
-                minQty: variant?.minQty ?? defaultMinQty,
-                maxQty: variant?.maxQty ?? defaultMaxQty,
-                legacyServiceIds: index === 0 && sourceServiceId ? [sourceServiceId] : []
-            }));
-        } else if (sourceServiceId || trimSmmText(rawDoc?.serviceType)) {
-            sourceVariants = [{
-                name: buildLegacyVariantName(rawDoc, rawDoc, category),
-                country: trimSmmText(rawDoc?.targetCountries?.[0]),
-                speed: trimSmmText(rawDoc?.serviceDetails?.speed),
-                refill: trimSmmText(rawDoc?.serviceDetails?.refillGuarantee),
-                price: rawDoc?.ratePer1000 ?? 0,
-                minQty: defaultMinQty,
-                maxQty: defaultMaxQty,
-                legacyServiceIds: sourceServiceId ? [sourceServiceId] : []
-            }];
-        }
-
-        for (const sourceVariant of sourceVariants) {
-            const variant = normalizeSmmVariant(sourceVariant, {
-                name: buildLegacyVariantName(rawDoc, sourceVariant, category),
-                minQty: defaultMinQty,
-                maxQty: defaultMaxQty,
-                speed: trimSmmText(rawDoc?.serviceDetails?.speed),
-                refill: trimSmmText(rawDoc?.serviceDetails?.refillGuarantee),
-                ...dynamicConfig
-            });
-            const signature = getSmmVariantSignature(variant);
-            const existing = bucket.variants.get(signature);
-            if (existing) {
-                existing.legacyServiceIds = uniqueSmmStrings([...(existing.legacyServiceIds || []), ...(variant.legacyServiceIds || [])]);
-            } else {
-                bucket.variants.set(signature, variant);
-            }
-        }
-    }
-
-    const sortedBuckets = Array.from(buckets.values()).sort((left, right) => {
-        const platformSort = compareSmmStrings(left.platform, right.platform);
-        if (platformSort !== 0) return platformSort;
-        return compareSmmStrings(left.category, right.category);
-    });
-
-    const usedServiceIds = new Set();
-    const highestPreferredServiceId = sortedBuckets.reduce((max, bucket) => {
-        const preferredServiceId = Number(bucket.preferredServiceId);
-        if (Number.isInteger(preferredServiceId) && preferredServiceId >= 1098) {
-            return Math.max(max, preferredServiceId);
-        }
-        return max;
-    }, 1097);
-    let nextServiceId = Math.max(1098, highestPreferredServiceId + 1);
-
-    const canonicalDocs = sortedBuckets.map((bucket) => {
-        let serviceId = Number(bucket.preferredServiceId);
-        if (!Number.isInteger(serviceId) || serviceId < 1098 || usedServiceIds.has(serviceId)) {
-            while (usedServiceIds.has(nextServiceId)) {
-                nextServiceId += 1;
-            }
-            serviceId = nextServiceId;
-            nextServiceId += 1;
-        }
-        usedServiceIds.add(serviceId);
-
-        const variants = Array.from(bucket.variants.values())
-            .map((variant) => ({
-                ...variant,
-                legacyServiceIds: uniqueSmmStrings(variant.legacyServiceIds || [])
-            }))
-            .sort((left, right) => {
-                const nameSort = compareSmmStrings(left.name, right.name);
-                if (nameSort !== 0) return nameSort;
-                return Number(left.price || 0) - Number(right.price || 0);
-            });
-
-        const legacyServiceIds = uniqueSmmStrings([...bucket.legacyServiceIds]).filter((legacyId) => Number(legacyId) !== serviceId);
-        if (legacyServiceIds.length && variants.length && !variants.some((variant) => variant.legacyServiceIds?.length)) {
-            variants[0].legacyServiceIds = uniqueSmmStrings([...(variants[0].legacyServiceIds || []), legacyServiceIds[0]]);
-        }
-
-        return {
-            serviceId,
-            legacyServiceIds,
-            platform: bucket.platform,
-            category: bucket.category,
-            description: bucket.description,
-            variants: assignSmmVariantIdsInPlace(
-                variants.length ? variants : [normalizeSmmVariant({ name: bucket.category, price: 0, minQty: dynamicConfig.inputType === 'textarea' ? 1 : 10, maxQty: 10000 }, dynamicConfig)]
-            ),
-            createdAt: bucket.createdAt
-        };
-    });
-
-    return { canonicalDocs, conflicts };
-}
-
-async function persistCanonicalSmmServices(canonicalDocs = []) {
-    if (!canonicalDocs.length) return;
-
-    const now = new Date();
-    const keepServiceIds = canonicalDocs.map((service) => service.serviceId);
-    const operations = canonicalDocs.map((service) => ({
-        replaceOne: {
-            filter: { serviceId: service.serviceId },
-            replacement: {
-                ...service,
-                createdAt: service.createdAt instanceof Date && !Number.isNaN(service.createdAt.getTime()) ? service.createdAt : now,
-                updatedAt: now
-            },
-            upsert: true
-        }
-    }));
-
-    await SmmService.collection.bulkWrite(operations, { ordered: false });
-    await SmmService.collection.deleteMany({ serviceId: { $nin: keepServiceIds } });
-}
-
 async function ensureSmmPlatformExists(platformName) {
     const normalizedName = trimSmmText(platformName);
     if (!normalizedName) return;
@@ -6126,11 +5931,126 @@ function getSmmVariantQuantityBounds(variant = {}) {
 
 function calculateSmmVariantTotal(quantity, variant = {}) {
     const parsedQuantity = Number(quantity);
-    const ratePer1000 = Number(variant?.price || 0);
+    const ratePer1000 = getSmmVariantPricing(variant).effectivePrice;
     if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0 || !Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
         return 0;
     }
     return parseFloat(((parsedQuantity / 1000) * ratePer1000).toFixed(2));
+}
+
+function normalizeCheckoutTotal(value) {
+    const parsed = Number(String(value ?? '').replace(/,/g, '').replace(/[^\d.-]/g, ''));
+    return Number.isFinite(parsed) && parsed >= 0 ? Number(parsed.toFixed(2)) : null;
+}
+
+function normalizeCouponCode(value) {
+    return trimSmmText(value).toUpperCase();
+}
+
+function computeCouponDiscount(coupon = {}, cartTotal = 0) {
+    const total = Number(cartTotal);
+    if (!Number.isFinite(total) || total < 0) {
+        return {
+            discountAmount: 0,
+            finalTotal: 0
+        };
+    }
+
+    const discountType = trimSmmText(coupon.discountType).toLowerCase() === 'fixed' ? 'fixed' : 'percent';
+    const discountValue = Number(coupon.discountValue || 0);
+    const safeDiscountValue = Number.isFinite(discountValue) && discountValue > 0 ? discountValue : 0;
+
+    let discountAmount = 0;
+    if (discountType === 'percent') {
+        discountAmount = total * (safeDiscountValue / 100);
+    } else {
+        discountAmount = safeDiscountValue;
+    }
+
+    discountAmount = Number(Math.min(total, Math.max(0, discountAmount)).toFixed(2));
+    const finalTotal = Number(Math.max(0, total - discountAmount).toFixed(2));
+
+    return {
+        discountAmount,
+        finalTotal
+    };
+}
+
+async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user }) {
+    const normalizedCode = normalizeCouponCode(code);
+    const normalizedModule = trimSmmText(moduleName);
+    const normalizedTotal = normalizeCheckoutTotal(cartTotal);
+
+    if (!normalizedCode) {
+        const error = new Error('Coupon code is required.');
+        error.status = 400;
+        throw error;
+    }
+
+    if (!normalizedModule) {
+        const error = new Error('Module is required.');
+        error.status = 400;
+        throw error;
+    }
+
+    if (!user) {
+        const error = new Error('Login required to use promo codes');
+        error.status = 401;
+        throw error;
+    }
+
+    if (normalizedTotal === null || normalizedTotal <= 0) {
+        const error = new Error('A valid cart total is required.');
+        error.status = 400;
+        throw error;
+    }
+
+    const coupon = await Coupon.findOne({ code: new RegExp(`^${escapeRegex(normalizedCode)}$`, 'i') }).lean();
+    if (!coupon) {
+        const error = new Error('Invalid coupon code.');
+        error.status = 404;
+        throw error;
+    }
+
+    if (!coupon.isActive) {
+        const error = new Error('This coupon is inactive.');
+        error.status = 400;
+        throw error;
+    }
+
+    if (coupon.expiresAt) {
+        const expiryDate = new Date(coupon.expiresAt);
+        if (!Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now()) {
+            const error = new Error('This coupon has expired.');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    if (!coupon.isGlobal) {
+        const userId = user?._id ? String(user._id) : '';
+        const allowedUsers = Array.isArray(coupon.allowedUsers) ? coupon.allowedUsers.map((entry) => String(entry)) : [];
+        if (!userId || !allowedUsers.includes(userId)) {
+            const error = new Error('You are not eligible for this coupon.');
+            error.status = 403;
+            throw error;
+        }
+    }
+
+    const pricing = computeCouponDiscount(coupon, normalizedTotal);
+    return {
+        module: normalizedModule,
+        cartTotal: normalizedTotal,
+        discountAmount: pricing.discountAmount,
+        finalTotal: pricing.finalTotal,
+        coupon: {
+            code: coupon.code,
+            discountType: coupon.discountType,
+            discountValue: coupon.discountValue,
+            isGlobal: coupon.isGlobal,
+            expiresAt: coupon.expiresAt || null
+        }
+    };
 }
 
 async function resolveSmmServiceSelection(anyServiceId, requestedVariantIndex = 0, requestedVariantId = null) {
@@ -6183,53 +6103,17 @@ async function resolveSmmServiceSelection(anyServiceId, requestedVariantIndex = 
 }
 
 async function initSmmServices() {
-    try {
-        const rawDocs = await SmmService.find({}).lean();
-        const sourceDocs = rawDocs.length ? rawDocs : buildCanonicalSmmDefaults();
-        const { canonicalDocs, conflicts } = buildCanonicalSmmDocuments(sourceDocs);
-        const documentsToPersist = canonicalDocs.length ? canonicalDocs : buildCanonicalSmmDefaults();
-
-        await persistCanonicalSmmServices(documentsToPersist);
-        await Promise.all(documentsToPersist.map((service) => ensureSmmPlatformExists(service.platform)));
-
-        console.log(`🚀 SMM services normalized successfully (${documentsToPersist.length} canonical records).`);
-        if (conflicts.length) {
-            conflicts.forEach((message) => console.warn(`⚠️ ${message}`));
-        }
-    } catch (e) {
-        console.error("⚠️ Failed to initialize SMM rates:", e);
-    }
+    // Absolutely no hardcoded data allowed.
+    // The SMM platform is 100% dynamic and managed solely via the Admin Panel UI.
+    return;
 }
 initSmmServices();
 
+
 async function initSmmPlatforms() {
-    try {
-        const defaults = [
-            { name: "Instagram", logoUrl: "https://img.icons8.com/color/96/instagram-new.png" },
-            { name: "YouTube", logoUrl: "https://img.icons8.com/color/96/youtube-play.png" },
-            { name: "Facebook", logoUrl: "https://img.icons8.com/color/96/facebook-new.png" },
-            { name: "Twitter", logoUrl: "https://img.icons8.com/color/96/twitter--v1.png" },
-            { name: "TikTok", logoUrl: "https://img.icons8.com/color/96/tiktok.png" },
-            { name: "Telegram", logoUrl: "https://img.icons8.com/color/96/telegram-app.png" }
-        ];
-
-        for (const platform of defaults) {
-            const existingPlatform = await SmmPlatform.findOne({
-                name: new RegExp(`^${escapeRegex(platform.name)}$`, 'i')
-            });
-
-            if (!existingPlatform) {
-                await SmmPlatform.create(platform);
-            } else if (!existingPlatform.logoUrl || existingPlatform.logoUrl === DEFAULT_SMM_PLATFORM_LOGO) {
-                existingPlatform.logoUrl = platform.logoUrl;
-                await existingPlatform.save();
-            }
-        }
-
-        console.log("🚀 Default SMM platforms initialized successfully.");
-    } catch (e) {
-        console.error("⚠️ Failed to initialize default SMM platforms:", e);
-    }
+    // Absolutely no hardcoded platforms allowed.
+    // Platforms must be managed entirely from the Admin Panel UI.
+    return;
 }
 initSmmPlatforms();
 
@@ -6365,12 +6249,50 @@ app.get('/api/smm/rates', async (req, res) => {
     }
 });
 
+// GET exact checkout service details by variantId
+app.get('/api/checkout/service-details', async (req, res) => {
+    try {
+        const requestedVariantId = Number(req.query.variantId);
+        if (!Number.isInteger(requestedVariantId) || requestedVariantId <= 0) {
+            return res.status(400).json({ success: false, error: 'Missing variantId' });
+        }
+
+        const serviceDoc = await SmmService.findOne({ 'variants.variantId': requestedVariantId }).lean();
+        if (!serviceDoc) {
+            return res.status(404).json({ success: false, error: 'Service not found' });
+        }
+
+        const exactVariant = Array.isArray(serviceDoc.variants)
+            ? serviceDoc.variants.find((variant) => Number(variant?.variantId) === requestedVariantId)
+            : null;
+
+        if (!exactVariant) {
+            return res.status(404).json({ success: false, error: 'Variant not found' });
+        }
+
+        res.json({
+            success: true,
+            service: {
+                serviceId: serviceDoc.serviceId,
+                platform: serviceDoc.platform,
+                category: serviceDoc.category,
+                description: serviceDoc.description || ''
+            },
+            variant: exactVariant
+        });
+    } catch (e) {
+        console.error("Error in GET /api/checkout/service-details:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // POST/UPSERT SMM rate (Admin authenticated)
 app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
     try {
         if (req.user.role !== 'Admin') {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
+        console.log("Incoming Variants Payload:", JSON.stringify(req.body.variants, null, 2));
         const {
             existingServiceId,
             platform,
@@ -6388,7 +6310,6 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
         const legacyDynamicType = normalizeSmmInputType(inputType);
         const legacyDynamicLabel = trimSmmText(inputLabel);
         const existingService = await findSmmServiceByAnyId(existingServiceId);
-        const variantIdState = await getSmmVariantIdState(existingService?.serviceId ?? null);
 
         if (!normalizedPlatform || !normalizedCategory || !Array.isArray(variants) || variants.length === 0) {
             return res.status(400).json({ success: false, error: 'Platform, category, and at least one variant are required.' });
@@ -6401,7 +6322,37 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
             inputType: legacyDynamicType,
             inputLabel: legacyDynamicLabel
         }));
-        const normalizedVariantsWithIds = assignSmmVariantIdsInPlace(normalizedVariants, variantIdState);
+        let globalMaxId = 1097;
+        const allServices = await SmmService.find({}, 'serviceId variants.variantId').lean();
+        allServices.forEach((serviceDoc) => {
+            const serviceId = Number(serviceDoc?.serviceId);
+            if (Number.isInteger(serviceId) && serviceId > globalMaxId) {
+                globalMaxId = serviceId;
+            }
+
+            (Array.isArray(serviceDoc?.variants) ? serviceDoc.variants : []).forEach((variant) => {
+                const variantId = Number(variant?.variantId);
+                if (Number.isInteger(variantId) && variantId > globalMaxId) {
+                    globalMaxId = variantId;
+                }
+            });
+        });
+
+        const normalizedVariantsWithIds = normalizedVariants.map((incomingVariant) => {
+            const existingVariantId = Number(incomingVariant?.variantId);
+            if (Number.isInteger(existingVariantId) && existingVariantId > 0) {
+                return {
+                    ...incomingVariant,
+                    variantId: existingVariantId
+                };
+            }
+
+            globalMaxId += 1;
+            return {
+                ...incomingVariant,
+                variantId: globalMaxId
+            };
+        });
 
         const invalidVariant = normalizedVariantsWithIds.find((variant) => {
             return !trimSmmText(variant.name)
@@ -6439,7 +6390,12 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
             });
         }
 
-        const serviceId = service?.serviceId || await getNextSmmServiceId();
+        let serviceId = service?.serviceId ?? null;
+        if (serviceId == null) {
+            globalMaxId += 1;
+            serviceId = globalMaxId;
+        }
+
         const nextService = {
             serviceId,
             legacyServiceIds: uniqueSmmStrings(service?.legacyServiceIds || []).filter((legacyId) => Number(legacyId) !== Number(serviceId)),
@@ -6455,6 +6411,9 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
         await ensureSmmPlatformExists(normalizedPlatform);
 
         if (service) {
+            if (service.serviceId == null) {
+                service.serviceId = nextService.serviceId;
+            }
             service.platform = nextService.platform;
             service.category = nextService.category;
             service.description = nextService.description;
@@ -7129,7 +7088,7 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
-        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex, variantId } = req.body;
+        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex, variantId, couponCode, couponModule } = req.body;
         const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
 
         if (!razorpayKeyId) {
@@ -7142,23 +7101,49 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         if (isSmm || orderType === 'smm') {
             // Secure SMM pricing calculation
             const parsedQuantity = Number(quantity);
-            if (!serviceId || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
-                return res.status(400).json({ success: false, error: 'serviceId and quantity required' });
+            if ((!serviceId && !variantId) || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+                return res.status(400).json({ success: false, error: 'serviceId/variantId and quantity required' });
             }
-            const selection = await resolveSmmServiceSelection(serviceId, variantIndex, variantId);
-            if (!selection?.service || !selection?.variant) {
-                return res.status(404).json({ success: false, error: 'SMM Service not found' });
-            }
-            const { minQty, maxQty } = getSmmVariantQuantityBounds(selection.variant);
+
+            const incomingVariantId = Number(variantId || req.body.variantId);
+            if (!incomingVariantId) return res.status(400).json({ success: false, error: "Variant ID is missing" });
+
+            const serviceDoc = await SmmService.findOne({ "variants.variantId": incomingVariantId });
+            if (!serviceDoc) return res.status(404).json({ success: false, error: "Service not found" });
+
+            const targetVariant = serviceDoc.variants.find(v => v.variantId === incomingVariantId);
+            if (!targetVariant) return res.status(404).json({ success: false, error: "Variant data corrupted" });
+
+            let service = serviceDoc;
+            let selectedVariant = targetVariant;
+
+            const { minQty, maxQty } = getSmmVariantQuantityBounds(selectedVariant);
             if (parsedQuantity < minQty || parsedQuantity > maxQty) {
                 return res.status(400).json({ success: false, error: `Quantity must be between ${minQty} and ${maxQty}.` });
             }
-            finalPrice = calculateSmmVariantTotal(parsedQuantity, selection.variant);
+
+            // Calculate price STRICTLY from targetVariant
+            let calculatedPrice = (targetVariant.price / 1000) * parsedQuantity;
+            if (targetVariant.discountPercent && targetVariant.discountPercent > 0) {
+                calculatedPrice = calculatedPrice * (1 - (targetVariant.discountPercent / 100));
+            }
+            finalPrice = parseFloat(calculatedPrice.toFixed(2));
+
             if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
                 return res.status(400).json({ success: false, error: 'Invalid SMM variant price.' });
             }
+
+            if (normalizeCouponCode(couponCode)) {
+                const couponPricing = await resolveCouponCheckoutPricing({
+                    code: couponCode,
+                    cartTotal: finalPrice,
+                    moduleName: couponModule || 'smm',
+                    user: req.user
+                });
+                finalPrice = couponPricing.finalTotal;
+            }
             cleanCurrency = "INR";
-            console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${selection.canonicalServiceId}`);
+            console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${service.serviceId}`);
         } else {
             // Normal agency orders
             if (amount == null) {
@@ -7169,6 +7154,15 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid amount, must be a positive number' });
             }
             finalPrice = cleanAmount;
+            if (normalizeCouponCode(couponCode)) {
+                const couponPricing = await resolveCouponCheckoutPricing({
+                    code: couponCode,
+                    cartTotal: finalPrice,
+                    moduleName: couponModule || orderType || 'general',
+                    user: req.user
+                });
+                finalPrice = couponPricing.finalTotal;
+            }
         }
 
         const options = {
@@ -7181,7 +7175,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         res.json({ ...order, razorpayKeyId });
     } catch (error) {
         console.error("❌ Payment Error:", error);
-        res.status(500).send(error);
+        res.status(error.status || 500).json({ success: false, error: error.message || 'Payment Error' });
     }
 });
 
@@ -7203,6 +7197,10 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         let selectedQuality = '';
         let selectedSpeed = '';
         let selectedRefill = '';
+        let selectedVariantBasePrice = 0;
+        let selectedVariantDiscountPercent = 0;
+        let selectedVariantDiscountAmount = 0;
+        let selectedVariantEffectivePrice = 0;
 
         if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
             orderType = 'smm';
@@ -7218,17 +7216,34 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
             // Secure recalculation on server side
             try {
-                const selection = await resolveSmmServiceSelection(requestedServiceId, variantIdx, requestedVariantId);
-                if (selection?.service && selection?.variant) {
-                    resolvedServiceId = selection.canonicalServiceId;
-                    selectedVariantName = trimSmmText(selection.variant.name);
-                    selectedVariantId = normalizeSmmServiceIdValue(selection.variant.variantId);
-                    selectedCountry = trimSmmText(selection.variant.country);
-                    selectedQuality = selectedVariantName;
-                    selectedSpeed = trimSmmText(selection.variant.speed);
-                    selectedRefill = trimSmmText(selection.variant.refill);
-                    normalizedOrderAmount = calculateSmmVariantTotal(resolvedQuantity, selection.variant);
+                const incomingVariantId = Number(requestedVariantId);
+                if (!incomingVariantId) throw new Error("Variant ID is missing");
+
+                const serviceDoc = await SmmService.findOne({ "variants.variantId": incomingVariantId });
+                if (!serviceDoc) throw new Error("Service not found");
+
+                const targetVariant = serviceDoc.variants.find(v => v.variantId === incomingVariantId);
+                if (!targetVariant) throw new Error("Variant data corrupted");
+
+                resolvedServiceId = serviceDoc.serviceId;
+                selectedVariantName = trimSmmText(targetVariant.name);
+                selectedVariantId = normalizeSmmServiceIdValue(targetVariant.variantId);
+                selectedCountry = trimSmmText(targetVariant.country);
+                selectedQuality = selectedVariantName;
+                selectedSpeed = trimSmmText(targetVariant.speed);
+                selectedRefill = trimSmmText(targetVariant.refill);
+                
+                const pricing = getSmmVariantPricing(targetVariant);
+                selectedVariantBasePrice = pricing.basePrice;
+                selectedVariantDiscountPercent = pricing.discountPercent;
+                selectedVariantDiscountAmount = pricing.discountAmount;
+                selectedVariantEffectivePrice = pricing.effectivePrice;
+
+                let calculatedPrice = (targetVariant.price / 1000) * resolvedQuantity;
+                if (targetVariant.discountPercent && targetVariant.discountPercent > 0) {
+                    calculatedPrice = calculatedPrice * (1 - (targetVariant.discountPercent / 100));
                 }
+                normalizedOrderAmount = parseFloat(calculatedPrice.toFixed(2));
             } catch (err) {
                 console.error("Server side recalculation error:", err);
             }
@@ -7240,6 +7255,35 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                 const cleanedAmount = amountCandidate.replace(/,/g, '').replace(/[^\d.-]/g, '');
                 const parsedAmount = Number(cleanedAmount);
                 normalizedOrderAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+            }
+        }
+
+        const normalizedCouponCode = normalizeCouponCode(orderDetails?.couponCode || req.body.couponCode);
+        const normalizedCouponFinalTotal = normalizeCheckoutTotal(orderDetails?.couponFinalTotal ?? req.body.couponFinalTotal);
+        if (normalizedCouponCode) {
+            if (req.user) {
+                try {
+                    const couponPricing = await resolveCouponCheckoutPricing({
+                        code: normalizedCouponCode,
+                        cartTotal: normalizedOrderAmount,
+                        moduleName: orderDetails?.couponModule || (orderType === 'smm' ? 'smm' : 'general'),
+                        user: req.user
+                    });
+                    normalizedOrderAmount = couponPricing.finalTotal;
+                    if (orderDetails && typeof orderDetails === 'object') {
+                        orderDetails.couponCode = couponPricing.coupon.code;
+                        orderDetails.couponDiscountAmount = couponPricing.discountAmount;
+                        orderDetails.couponFinalTotal = couponPricing.finalTotal;
+                        orderDetails.couponModule = couponPricing.module;
+                    }
+                } catch (couponError) {
+                    console.error('Coupon verification failed:', couponError);
+                    if (normalizedCouponFinalTotal !== null) {
+                        normalizedOrderAmount = normalizedCouponFinalTotal;
+                    }
+                }
+            } else if (normalizedCouponFinalTotal !== null) {
+                normalizedOrderAmount = normalizedCouponFinalTotal;
             }
         }
 
@@ -7288,6 +7332,10 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
             selectedRefill: selectedRefill,
+            selectedVariantBasePrice: selectedVariantBasePrice,
+            selectedVariantDiscountPercent: selectedVariantDiscountPercent,
+            selectedVariantDiscountAmount: selectedVariantDiscountAmount,
+            selectedVariantEffectivePrice: selectedVariantEffectivePrice,
             isDripFeed: isDripActive,
             runs: runsVal,
             interval: intervalMins,
@@ -7573,6 +7621,8 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         }
 
         const { amount, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
+        const couponCode = orderDetails?.couponCode || req.body.couponCode || '';
+        const couponModule = orderDetails?.couponModule || req.body.couponModule || (incomingOrderType === 'smm' || orderDetails?.orderType === 'smm' ? 'smm' : 'general');
         let finalChargeAmount = Number(amount);
         let orderType = 'agency';
         let resolvedServiceId = '';
@@ -7584,37 +7634,49 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         let selectedQuality = '';
         let selectedSpeed = '';
         let selectedRefill = '';
+        let selectedVariantBasePrice = 0;
+        let selectedVariantDiscountPercent = 0;
+        let selectedVariantDiscountAmount = 0;
+        let selectedVariantEffectivePrice = 0;
 
         if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
             orderType = 'smm';
-            const requestedServiceId = serviceId || orderDetails?.serviceId || '';
-            resolvedServiceId = requestedServiceId;
             resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
             resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
             if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
                 resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
             }
 
-            const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
             const requestedVariantId = orderDetails?.variantId != null ? orderDetails.variantId : req.body.variantId;
-            const selection = await resolveSmmServiceSelection(requestedServiceId, variantIdx, requestedVariantId);
-            if (!selection?.service || !selection?.variant) {
-                return res.status(404).json({ success: false, error: 'SMM Service not found.' });
-            }
+            
+            const incomingVariantId = Number(requestedVariantId);
+            if (!incomingVariantId) return res.status(400).json({ success: false, error: "Variant ID is missing" });
 
-            const { minQty, maxQty } = getSmmVariantQuantityBounds(selection.variant);
-            if (!Number.isFinite(resolvedQuantity) || resolvedQuantity < minQty || resolvedQuantity > maxQty) {
-                return res.status(400).json({ success: false, error: `Quantity must be between ${minQty} and ${maxQty}.` });
-            }
+            const serviceDoc = await SmmService.findOne({ "variants.variantId": incomingVariantId });
+            if (!serviceDoc) return res.status(404).json({ success: false, error: "SMM Service not found." });
 
-            resolvedServiceId = selection.canonicalServiceId;
-            selectedVariantName = trimSmmText(selection.variant.name);
-            selectedVariantId = normalizeSmmServiceIdValue(selection.variant.variantId);
-            selectedCountry = trimSmmText(selection.variant.country);
+            const targetVariant = serviceDoc.variants.find(v => v.variantId === incomingVariantId);
+            if (!targetVariant) return res.status(404).json({ success: false, error: "Variant data corrupted" });
+
+            resolvedServiceId = serviceDoc.serviceId;
+            selectedVariantName = trimSmmText(targetVariant.name);
+            selectedVariantId = normalizeSmmServiceIdValue(targetVariant.variantId);
+            selectedCountry = trimSmmText(targetVariant.country);
             selectedQuality = selectedVariantName;
-            selectedSpeed = trimSmmText(selection.variant.speed);
-            selectedRefill = trimSmmText(selection.variant.refill);
-            finalChargeAmount = calculateSmmVariantTotal(resolvedQuantity, selection.variant);
+            selectedSpeed = trimSmmText(targetVariant.speed);
+            selectedRefill = trimSmmText(targetVariant.refill);
+            
+            const pricing = getSmmVariantPricing(targetVariant);
+            selectedVariantBasePrice = pricing.basePrice;
+            selectedVariantDiscountPercent = pricing.discountPercent;
+            selectedVariantDiscountAmount = pricing.discountAmount;
+            selectedVariantEffectivePrice = pricing.effectivePrice;
+            
+            let calculatedPrice = (targetVariant.price / 1000) * resolvedQuantity;
+            if (targetVariant.discountPercent && targetVariant.discountPercent > 0) {
+                calculatedPrice = calculatedPrice * (1 - (targetVariant.discountPercent / 100));
+            }
+            finalChargeAmount = parseFloat(calculatedPrice.toFixed(2));
 
             if (!Number.isFinite(finalChargeAmount) || finalChargeAmount <= 0) {
                 return res.status(400).json({ success: false, error: 'Invalid SMM variant price.' });
@@ -7627,6 +7689,22 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        if (normalizeCouponCode(couponCode)) {
+            const couponPricing = await resolveCouponCheckoutPricing({
+                code: couponCode,
+                cartTotal: finalChargeAmount,
+                moduleName: couponModule,
+                user
+            });
+            finalChargeAmount = couponPricing.finalTotal;
+            if (orderDetails && typeof orderDetails === 'object') {
+                orderDetails.couponCode = couponPricing.coupon.code;
+                orderDetails.couponDiscountAmount = couponPricing.discountAmount;
+                orderDetails.couponFinalTotal = couponPricing.finalTotal;
+                orderDetails.couponModule = couponPricing.module;
+            }
         }
 
         // Check if wallet is Active
@@ -7700,6 +7778,10 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
             selectedRefill: selectedRefill,
+            selectedVariantBasePrice: selectedVariantBasePrice,
+            selectedVariantDiscountPercent: selectedVariantDiscountPercent,
+            selectedVariantDiscountAmount: selectedVariantDiscountAmount,
+            selectedVariantEffectivePrice: selectedVariantEffectivePrice,
             isDripFeed: isDripActive,
             runs: runsVal,
             interval: intervalMins,
@@ -7743,7 +7825,37 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         }
     } catch (e) {
         console.error('❌ Wallet Checkout Error:', e);
-        res.status(500).json({ success: false, error: e.message || 'Wallet checkout failed.' });
+        res.status(e.status || 500).json({ success: false, error: e.message || 'Wallet checkout failed.' });
+    }
+});
+
+// POST /api/billing/apply-coupon
+app.post('/api/billing/apply-coupon', optionalAuth, async (req, res) => {
+    try {
+        const pricing = await resolveCouponCheckoutPricing({
+            code: req.body?.code,
+            cartTotal: req.body?.cartTotal,
+            moduleName: req.body?.module,
+            user: req.user
+        });
+
+        res.json({
+            success: true,
+            module: pricing.module,
+            cartTotal: pricing.cartTotal,
+            discountAmount: pricing.discountAmount,
+            finalTotal: pricing.finalTotal,
+            coupon: {
+                code: pricing.coupon.code,
+                discountType: pricing.coupon.discountType,
+                discountValue: pricing.coupon.discountValue,
+                isGlobal: pricing.coupon.isGlobal,
+                expiresAt: pricing.coupon.expiresAt || null
+            }
+        });
+    } catch (e) {
+        console.error('❌ Apply Coupon Error:', e);
+        res.status(e.status || 500).json({ success: false, error: e.message || 'Failed to apply coupon.' });
     }
 });
 

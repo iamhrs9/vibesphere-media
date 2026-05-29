@@ -331,6 +331,71 @@
             color: #166534;
         }
 
+        .coupon-card {
+            margin-top: 4px;
+            padding: 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 255, 0.92));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .coupon-card__header {
+            margin-bottom: 14px;
+        }
+
+        .coupon-card__row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .coupon-card__input {
+            flex: 1;
+        }
+
+        .coupon-card__button {
+            border: none;
+            padding: 14px 18px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--checkout-primary) 0%, #7c5cff 100%);
+            color: #fff;
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            box-shadow: 0 14px 24px rgba(107, 70, 193, 0.18);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+        }
+
+        .coupon-card__button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 28px rgba(107, 70, 193, 0.22);
+            filter: brightness(1.02);
+        }
+
+        .coupon-card__button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 14px 24px rgba(107, 70, 193, 0.12);
+        }
+
+        .coupon-status {
+            margin-top: 10px;
+            color: var(--checkout-text-soft);
+            font-size: 0.84rem;
+            line-height: 1.7;
+        }
+
+        .coupon-status.is-success {
+            color: #15803d;
+        }
+
+        .coupon-status.is-error {
+            color: #b91c1c;
+        }
+
         .btn-pay {
             width: 100%;
             margin-top: 6px;
@@ -600,6 +665,15 @@
                 width: calc(50% - 5px);
                 justify-content: center;
             }
+
+            .coupon-card__row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .coupon-card__button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -678,6 +752,19 @@
                             </div>
                         </div>
 
+                        <div class="coupon-card">
+                            <div class="coupon-card__header">
+                                <span class="form-card__eyebrow">Promo Code</span>
+                                <h2 style="margin: 0 0 6px; color: #0f172a; font-size: 1.05rem; line-height: 1.25;">Apply a checkout coupon</h2>
+                                <p style="margin: 0; color: #64748b; font-size: 0.92rem; line-height: 1.7;">Universal coupons work across SMM, web, SEO, and every other checkout module.</p>
+                            </div>
+                            <div class="coupon-card__row">
+                                <input type="text" id="couponCodeInput" class="coupon-card__input" placeholder="Enter promo code">
+                                <button type="button" id="applyCouponBtn" class="coupon-card__button">Apply</button>
+                            </div>
+                            <div id="couponStatus" class="coupon-status">Have a promo? Apply it before you pay.</div>
+                        </div>
+
                         <button type="submit" class="btn-pay">Pay Now & Place Order</button>
 
                         <div class="payment-methods" aria-label="Accepted payment methods">
@@ -712,6 +799,14 @@
                         <span>Target</span>
                         <strong id="dispInsta">...</strong>
                     </div>
+                    <div class="summary-meta__row" id="couponMetaRow" style="display:none;">
+                        <span>Promo Code</span>
+                        <strong id="couponMetaValue">—</strong>
+                    </div>
+                    <div class="summary-meta__row" id="couponDiscountRow" style="display:none;">
+                        <span>Discount</span>
+                        <strong id="couponDiscountValue">—</strong>
+                    </div>
                 </div>
 
                 <div class="summary-total">
@@ -744,10 +839,10 @@
 
         let pkg = params.get('package');
         let price = params.get('price'); // e.g., "$19" or "640 NPR"
-        let smmServiceId = params.get('smmServiceId') || params.get('serviceId') || null;
+        let smmServiceId = null;
         let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
         let insta = params.get('insta') || params.get('targetLink') || null;
-        let smmVariantIndex = params.get('variantIndex') ? Number(params.get('variantIndex')) : 0;
+        let smmVariantIndex = 0;
         let smmVariantId = params.get('variantId') ? Number(params.get('variantId')) : null;
         let isDripFeed = params.get('isDripFeed') === 'true';
         let dripRuns = params.get('runs') ? Number(params.get('runs')) : 1;
@@ -755,10 +850,15 @@
         let extraInput = params.get('extraInput') || null;
         let extraInputType = params.get('extraInputType') || 'none';
         let currencyFromURL = params.get('currency') || "INR";
-        let validSmmService = !(smmServiceId && smmQty);
+        let isSmmCheckout = Boolean(smmVariantId && smmQty);
+        let checkoutModule = params.get('module') || (isSmmCheckout ? 'smm' : 'general');
+        let validSmmService = !isSmmCheckout;
         let isCartCheckout = false;
         let isGuestCartCheckout = params.get('guest') === '1';
         let cartItems = [];
+        let checkoutBaseTotal = 0;
+        let checkoutPayableTotal = 0;
+        let appliedCoupon = null;
 
         async function hasActiveSession() {
             try {
@@ -829,6 +929,109 @@
 
         function formatSummaryAmount(amount, currency) {
             return `${getCurrencySymbol(currency)}${Number(amount || 0).toLocaleString()}`;
+        }
+
+        function formatCheckoutAmount(amount, currency = currencyFromURL) {
+            const numeric = Number(amount || 0);
+            if (!Number.isFinite(numeric)) {
+                return `${getCurrencySymbol(currency)}0.00`;
+            }
+            return `${getCurrencySymbol(currency)}${numeric.toFixed(2)}`;
+        }
+
+        function setCouponStatus(message, state = '') {
+            const statusEl = document.getElementById('couponStatus');
+            if (!statusEl) return;
+            statusEl.textContent = message || 'Have a promo? Apply it before you pay.';
+            statusEl.classList.remove('is-success', 'is-error');
+            if (state === 'success') statusEl.classList.add('is-success');
+            if (state === 'error') statusEl.classList.add('is-error');
+        }
+
+        function syncCouponSummary() {
+            const codeRow = document.getElementById('couponMetaRow');
+            const codeValue = document.getElementById('couponMetaValue');
+            const discountRow = document.getElementById('couponDiscountRow');
+            const discountValue = document.getElementById('couponDiscountValue');
+            if (appliedCoupon && appliedCoupon.code) {
+                if (codeRow) codeRow.style.display = 'flex';
+                if (codeValue) codeValue.textContent = appliedCoupon.code;
+                if (discountRow) discountRow.style.display = 'flex';
+                if (discountValue) discountValue.textContent = `- ${formatCheckoutAmount(appliedCoupon.discountAmount || 0)}`;
+            } else {
+                if (codeRow) codeRow.style.display = 'none';
+                if (codeValue) codeValue.textContent = '—';
+                if (discountRow) discountRow.style.display = 'none';
+                if (discountValue) discountValue.textContent = '—';
+            }
+        }
+
+        function setCheckoutTotal(baseAmount, payableAmount = baseAmount) {
+            checkoutBaseTotal = Number(baseAmount || 0);
+            checkoutPayableTotal = Number.isFinite(Number(payableAmount)) ? Number(payableAmount) : checkoutBaseTotal;
+            price = formatCheckoutAmount(checkoutPayableTotal);
+            const dispPrice = document.getElementById('dispPrice');
+            if (dispPrice) {
+                dispPrice.innerText = price;
+            }
+            syncCouponSummary();
+        }
+
+        async function applyCheckoutCoupon() {
+            const input = document.getElementById('couponCodeInput');
+            const button = document.getElementById('applyCouponBtn');
+            const code = String(input?.value || '').trim();
+
+            if (!code) {
+                setCouponStatus('Please enter a promo code first.', 'error');
+                return;
+            }
+
+            if (!Number.isFinite(checkoutBaseTotal) || checkoutBaseTotal <= 0) {
+                setCouponStatus('Order total is not ready yet. Please wait a moment.', 'error');
+                return;
+            }
+
+            if (button) button.disabled = true;
+            setCouponStatus('Applying coupon...', '');
+
+            try {
+                const res = await fetch('/api/billing/apply-coupon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        code,
+                        cartTotal: checkoutBaseTotal,
+                        module: checkoutModule
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to apply coupon.');
+                }
+
+                appliedCoupon = {
+                    code: data.coupon?.code || code.toUpperCase(),
+                    discountType: data.coupon?.discountType || 'percent',
+                    discountValue: Number(data.coupon?.discountValue || 0),
+                    discountAmount: Number(data.discountAmount || 0),
+                    finalTotal: Number(data.finalTotal || checkoutBaseTotal),
+                    module: data.module || checkoutModule
+                };
+
+                checkoutPayableTotal = Number(data.finalTotal || checkoutBaseTotal);
+                setCheckoutTotal(checkoutBaseTotal, checkoutPayableTotal);
+                setCouponStatus(`Promo ${appliedCoupon.code} applied. You saved ${formatCheckoutAmount(appliedCoupon.discountAmount)}.`, 'success');
+                await initCheckoutWallet(checkoutPayableTotal);
+            } catch (error) {
+                appliedCoupon = null;
+                syncCouponSummary();
+                setCouponStatus(error.message || 'Unable to apply coupon right now.', 'error');
+            } finally {
+                if (button) button.disabled = false;
+            }
         }
 
         let userWalletBalance = 0;
@@ -1014,8 +1217,7 @@
 
         // Screen par dikhao ya Cart Fetch karo
         document.addEventListener('DOMContentLoaded', async () => {
-            if (smmServiceId && smmQty) {
-                // Single item SMM checkout flow
+            if (isSmmCheckout) {
                 setCheckoutSubmitState(true);
                 document.getElementById('dispPkg').innerText = "Loading SMM package...";
                 document.getElementById('dispPrice').innerText = "...";
@@ -1027,66 +1229,56 @@
                 }]);
 
                 try {
-                    const res = await fetch('/api/smm/rates');
+                    const res = await fetch(`/api/checkout/service-details?variantId=${encodeURIComponent(String(smmVariantId))}`);
                     const data = await res.json();
-                    if (data && data.success && Array.isArray(data.rates)) {
-                        const selection = resolveSmmSelection(data.rates, smmServiceId, smmVariantIndex, smmVariantId);
-                        if (selection?.service && selection?.variant) {
-                            const ratePer1000 = Number(selection.variant.price || 0);
-                            const computedPrice = parseFloat(((smmQty / 1000) * ratePer1000).toFixed(2));
-
-                            smmServiceId = selection.service.serviceId;
-                            smmVariantIndex = selection.variantIndex;
-                            smmVariantId = Number(selection.variant.variantId || smmVariantId || null);
-                            pkg = buildSmmPackageLabel(selection.service, selection.variant, smmQty);
-                            price = `₹${computedPrice.toFixed(2)}`;
-
-                            validSmmService = true;
-                            setSmmCheckoutError('');
-                            document.getElementById('dispPkg').innerText = pkg;
-                            document.getElementById('dispPrice').innerText = price;
-                            document.getElementById('dispInsta').innerText = insta || "Not Provided";
-                            setCheckoutSubmitState(false);
-
-                            renderSummaryItems([{
-                                title: pkg,
-                                subtitle: buildSmmSummarySubtitle(selection.service, selection.variant, insta),
-                                amount: price
-                            }]);
-                        } else {
-                            console.error("SMM service not found in rates");
-                            setSmmCheckoutState({
-                                valid: false,
-                                pkgText: 'Invalid SMM Service',
-                                priceText: '₹0',
-                                summaryTitle: 'Invalid SMM Service',
-                                summarySubtitle: 'The selected SMM service could not be found. Please choose another service.',
-                                summaryAmount: '₹0',
-                                errorText: 'The selected SMM service is invalid or unavailable. Please go back and choose a valid service.'
-                            });
+                    if (data && data.success && data.service && data.variant) {
+                        checkoutModule = 'smm';
+                        smmServiceId = data.service.serviceId;
+                        smmVariantId = Number(data.variant.variantId || smmVariantId || null);
+                        const fetchedVariant = data.variant;
+                        let calculatedPrice = (Number(fetchedVariant.price || 0) / 1000) * Number(smmQty || 0);
+                        if (fetchedVariant.discountPercent && Number(fetchedVariant.discountPercent) > 0) {
+                            calculatedPrice = calculatedPrice * (1 - (Number(fetchedVariant.discountPercent) / 100));
                         }
+                        const computedPrice = parseFloat(calculatedPrice.toFixed(2));
+
+                        pkg = buildSmmPackageLabel(data.service, data.variant, smmQty);
+                        appliedCoupon = null;
+                        setCheckoutTotal(computedPrice, computedPrice);
+
+                        validSmmService = true;
+                        setSmmCheckoutError('');
+                        document.getElementById('dispPkg').innerText = pkg;
+                        document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                        setCheckoutSubmitState(false);
+
+                        renderSummaryItems([{
+                            title: pkg,
+                            subtitle: buildSmmSummarySubtitle(data.service, data.variant, insta),
+                            amount: price
+                        }]);
                     } else {
-                        console.error("Failed to load SMM rates");
+                        console.error("SMM variant not found in checkout details");
                         setSmmCheckoutState({
                             valid: false,
-                            pkgText: 'Invalid SMM Service',
+                            pkgText: 'Invalid SMM Variant',
                             priceText: '₹0',
-                            summaryTitle: 'Invalid SMM Service',
-                            summarySubtitle: 'Unable to validate the selected SMM service right now.',
+                            summaryTitle: 'Invalid SMM Variant',
+                            summarySubtitle: 'The selected SMM variant could not be found. Please choose another service.',
                             summaryAmount: '₹0',
-                            errorText: 'Unable to validate the selected SMM service. Please refresh and try again.'
+                            errorText: 'The selected SMM variant is invalid or unavailable. Please go back and choose a valid variant.'
                         });
                     }
                 } catch (err) {
-                    console.error("Error fetching SMM rates:", err);
+                    console.error("Error fetching SMM checkout details:", err);
                     setSmmCheckoutState({
                         valid: false,
-                        pkgText: 'Invalid SMM Service',
+                        pkgText: 'Invalid SMM Variant',
                         priceText: '₹0',
-                        summaryTitle: 'Invalid SMM Service',
-                        summarySubtitle: 'Unable to validate the selected SMM service right now.',
+                        summaryTitle: 'Invalid SMM Variant',
+                        summarySubtitle: 'Unable to validate the selected SMM variant right now.',
                         summaryAmount: '₹0',
-                        errorText: 'Unable to validate the selected SMM service. Please refresh and try again.'
+                        errorText: 'Unable to validate the selected SMM variant. Please refresh and try again.'
                     });
                 }
 
@@ -1122,9 +1314,12 @@
                 }
             } else if (pkg && price) {
                 // Single item checkout flow
+                checkoutModule = 'general';
                 document.getElementById('dispPkg').innerText = pkg;
                 document.getElementById('dispPrice').innerText = price;
                 document.getElementById('dispInsta').innerText = insta || "Not Provided";
+                appliedCoupon = null;
+                setCheckoutTotal(Number(parseFloat(String(price).replace(/[^0-9.]/g, '')) || 0));
                 setCheckoutSubmitState(false);
                 renderSummaryItems([{
                     title: pkg,
@@ -1134,6 +1329,7 @@
             } else {
                 // Cart checkout flow
                 isCartCheckout = true;
+                checkoutModule = 'cart';
                 document.getElementById('dispPkg').innerText = "Loading Cart...";
                 try {
                     if (isGuestCartCheckout) {
@@ -1190,10 +1386,11 @@
                     });
 
                     pkg = `Cart Order (${cartItems.length} items): ` + packageNames.slice(0, 2).join(', ') + (cartItems.length > 2 ? '...' : '');
-                    price = `${symbol}${totalAmount}`;
+                    appliedCoupon = null;
+                    currencyFromURL = cartItems[0]?.currency || currencyFromURL;
+                    setCheckoutTotal(totalAmount, totalAmount);
 
                     document.getElementById('dispPkg').innerText = pkg;
-                    document.getElementById('dispPrice').innerText = price;
                     document.getElementById('dispInsta').innerText = "Will be collected per package";
                     renderSummaryItems(cartItems.map((item) => ({
                         title: item.packageId?.title || item.title || 'Package',
@@ -1208,9 +1405,7 @@
             }
             
             // Parse final price and init wallet balance checkout checks
-            const dispPriceText = document.getElementById('dispPrice').innerText;
-            const numericPrice = parseFloat(dispPriceText.replace(/[^0-9.]/g, '')) || 0;
-            await initCheckoutWallet(numericPrice);
+            await initCheckoutWallet(checkoutPayableTotal);
 
             // Auto-fill user details if logged in
             try {
@@ -1241,7 +1436,7 @@
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            if (smmServiceId && smmQty && !validSmmService) {
+            if (isSmmCheckout && !validSmmService) {
                 alert('Invalid SMM service selected. Please choose a valid service before continuing.');
                 return;
             }
@@ -1257,7 +1452,9 @@
                 alert("Invalid total amount. Please wait for cart to load.");
                 return;
             }
-            const finalAmount = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
+            const finalAmount = Number.isFinite(checkoutPayableTotal) && checkoutPayableTotal > 0
+                ? checkoutPayableTotal
+                : parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
 
             // Button Update
             const btn = document.querySelector('.btn-pay');
@@ -1289,26 +1486,28 @@
                         amount: finalAmount,
                         orderDetails: {
                             package: pkg,
-                            price: rawPrice,
+                            price: price || rawPrice,
                             currency: currencyFromURL,
                             instaLink: insta,
                             customerName: name,
                             phone: phone,
                             email: email,
                             orderItems: isCartCheckout ? cartItems : [],
-                            orderType: smmServiceId && smmQty ? 'smm' : 'agency',
+                            orderType: isSmmCheckout ? 'smm' : 'agency',
                             extraInput: extraInput,
-                            extraInputType: extraInputType
+                            extraInputType: extraInputType,
+                            couponCode: appliedCoupon?.code || '',
+                            couponDiscountAmount: appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0,
+                            couponFinalTotal: appliedCoupon ? (checkoutPayableTotal || finalAmount) : 0,
+                            couponModule: appliedCoupon ? checkoutModule : ''
                         }
                     };
 
-                    if (smmServiceId && smmQty) {
+                    if (isSmmCheckout) {
                         walletPayload.isSmm = true;
-                        walletPayload.serviceId = smmServiceId;
                         walletPayload.quantity = smmQty;
                         walletPayload.targetLink = insta;
                         walletPayload.orderType = 'smm';
-                        walletPayload.variantIndex = smmVariantIndex;
                         walletPayload.variantId = smmVariantId;
                         walletPayload.isDripFeed = isDripFeed;
                         walletPayload.runs = dripRuns;
@@ -1319,6 +1518,7 @@
                         walletPayload.orderType = 'agency';
                     }
 
+                    console.log("Submitting wallet SMM checkout with payload:", walletPayload);
                     const walletRes = await fetch('/api/checkout/wallet', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1361,15 +1561,15 @@
             try {
                 const createPayload = {
                     currency: currencyFromURL,
-                    items: isCartCheckout ? cartItems : []
+                    items: isCartCheckout ? cartItems : [],
+                    couponCode: appliedCoupon?.code || '',
+                    couponModule: checkoutModule
                 };
 
-                if (smmServiceId && smmQty) {
+                if (isSmmCheckout) {
                     createPayload.isSmm = true;
-                    createPayload.serviceId = smmServiceId;
                     createPayload.quantity = smmQty;
                     createPayload.orderType = 'smm';
-                    createPayload.variantIndex = smmVariantIndex;
                     createPayload.variantId = smmVariantId;
                     createPayload.isDripFeed = isDripFeed;
                     createPayload.runs = dripRuns;
@@ -1382,6 +1582,7 @@
                 }
 
                 // Step A: Server ko Order Create karne bolo
+                console.log("Creating Razorpay SMM payment with payload:", createPayload);
                 const orderResponse = await fetch('/api/create-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1389,8 +1590,8 @@
                     credentials: 'include'
                 });
 
-                if (!orderResponse.ok) throw new Error("Server Error");
                 const orderData = await orderResponse.json();
+                if (!orderResponse.ok) throw new Error(orderData.error || "Server Error");
 
                 if (!orderData.razorpayKeyId) {
                     throw new Error("Razorpay key not available");
@@ -1414,24 +1615,26 @@
                             razorpay_signature: response.razorpay_signature,
                             orderDetails: {
                                 package: pkg,
-                                price: rawPrice, // Display price (e.g. $19)
+                                price: price || rawPrice, // Display price (e.g. $19)
                                 currency: currencyFromURL,
                                 instaLink: insta,
                                 customerName: name,
                                 phone: phone,
                                 email: email,
                                 orderItems: isCartCheckout ? cartItems : [],
-                                orderType: smmServiceId && smmQty ? 'smm' : 'agency',
-                                variantIndex: smmServiceId && smmQty ? smmVariantIndex : undefined,
-                                variantId: smmServiceId && smmQty ? smmVariantId : undefined,
+                                orderType: isSmmCheckout ? 'smm' : 'agency',
+                                variantId: isSmmCheckout ? smmVariantId : undefined,
                                 extraInput: extraInput,
-                                extraInputType: extraInputType
+                                extraInputType: extraInputType,
+                                couponCode: appliedCoupon?.code || '',
+                                couponDiscountAmount: appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0,
+                                couponFinalTotal: appliedCoupon ? (checkoutPayableTotal || finalAmount) : 0,
+                                couponModule: appliedCoupon ? checkoutModule : ''
                             }
                         };
 
-                        if (smmServiceId && smmQty) {
+                        if (isSmmCheckout) {
                             verifyPayload.isSmm = true;
-                            verifyPayload.serviceId = smmServiceId;
                             verifyPayload.quantity = smmQty;
                             verifyPayload.targetLink = insta;
                             verifyPayload.orderType = 'smm';

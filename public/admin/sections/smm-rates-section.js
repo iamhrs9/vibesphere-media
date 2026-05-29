@@ -987,6 +987,7 @@
             inputType: inferredHasDynamicInput ? (inferredInputType === 'textarea' ? 'textarea' : 'text') : 'none',
             inputLabel: normalizeText(variant.inputLabel),
             price: variant.price != null ? String(variant.price) : '',
+            discountPercent: variant.discountPercent != null ? String(variant.discountPercent) : '0',
             minQty: variant.minQty != null ? String(variant.minQty) : '10',
             maxQty: variant.maxQty != null ? String(variant.maxQty) : '10000',
             legacyServiceIds: Array.isArray(variant.legacyServiceIds) ? [...variant.legacyServiceIds] : []
@@ -1004,6 +1005,7 @@
             inputType: 'none',
             inputLabel: '',
             price: '',
+            discountPercent: '0',
             minQty: '10',
             maxQty: '10000',
             legacyServiceIds: []
@@ -1192,6 +1194,7 @@
             <article class="smm-variant-card">
                 <div class="smm-variant-head">
                     <strong>Variant ${index + 1}</strong>
+                    <input type="hidden" class="variant-id-input" value="${escapeHtml(variant.variantId || '')}">
                     <button type="button" class="smm-remove-variant" onclick="window.removeSmmVariant(${index})">Remove</button>
                 </div>
                 <div class="smm-field-grid">
@@ -1214,6 +1217,10 @@
                     <div class="smm-field">
                         <label>Price / 1K</label>
                         <input type="number" min="0.01" step="0.01" class="smm-input" value="${escapeHtml(variant.price)}" placeholder="e.g. 150" oninput="window.updateSmmVariant(${index}, 'price', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Discount % <span class="smm-muted">(Optional)</span></label>
+                        <input type="number" min="0" max="100" step="0.01" class="smm-input" value="${escapeHtml(variant.discountPercent)}" placeholder="e.g. 10" oninput="window.updateSmmVariant(${index}, 'discountPercent', this.value)">
                     </div>
                     <div class="smm-field">
                         <label>Min Quantity</label>
@@ -1599,6 +1606,7 @@
             inputType: variant.hasDynamicInput ? (normalizeText(variant.inputType) === 'textarea' ? 'textarea' : 'text') : 'none',
             inputLabel: variant.hasDynamicInput ? normalizeText(variant.inputLabel) : '',
             price: Number(variant.price),
+            discountPercent: Number(variant.discountPercent),
             minQty: Number(variant.minQty),
             maxQty: Number(variant.maxQty),
             legacyServiceIds: Array.isArray(variant.legacyServiceIds) ? [...variant.legacyServiceIds] : []
@@ -1609,6 +1617,9 @@
                 || (variant.hasDynamicInput === true && !variant.inputLabel)
                 || !Number.isFinite(variant.price)
                 || variant.price <= 0
+                || !Number.isFinite(variant.discountPercent)
+                || variant.discountPercent < 0
+                || variant.discountPercent > 100
                 || !Number.isFinite(variant.minQty)
                 || variant.minQty <= 0
                 || !Number.isFinite(variant.maxQty)
@@ -1616,7 +1627,7 @@
         });
 
         if (invalidVariant) {
-            showServiceError('Every variant needs a name, positive price, valid min/max quantity values, and a dynamic input label when enabled.');
+            showServiceError('Every variant needs a name, positive price, a discount between 0 and 100, valid min/max quantity values, and a dynamic input label when enabled.');
             return;
         }
 
