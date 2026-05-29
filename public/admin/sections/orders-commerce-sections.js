@@ -75,14 +75,15 @@
         }
 
         const country = order.selectedCountry || order.country || '';
-        const quality = order.selectedQuality || order.quality || '';
+        const quality = order.selectedVariantName || order.selectedQuality || order.quality || '';
+        const variantId = order.selectedVariantId || order.variantId || '';
         const speed = order.selectedSpeed || order.speed || '';
         const refill = order.selectedRefill || order.refill || '';
 
-        if (country?.length || quality?.length || speed?.length || refill?.length) {
+        if (country?.length || quality?.length || variantId || speed?.length || refill?.length) {
             let details = [];
             if (country?.length) details.push(`📍 Country: ${escapeHtml(country)}`);
-            if (quality?.length) details.push(`💎 Quality: ${escapeHtml(quality)}`);
+            if (quality?.length) details.push(`💎 Variant: ${escapeHtml(quality)}${variantId ? ` (#${escapeHtml(variantId)})` : ''}`);
             if (speed?.length) details.push(`⚡ Speed: ${escapeHtml(speed)}`);
             if (refill?.length) details.push(`🔄 Refill: ${escapeHtml(refill)}`);
             

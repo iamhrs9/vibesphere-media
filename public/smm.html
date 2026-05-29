@@ -426,6 +426,259 @@
             border-color: #6c63ff;
             box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
         }
+
+        /* --- PREMIUM VARIANT SELECTOR --- */
+        .variant-selector-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+        }
+
+        .variant-dropdown-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .variant-dropdown-trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            text-align: left;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 14px 16px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        .variant-dropdown-trigger:hover {
+            border-color: rgba(108, 99, 255, 0.35);
+            box-shadow: 0 14px 30px rgba(108, 99, 255, 0.10);
+        }
+
+        .variant-dropdown-trigger:focus-visible {
+            outline: none;
+            border-color: rgba(108, 99, 255, 0.65);
+            box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.14), 0 14px 30px rgba(108, 99, 255, 0.10);
+        }
+
+        .variant-dropdown-trigger.open {
+            border-color: rgba(108, 99, 255, 0.65);
+            box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.08), 0 14px 30px rgba(108, 99, 255, 0.12);
+        }
+
+        .variant-dropdown-selected {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .variant-dropdown-selected-copy {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .variant-dropdown-selected-empty {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #64748b;
+        }
+
+        .variant-dropdown-selected-price {
+            min-width: 88px;
+            text-align: right;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .variant-dropdown-selected-price span {
+            margin-top: 4px;
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        .variant-dropdown-chevron {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+            color: #94a3b8;
+            transition: transform 0.18s ease, color 0.18s ease;
+        }
+
+        .variant-dropdown-trigger.open .variant-dropdown-chevron {
+            transform: rotate(180deg);
+            color: #6c63ff;
+        }
+
+        .variant-dropdown-menu {
+            position: absolute;
+            z-index: 50;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .variant-dropdown-menu.hidden {
+            display: none;
+        }
+
+        .variant-option-card {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .variant-option-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(108, 99, 255, 0.28);
+            box-shadow: 0 16px 32px rgba(108, 99, 255, 0.10);
+        }
+
+        .variant-option-card.active {
+            border-color: rgba(108, 99, 255, 0.65);
+            background: linear-gradient(180deg, rgba(108, 99, 255, 0.08) 0%, rgba(255, 255, 255, 1) 100%);
+            box-shadow: 0 18px 36px rgba(108, 99, 255, 0.14);
+        }
+
+        .variant-option-card.selected {
+            border-color: rgba(59, 130, 246, 0.75);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.10) 0%, rgba(255, 255, 255, 1) 100%);
+            box-shadow: 0 18px 36px rgba(59, 130, 246, 0.12);
+        }
+
+        .variant-option-card:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.16), 0 18px 36px rgba(108, 99, 255, 0.14);
+        }
+
+        .variant-option-copy {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .variant-option-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .variant-option-name {
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .variant-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+        }
+
+        .variant-pill--id {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .variant-pill--refill {
+            background: #ecfeff;
+            color: #0e7490;
+        }
+
+        .variant-pill--speed {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .variant-option-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .variant-option-price {
+            min-width: 92px;
+            text-align: right;
+            font-size: 1.06rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .variant-option-price span {
+            margin-top: 4px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        .variant-option-empty {
+            padding: 16px 18px;
+            border-radius: 16px;
+            border: 1px dashed #cbd5e1;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -531,10 +784,39 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="serviceType">Service Type</label>
-                        <select id="serviceType" class="form-control">
-                            <!-- Populated dynamically -->
+                        <label for="smmCategorySelect">Category</label>
+                        <select id="smmCategorySelect" class="form-control" onchange="selectCategory(this.value)">
+                            <option value="">Select Platform first...</option>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Variant</label>
+                        <div class="variant-selector-shell">
+                            <div class="variant-dropdown-wrapper" id="customVariantDropdownWrapper">
+                                <button id="variantDropdownTrigger" type="button" class="variant-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <div id="selectedVariantContent" class="variant-dropdown-selected">
+                                        <div class="variant-dropdown-selected-copy">
+                                            <div class="variant-dropdown-selected-empty">Select a package...</div>
+                                        </div>
+                                    </div>
+                                    <svg class="variant-dropdown-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <div id="variantDropdownMenu" class="variant-dropdown-menu hidden" role="listbox" aria-label="Variant options">
+                                    <div class="variant-option-empty">Select a category to view available variants.</div>
+                                </div>
+                            </div>
+                            <select id="serviceType" class="form-control" style="display:none;" aria-hidden="true" tabindex="-1">
+                                <option value="">Select Category first...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Extra Inputs (e.g. Custom Comments, Poll options, mentions) -->
+                    <div id="smmExtraInputGroup" class="form-group" style="display: none; border-top: 1px solid #f1f5f9; padding-top: 15px; margin-top: 15px;">
+                        <!-- Rendered dynamically -->
                     </div>
 
                     <div class="form-group">
@@ -553,36 +835,19 @@
                         </div>
                     </div>
 
-                    <!-- Variant Selectors Group -->
                     <div id="variantSelectorsGroup" style="display: none; border-top: 1px solid #f1f5f9; padding-top: 20px; margin-top: 20px;">
-                        <h4 style="margin: 0 0 12px 0; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px; font-size: 0.95rem;">
-                            <i class="ri-settings-4-line" style="color: #6c63ff;"></i> Service Specifications
-                        </h4>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="targetCountry" style="font-size: 0.8rem;">Target Country</label>
-                                <select id="targetCountry" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterQualityAndCascade(); calculatePrice();">
-                                </select>
+                        <div id="serviceDetailsCard" style="display: none; background: linear-gradient(135deg, rgba(108, 99, 255, 0.08), rgba(14, 165, 233, 0.05)); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 18px; padding: 18px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                                <div>
+                                    <p style="margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; font-weight: 700; color: #6c63ff;">Service Details</p>
+                                    <h4 id="serviceDetailsTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;"></h4>
+                                </div>
+                                <span id="serviceDetailsBadge" style="display: none; align-self: center; padding: 6px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.08); color: #334155; font-size: 0.75rem; font-weight: 700;"></span>
                             </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="accountQuality" style="font-size: 0.8rem;">Account Quality</label>
-                                <select id="accountQuality" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterSpeedForQuality(); calculatePrice();">
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="serviceSpeed" style="font-size: 0.8rem;">Speed</label>
-                                <select id="serviceSpeed" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="filterRefillForSpeed(); calculatePrice();">
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="refillGuarantee" style="font-size: 0.8rem;">Refill Guarantee</label>
-                                <select id="refillGuarantee" class="form-control" style="padding: 10px; font-size: 0.9rem;" onchange="calculatePrice()">
-                                </select>
-                            </div>
+                            <p id="serviceDescription" style="display: none; margin: 14px 0 0 0; color: #475569; font-size: 0.84rem; line-height: 1.6;"></p>
+                            <div id="serviceMetaRows" style="display: none; margin-top: 14px; gap: 10px; flex-wrap: wrap;"></div>
                         </div>
-                        <p id="variantError" style="color:#ef4444;font-size:0.8rem;display:none;margin-top:4px;">Selected combination is unavailable.</p>
-                        <p id="detailDescription" style="margin: 0; color: #64748b; font-size: 0.82rem; line-height: 1.4; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: none;"></p>
+                        <p id="variantError" style="color:#ef4444;font-size:0.8rem;display:none;margin-top:10px;">Please select a valid variant.</p>
                     </div>
 
                     <!-- SMM Drip Feed Selector Group -->
@@ -644,10 +909,17 @@
 
     <script>
         let smmRates = [];
+        let platformCatalog = [];
         let selectedPlatform = "Instagram";
+        let selectedCategory = "";
+        let requestedSelection = null;
+
+        function normalizeText(value) {
+            return String(value ?? '').trim();
+        }
 
         function escapeHtml(unsafe) {
-            return (unsafe || '').toString()
+            return normalizeText(unsafe)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
@@ -655,55 +927,632 @@
                 .replace(/'/g, "&#039;");
         }
 
-        document.addEventListener("DOMContentLoaded", async () => {
-            // Load live rates
-            await loadSmmRates();
+        function sameText(a, b) {
+            return normalizeText(a).toLowerCase() === normalizeText(b).toLowerCase();
+        }
 
-            // Set up calculator calculation event listeners
-            document.getElementById("serviceType").addEventListener("change", handleServiceSelectionChange);
-            document.getElementById("quantity").addEventListener("input", calculatePrice);
-            document.getElementById("quantity").addEventListener("keyup", calculatePrice);
-            document.getElementById("quantity").addEventListener("change", calculatePrice);
-        });
+        function getRequestedServiceToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return normalizeText(urlParams.get('service') || urlParams.get('serviceId'));
+        }
 
-        async function loadSmmRates() {
-            try {
-                const res = await fetch("/api/smm/rates");
-                const data = await res.json();
-                if (data.success) {
-                    smmRates = data.rates;
-                    populatePlatforms();
-                } else {
-                    document.getElementById("rateHint").innerText = "Failed to load rates.";
-                }
-            } catch (e) {
-                document.getElementById("rateHint").innerText = "Failed to fetch rates.";
-            }
+        function getRequestedVariantIndex() {
+            const rawIndex = Number(new URLSearchParams(window.location.search).get('variantIndex'));
+            return Number.isInteger(rawIndex) && rawIndex >= 0 ? rawIndex : 0;
+        }
+
+        function getRequestedVariantId() {
+            const rawId = Number(new URLSearchParams(window.location.search).get('variantId'));
+            return Number.isInteger(rawId) && rawId > 0 ? rawId : null;
         }
 
         function getFallbackPlatforms() {
             const uniquePlatformNames = [];
-            smmRates.forEach(r => {
-                if (r.platform && !uniquePlatformNames.some(p => p.toLowerCase() === r.platform.toLowerCase())) {
-                    uniquePlatformNames.push(r.platform);
+            smmRates.forEach((rate) => {
+                if (rate?.platform && !uniquePlatformNames.some((name) => sameText(name, rate.platform))) {
+                    uniquePlatformNames.push(rate.platform);
                 }
             });
-            
+
             const localLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
             const defaultPlatformLogos = {
-                "instagram": "https://img.icons8.com/color/96/instagram-new.png",
-                "youtube": "https://img.icons8.com/color/96/youtube-play.png",
-                "facebook": "https://img.icons8.com/color/96/facebook-new.png",
-                "twitter": "https://img.icons8.com/color/96/twitter--v1.png",
-                "tiktok": "https://img.icons8.com/color/96/tiktok.png",
-                "telegram": "https://img.icons8.com/color/96/telegram-app.png",
+                instagram: "https://img.icons8.com/color/96/instagram-new.png",
+                youtube: "https://img.icons8.com/color/96/youtube-play.png",
+                facebook: "https://img.icons8.com/color/96/facebook-new.png",
+                twitter: "https://img.icons8.com/color/96/twitter--v1.png",
+                tiktok: "https://img.icons8.com/color/96/tiktok.png",
+                telegram: "https://img.icons8.com/color/96/telegram-app.png",
                 ...localLogos
             };
-            
-            return uniquePlatformNames.map(name => ({
-                name: name,
+
+            return uniquePlatformNames.map((name) => ({
+                name,
                 logoUrl: defaultPlatformLogos[name.toLowerCase()] || "/assets/images/default-platform.png"
             }));
+        }
+
+        function getLowestVariantPrice(service) {
+            const validPrices = Array.isArray(service?.variants)
+                ? service.variants.map((variant) => Number(variant?.price)).filter((price) => Number.isFinite(price) && price >= 0)
+                : [];
+            return validPrices.length ? Math.min(...validPrices) : 0;
+        }
+
+        function getCurrentService() {
+            return window.currentPackage || null;
+        }
+
+        function getSelectedVariant() {
+            const service = getCurrentService();
+            if (!service || !Array.isArray(service.variants) || service.variants.length === 0) return null;
+            if (window.currentVariant && service.variants.includes(window.currentVariant)) {
+                return window.currentVariant;
+            }
+            const index = Number.isInteger(window.currentVariantIndex) ? window.currentVariantIndex : 0;
+            return service.variants[index] || null;
+        }
+
+        function resolveRequestedSelection(token = getRequestedServiceToken(), requestedVariantIndex = getRequestedVariantIndex(), requestedVariantId = getRequestedVariantId()) {
+            if (!token && requestedVariantId == null) return null;
+            const numericRequestedVariantId = Number(requestedVariantId);
+            const hasRequestedVariantId = Number.isInteger(numericRequestedVariantId) && numericRequestedVariantId > 0;
+
+            for (const service of smmRates) {
+                if (!service) continue;
+
+                const serviceMatches = String(service.serviceId) === String(token)
+                    || (Array.isArray(service.legacyServiceIds) && service.legacyServiceIds.some((legacyId) => String(legacyId) === String(token)))
+                    || (hasRequestedVariantId && Array.isArray(service.variants) && service.variants.some((variant) => Number(variant?.variantId) === numericRequestedVariantId));
+
+                if (serviceMatches) {
+                    const maxVariantIndex = Math.max((service.variants?.length || 1) - 1, 0);
+                    const matchedVariantIndex = hasRequestedVariantId
+                        ? service.variants.findIndex((variant) => Number(variant?.variantId) === numericRequestedVariantId)
+                        : -1;
+                    return {
+                        service,
+                        variantIndex: matchedVariantIndex >= 0 ? matchedVariantIndex : Math.min(requestedVariantIndex, maxVariantIndex)
+                    };
+                }
+
+                const matchedVariantIndex = Array.isArray(service.variants)
+                    ? service.variants.findIndex((variant) => (hasRequestedVariantId && Number(variant?.variantId) === numericRequestedVariantId) || (Array.isArray(variant?.legacyServiceIds) && variant.legacyServiceIds.some((legacyId) => String(legacyId) === String(token))))
+                    : -1;
+
+                if (matchedVariantIndex >= 0) {
+                    return {
+                        service,
+                        variantIndex: matchedVariantIndex
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        function buildPlatformCatalog(dbPlatforms = []) {
+            const merged = new Map();
+            [...getFallbackPlatforms(), ...(Array.isArray(dbPlatforms) ? dbPlatforms : [])].forEach((platform) => {
+                const name = normalizeText(platform?.name);
+                if (!name) return;
+                const key = name.toLowerCase();
+                const existing = merged.get(key) || {};
+                merged.set(key, {
+                    name,
+                    logoUrl: normalizeText(platform?.logoUrl || existing.logoUrl) || "/assets/images/default-platform.png"
+                });
+            });
+            return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        function resetCurrentServiceState() {
+            window.currentPackage = null;
+            window.currentVariantIndex = 0;
+            window.currentVariant = null;
+            renderExtraInputs();
+            renderServiceDetails();
+            updateQuantityLimits();
+        }
+
+        function updateFloatingLogo() {
+            const selectEl = document.getElementById("smmPlatformSelect");
+            const logoImg = document.getElementById("smmPlatformLogo");
+            if (!selectEl || !logoImg) return;
+
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            const logoUrl = selectedOption?.getAttribute('data-logo') || "/assets/images/default-platform.png";
+            logoImg.style.opacity = '0';
+            setTimeout(() => {
+                logoImg.src = logoUrl;
+                logoImg.style.opacity = '1';
+            }, 150);
+        }
+
+        function getServicesForSelectedPlatform() {
+            return smmRates.filter((service) => service?.platform && sameText(service.platform, selectedPlatform));
+        }
+
+        function getServiceForSelectedCategory() {
+            return getServicesForSelectedPlatform().find((service) => sameText(service.category, selectedCategory)) || null;
+        }
+
+        function updateTargetLinkLabel() {
+            const label = document.getElementById("targetLinkLabel");
+            const input = document.getElementById("targetLink");
+            const service = getCurrentService();
+            const variant = getSelectedVariant();
+            if (!label || !input) return;
+
+            const categoryText = `${normalizeText(service?.category)} ${normalizeText(variant?.name)}`.toLowerCase();
+
+            if (sameText(selectedPlatform, "instagram")) {
+                if (categoryText.includes("follower")) {
+                    label.innerText = "Instagram Profile Link *";
+                    input.placeholder = "e.g. https://instagram.com/your_username";
+                } else if (categoryText.includes("like") || categoryText.includes("comment") || categoryText.includes("view")) {
+                    label.innerText = "Instagram Post Link *";
+                    input.placeholder = "e.g. https://instagram.com/p/your_post_id";
+                } else {
+                    label.innerText = "Instagram Link *";
+                    input.placeholder = "e.g. https://instagram.com/your_username";
+                }
+                return;
+            }
+
+            if (sameText(selectedPlatform, "youtube")) {
+                if (categoryText.includes("subscriber") || categoryText.includes("channel")) {
+                    label.innerText = "YouTube Channel Link *";
+                    input.placeholder = "e.g. https://youtube.com/@your_channel";
+                } else {
+                    label.innerText = "YouTube Video Link *";
+                    input.placeholder = "e.g. https://youtube.com/watch?v=...";
+                }
+                return;
+            }
+
+            label.innerText = `${selectedPlatform || 'Service'} Link *`;
+            input.placeholder = "e.g. profile handle or post link";
+        }
+
+        function getVariantDisplayId(service, variant) {
+            return normalizeText(variant?.variantId) || normalizeText(variant?._id) || 'variant';
+        }
+
+        function closeVariantDropdown() {
+            const trigger = document.getElementById("variantDropdownTrigger");
+            const menu = document.getElementById("variantDropdownMenu");
+            if (!trigger || !menu) return;
+            menu.classList.add("hidden");
+            trigger.classList.remove("open");
+            trigger.setAttribute("aria-expanded", "false");
+        }
+
+        function openVariantDropdown() {
+            const trigger = document.getElementById("variantDropdownTrigger");
+            const menu = document.getElementById("variantDropdownMenu");
+            if (!trigger || !menu || trigger.disabled) return;
+            menu.classList.remove("hidden");
+            trigger.classList.add("open");
+            trigger.setAttribute("aria-expanded", "true");
+        }
+
+        function toggleVariantDropdown() {
+            const menu = document.getElementById("variantDropdownMenu");
+            if (!menu) return;
+            if (menu.classList.contains("hidden")) {
+                openVariantDropdown();
+            } else {
+                closeVariantDropdown();
+            }
+        }
+
+        function renderSelectedVariantContent(service, variant, index) {
+            const container = document.getElementById("selectedVariantContent");
+            const trigger = document.getElementById("variantDropdownTrigger");
+            if (!container || !trigger) return;
+
+            if (!service || !variant) {
+                container.innerHTML = `
+                    <div class="variant-dropdown-selected-copy">
+                        <div class="variant-dropdown-selected-empty">Select a package...</div>
+                    </div>
+                `;
+                trigger.disabled = false;
+                return;
+            }
+
+            const variantKey = getVariantDisplayId(service, variant);
+            const displayName = normalizeText(variant?.name) || `Variant ${index + 1}`;
+            const price = Number(variant?.price || 0);
+            const refill = normalizeText(variant?.refill);
+            const speed = normalizeText(variant?.speed);
+            let refillText = refill;
+            if (refillText && !refillText.toLowerCase().includes('refill')) {
+                refillText = `${refillText} Refill`;
+            }
+
+            container.innerHTML = `
+                <div class="variant-dropdown-selected-copy">
+                    <div class="variant-option-top">
+                        <span class="variant-pill variant-pill--id">${escapeHtml(variantKey)}</span>
+                        <span class="variant-option-name">${escapeHtml(displayName)}</span>
+                    </div>
+                    <div class="variant-option-meta">
+                        ${refillText ? `<span class="variant-pill variant-pill--refill">${escapeHtml(refillText)}</span>` : ''}
+                        ${speed ? `<span class="variant-pill variant-pill--speed">${escapeHtml(speed)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="variant-dropdown-selected-price">
+                    ₹${price.toFixed(2)}
+                    <span>/ 1K</span>
+                </div>
+            `;
+            trigger.disabled = false;
+        }
+
+        function updateVariantSelectionUI() {
+            const cards = document.querySelectorAll('#variantDropdownMenu .variant-option-card');
+            cards.forEach((card) => {
+                const isActive = Number(card.dataset.variantIndex) === Number(window.currentVariantIndex || 0);
+                card.classList.toggle('active', isActive);
+                card.classList.toggle('selected', isActive);
+                card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+        }
+
+        function selectVariant(index) {
+            const service = getCurrentService();
+            if (!service || !Array.isArray(service.variants) || !service.variants.length) return;
+
+            const safeIndex = Number.isInteger(Number(index)) ? Number(index) : 0;
+            const nextIndex = safeIndex >= 0 && safeIndex < service.variants.length ? safeIndex : 0;
+            window.currentVariantIndex = nextIndex;
+            window.currentVariant = service.variants[nextIndex] || null;
+
+            const hiddenSelect = document.getElementById("serviceType");
+            if (hiddenSelect) {
+                hiddenSelect.value = String(nextIndex);
+            }
+
+            updateVariantSelectionUI();
+            renderSelectedVariantContent(service, window.currentVariant, nextIndex);
+            closeVariantDropdown();
+            renderServiceDetails();
+            renderExtraInputs();
+            updateTargetLinkLabel();
+            updateQuantityLimits();
+            calculatePrice();
+        }
+
+        function renderVariantOptions(service, preferredVariantIndex = 0) {
+            const menu = document.getElementById("variantDropdownMenu");
+            const trigger = document.getElementById("variantDropdownTrigger");
+            const selectedContent = document.getElementById("selectedVariantContent");
+            const hiddenSelect = document.getElementById("serviceType");
+            const group = document.getElementById("variantSelectorsGroup");
+            if (!menu || !trigger || !selectedContent || !group) return;
+
+            if (!service || !Array.isArray(service.variants) || service.variants.length === 0) {
+                if (hiddenSelect) {
+                    hiddenSelect.innerHTML = `<option value="">No variants available</option>`;
+                    hiddenSelect.disabled = true;
+                }
+                menu.innerHTML = `<div class="variant-option-empty">No variants available for this category.</div>`;
+                selectedContent.innerHTML = `
+                    <div class="variant-dropdown-selected-copy">
+                        <div class="variant-dropdown-selected-empty">Select a package...</div>
+                    </div>
+                `;
+                trigger.disabled = true;
+                closeVariantDropdown();
+                group.style.display = "none";
+                resetCurrentServiceState();
+                calculatePrice();
+                return;
+            }
+
+            if (hiddenSelect) {
+                hiddenSelect.disabled = false;
+                hiddenSelect.innerHTML = service.variants.map((variant, index) => {
+                    const price = Number(variant?.price || 0);
+                    const name = normalizeText(variant?.name) || `Variant ${index + 1}`;
+                    const tags = [];
+                    if (normalizeText(variant?.refill)) tags.push(normalizeText(variant.refill));
+                    if (normalizeText(variant?.speed)) tags.push(normalizeText(variant.speed));
+                    const extra = tags.length > 0 ? ` (${tags.join(' | ')})` : '';
+                    return `<option value="${index}">${escapeHtml(`${name}${extra} • ₹${price.toFixed(2)}/1k`)}</option>`;
+                }).join("");
+            }
+
+            const safeIndex = preferredVariantIndex >= 0 && preferredVariantIndex < service.variants.length ? preferredVariantIndex : 0;
+            window.currentPackage = service;
+            window.currentVariantIndex = safeIndex;
+            window.currentVariant = service.variants[safeIndex] || null;
+            if (hiddenSelect) hiddenSelect.value = String(safeIndex);
+
+            menu.innerHTML = service.variants.map((variant, index) => {
+                const variantKey = getVariantDisplayId(service, variant);
+                const displayName = normalizeText(variant?.name) || `Variant ${index + 1}`;
+                const price = Number(variant?.price || 0);
+                const refill = normalizeText(variant?.refill);
+                const speed = normalizeText(variant?.speed);
+                let refillText = refill;
+                if (refillText && !refillText.toLowerCase().includes('refill')) {
+                    refillText = `${refillText} Refill`;
+                }
+                const serviceIdPill = escapeHtml(variantKey);
+
+                return `
+                    <button
+                        type="button"
+                        class="variant-option-card ${index === safeIndex ? 'active selected' : ''}"
+                        data-variant-index="${index}"
+                        data-service-id="${escapeHtml(service?.serviceId || '')}"
+                        data-variant-id="${escapeHtml(variantKey)}"
+                        aria-pressed="${index === safeIndex ? 'true' : 'false'}"
+                    >
+                        <div class="variant-option-copy">
+                            <div class="variant-option-top">
+                                <span class="variant-pill variant-pill--id">${serviceIdPill}</span>
+                                <span class="variant-option-name">${escapeHtml(displayName)}</span>
+                            </div>
+                            <div class="variant-option-meta">
+                                ${refillText ? `<span class="variant-pill variant-pill--refill">${escapeHtml(refillText)}</span>` : ''}
+                                ${speed ? `<span class="variant-pill variant-pill--speed">${escapeHtml(speed)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="variant-option-price">
+                            ₹${price.toFixed(2)}
+                            <span>/ 1K</span>
+                        </div>
+                    </button>
+                `;
+            }).join("");
+
+            menu.querySelectorAll('.variant-option-card').forEach((card) => {
+                card.addEventListener('click', () => selectVariant(Number(card.dataset.variantIndex)));
+            });
+
+            trigger.disabled = false;
+            renderSelectedVariantContent(service, window.currentVariant, safeIndex);
+            closeVariantDropdown();
+            group.style.display = "block";
+            updateVariantSelectionUI();
+            renderServiceDetails();
+            renderExtraInputs();
+            updateTargetLinkLabel();
+            updateQuantityLimits();
+            calculatePrice();
+        }
+
+        function renderServiceDetails() {
+            const service = getCurrentService();
+            const variant = getSelectedVariant();
+            const card = document.getElementById("serviceDetailsCard");
+            const title = document.getElementById("serviceDetailsTitle");
+            const badge = document.getElementById("serviceDetailsBadge");
+            const description = document.getElementById("serviceDescription");
+            const metaRows = document.getElementById("serviceMetaRows");
+            const variantError = document.getElementById("variantError");
+
+            if (!card || !title || !badge || !description || !metaRows) return;
+
+            if (!service || !variant) {
+                card.style.display = "none";
+                title.textContent = "";
+                badge.style.display = "none";
+                badge.textContent = "";
+                description.style.display = "none";
+                description.textContent = "";
+                metaRows.style.display = "none";
+                metaRows.innerHTML = "";
+                if (variantError) variantError.style.display = "none";
+                return;
+            }
+
+            title.textContent = variant.name || service.category || 'Selected Service';
+
+            if (service.category) {
+                badge.textContent = service.category;
+                badge.style.display = "inline-flex";
+            } else {
+                badge.style.display = "none";
+                badge.textContent = "";
+            }
+
+            const descriptionText = normalizeText(service.description);
+            if (descriptionText) {
+                description.textContent = descriptionText;
+                description.style.display = "block";
+            } else {
+                description.style.display = "none";
+                description.textContent = "";
+            }
+
+            const metaItems = [
+                { label: "Country", icon: "ri-map-pin-line", value: normalizeText(variant.country) },
+                { label: "Speed", icon: "ri-timer-flash-line", value: normalizeText(variant.speed) },
+                { label: "Refill", icon: "ri-refresh-line", value: normalizeText(variant.refill) }
+            ].filter((item) => item.value);
+
+            if (metaItems.length) {
+                metaRows.style.display = "flex";
+                metaRows.innerHTML = metaItems.map((item) => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid rgba(148,163,184,0.16);box-shadow:0 10px 25px rgba(15,23,42,0.05);">
+                        <i class="${item.icon}" style="color:#6c63ff;font-size:0.95rem;"></i>
+                        <div>
+                            <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;font-weight:700;">${escapeHtml(item.label)}</div>
+                            <div style="font-size:0.82rem;color:#0f172a;font-weight:700;">${escapeHtml(item.value)}</div>
+                        </div>
+                    </div>
+                `).join("");
+            } else {
+                metaRows.style.display = "none";
+                metaRows.innerHTML = "";
+            }
+
+            card.style.display = "block";
+            if (variantError) variantError.style.display = "none";
+        }
+
+        function updateQuantityLimits() {
+            const qtyInput = document.getElementById("quantity");
+            const variant = getSelectedVariant();
+            if (!qtyInput) return;
+
+            const minQty = variant?.minQty != null ? Number(variant.minQty) : 10;
+            const maxQty = variant?.maxQty != null ? Number(variant.maxQty) : 10000;
+
+            qtyInput.setAttribute("min", minQty);
+            qtyInput.setAttribute("max", maxQty);
+
+            const hintContainer = document.querySelector(".quantity-hint");
+            if (hintContainer) {
+                hintContainer.innerHTML = `
+                    <span>Min: ${minQty.toLocaleString()}</span>
+                    <span>Max: ${maxQty.toLocaleString()}</span>
+                `;
+            }
+
+            validateQuantityLimits();
+        }
+
+        function validateQuantityLimits() {
+            const qtyInput = document.getElementById("quantity");
+            const variant = getSelectedVariant();
+            if (!qtyInput) return;
+
+            const minQty = variant?.minQty != null ? Number(variant.minQty) : 10;
+            const maxQty = variant?.maxQty != null ? Number(variant.maxQty) : 10000;
+            const qty = parseInt(qtyInput.value || 0, 10);
+
+            let errorDiv = document.getElementById("qtyError");
+            if (!errorDiv) {
+                errorDiv = document.createElement("div");
+                errorDiv.id = "qtyError";
+                errorDiv.style.color = "#ef4444";
+                errorDiv.style.fontSize = "0.8rem";
+                errorDiv.style.marginTop = "4px";
+                errorDiv.style.fontWeight = "600";
+                qtyInput.parentNode.appendChild(errorDiv);
+            }
+
+            if (!variant || qtyInput.value === "") {
+                errorDiv.style.display = "none";
+                qtyInput.style.borderColor = "";
+                return;
+            }
+
+            if (qty < minQty || qty > maxQty) {
+                errorDiv.innerText = `Quantity must be between ${minQty.toLocaleString()} and ${maxQty.toLocaleString()}.`;
+                errorDiv.style.display = "block";
+                qtyInput.style.borderColor = "#ef4444";
+            } else {
+                errorDiv.style.display = "none";
+                qtyInput.style.borderColor = "";
+            }
+        }
+
+        function handleCommentsInput() {
+            const textarea = document.getElementById("smmCustomInput");
+            const qtyInput = document.getElementById("quantity");
+            if (!textarea || !qtyInput) return;
+
+            const lines = textarea.value
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
+
+            qtyInput.value = Math.max(1, lines.length);
+            qtyInput.readOnly = true;
+            qtyInput.style.background = "#f1f5f9";
+            calculatePrice();
+        }
+
+        function renderExtraInputs() {
+            const container = document.getElementById("smmExtraInputGroup");
+            const qtyInput = document.getElementById("quantity");
+            const variant = getSelectedVariant();
+            if (!container || !qtyInput) return;
+
+            const previousValue = document.getElementById("smmCustomInput")?.value || "";
+            const hasDynamic = Boolean(variant?.hasDynamicInput) && variant?.inputType && variant.inputType !== 'none';
+
+            if (!hasDynamic) {
+                container.style.display = "none";
+                container.innerHTML = "";
+                qtyInput.readOnly = false;
+                qtyInput.style.background = "";
+                updateQuantityLimits();
+                return;
+            }
+
+            const inputType = variant.inputType === 'textarea' ? 'textarea' : 'text';
+            const labelText = escapeHtml(variant.inputLabel || "Custom Input");
+            container.style.display = "block";
+
+            if (inputType === 'textarea') {
+                container.innerHTML = `
+                    <label for="smmCustomInput" style="font-weight: 700; color: #1e293b; font-size: 0.85rem; display: block; margin-bottom: 6px;">${labelText} *</label>
+                    <p style="margin: 0 0 8px 0; font-size: 0.78rem; color: #64748b;">Enter one item per line. Quantity will be calculated automatically from the non-empty lines.</p>
+                    <textarea id="smmCustomInput" class="form-control" rows="5" placeholder="Enter one item per line..." style="width: 100%; font-family: monospace; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">${escapeHtml(previousValue)}</textarea>
+                `;
+                const textarea = document.getElementById("smmCustomInput");
+                textarea?.addEventListener('input', handleCommentsInput);
+                qtyInput.readOnly = true;
+                qtyInput.style.background = "#f1f5f9";
+                handleCommentsInput();
+                return;
+            }
+
+            container.innerHTML = `
+                <label for="smmCustomInput" style="font-weight: 700; color: #1e293b; font-size: 0.85rem; display: block; margin-bottom: 6px;">${labelText} *</label>
+                <input type="text" id="smmCustomInput" class="form-control" placeholder="Enter details..." value="${escapeHtml(previousValue)}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+            `;
+            qtyInput.readOnly = false;
+            qtyInput.style.background = "";
+            updateQuantityLimits();
+        }
+
+        function populateCategories(preferredCategory = '') {
+            const select = document.getElementById("smmCategorySelect");
+            if (!select) return;
+
+            const services = getServicesForSelectedPlatform();
+            const categories = services
+                .map((service) => normalizeText(service?.category))
+                .filter(Boolean)
+                .filter((category, index, list) => list.findIndex((item) => sameText(item, category)) === index);
+
+            if (!categories.length) {
+                select.innerHTML = `<option value="">No categories available</option>`;
+                selectedCategory = "";
+                renderVariantOptions(null);
+                document.getElementById("rateHint").innerText = "No rates configured for this platform.";
+                return;
+            }
+
+            select.innerHTML = categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("");
+
+            const nextCategory = categories.find((category) => sameText(category, preferredCategory))
+                || categories.find((category) => sameText(category, selectedCategory))
+                || categories[0];
+
+            select.value = nextCategory;
+            selectedCategory = nextCategory;
+            populateVariantsForSelectedCategory();
+        }
+
+        function populateVariantsForSelectedCategory() {
+            const service = getServiceForSelectedCategory();
+            window.currentPackage = service;
+
+            const requestedIndex = requestedSelection?.service && String(requestedSelection.service.serviceId) === String(service?.serviceId)
+                ? requestedSelection.variantIndex
+                : 0;
+
+            renderVariantOptions(service, requestedIndex);
+            requestedSelection = null;
         }
 
         function populatePlatforms() {
@@ -711,314 +1560,69 @@
             if (!selectEl) return;
 
             fetch('/api/platforms')
-                .then(res => res.json())
-                .then(data => {
-                    let dbPlatforms = [];
-                    if (data.success && data.platforms && data.platforms.length) {
-                        dbPlatforms = data.platforms;
-                    }
-                    
-                    if (dbPlatforms.length === 0) {
-                        dbPlatforms = getFallbackPlatforms();
-                    }
+                .then((res) => res.json())
+                .then((data) => {
+                    platformCatalog = buildPlatformCatalog(data?.success ? data.platforms : []);
 
-                    // Overwrite the loading platforms option element
-                    const platformNames = dbPlatforms.map(p => p.name);
-                    
-                    // Auto-select platform and service from URL query param if present
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const serviceParam = urlParams.get('service') || urlParams.get('serviceId');
-                    let targetService = null;
-                    if (serviceParam && smmRates.length) {
-                        targetService = smmRates.find(r => String(r.serviceId) === String(serviceParam));
-                        if (targetService) {
-                            selectedPlatform = targetService.platform;
-                        }
+                    if (!platformCatalog.length) {
+                        selectEl.innerHTML = `<option value="">No platforms available</option>`;
+                        document.getElementById("rateHint").innerText = "No SMM platforms configured right now.";
+                        return;
                     }
 
-                    if (!platformNames.some(p => p.toLowerCase() === selectedPlatform.toLowerCase())) {
-                        selectedPlatform = platformNames[0] || "Instagram";
+                    if (requestedSelection?.service?.platform) {
+                        selectedPlatform = requestedSelection.service.platform;
+                    } else if (!platformCatalog.some((platform) => sameText(platform.name, selectedPlatform))) {
+                        selectedPlatform = platformCatalog[0].name;
                     }
 
-                    // Total DOM Clearance Before Append
-                    selectEl.innerHTML = '';
+                    selectEl.innerHTML = platformCatalog.map((platform) => `
+                        <option value="${escapeHtml(platform.name)}" data-logo="${escapeHtml(platform.logoUrl || "/assets/images/default-platform.png")}" ${sameText(platform.name, selectedPlatform) ? 'selected' : ''}>
+                            ${escapeHtml(platform.name)} Services
+                        </option>
+                    `).join("");
 
-                    selectEl.innerHTML = dbPlatforms.map(p => {
-                        const logo = p.logoUrl || "/assets/images/default-platform.png";
-                        return `<option value="${escapeHtml(p.name)}" data-logo="${escapeHtml(logo)}" ${p.name.toLowerCase() === selectedPlatform.toLowerCase() ? 'selected' : ''}>${escapeHtml(p.name)} Services</option>`;
-                    }).join("");
-
-                    // Force selectedIndex to 0 and set selection state if there's no URL param override
-                    if (!targetService && selectEl.options.length > 0) {
+                    if (!Array.from(selectEl.options).some((option) => sameText(option.value, selectedPlatform))) {
                         selectEl.selectedIndex = 0;
                         selectedPlatform = selectEl.value;
                     }
 
-                    // Automatically trigger the logo update function so the first platform's logo appears immediately after loading
                     updateFloatingLogo();
-                    populateServiceTypes();
-
-                    // If we had a target service from query parameters, auto-select it now
-                    if (targetService) {
-                        const serviceSelect = document.getElementById("serviceType");
-                        if (serviceSelect) {
-                            serviceSelect.value = targetService.serviceId;
-                            handleServiceSelectionChange();
-                        }
-                    }
+                    populateCategories(requestedSelection?.service?.category || selectedCategory);
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.error("Failed to fetch platforms from backend API.", err);
-                    selectEl.innerHTML = `<option value="">Error loading platforms</option>`;
+                    platformCatalog = buildPlatformCatalog([]);
+                    if (!platformCatalog.length) {
+                        selectEl.innerHTML = `<option value="">Error loading platforms</option>`;
+                        document.getElementById("rateHint").innerText = "Failed to load SMM services.";
+                        return;
+                    }
+
+                    selectEl.innerHTML = platformCatalog.map((platform) => `
+                        <option value="${escapeHtml(platform.name)}" data-logo="${escapeHtml(platform.logoUrl || "/assets/images/default-platform.png")}">
+                            ${escapeHtml(platform.name)} Services
+                        </option>
+                    `).join("");
+                    selectedPlatform = selectEl.value;
+                    updateFloatingLogo();
+                    populateCategories(requestedSelection?.service?.category || selectedCategory);
                 });
         }
 
-        function updateFloatingLogo() {
-            const selectEl = document.getElementById("smmPlatformSelect");
-            const logoImg = document.getElementById("smmPlatformLogo");
-            if (!selectEl || !logoImg) return;
-            const selectedOption = selectEl.options[selectEl.selectedIndex];
-            if (selectedOption) {
-                const logoUrl = selectedOption.getAttribute('data-logo');
-                if (logoImg && logoUrl) {
-                    logoImg.style.opacity = '0';
-                    setTimeout(() => {
-                        logoImg.src = logoUrl;
-                        logoImg.style.opacity = '1';
-                    }, 150);
-                }
-            }
-        }
+        function handleServiceSelectionChange() {
+            const service = getCurrentService();
+            const variantError = document.getElementById("variantError");
 
-        window.selectPlatform = function(plat) {
-            selectedPlatform = plat;
-            updateFloatingLogo();
-            populateServiceTypes();
-        };
-
-        function updateTargetLinkLabel() {
-            const select = document.getElementById("serviceType");
-            const label = document.getElementById("targetLinkLabel");
-            const input = document.getElementById("targetLink");
-            if (!select || !label || !input) return;
-
-            const selectedOption = select.options[select.selectedIndex];
-            if (!selectedOption) return;
-
-            const selectedText = selectedOption.text.toLowerCase();
-            const serviceVal = select.value.toLowerCase();
-
-            if (selectedPlatform.toLowerCase() === "instagram") {
-                if (selectedText.includes("follower") || serviceVal.includes("follower")) {
-                    label.innerText = "Instagram Profile Link *";
-                    input.placeholder = "e.g. https://instagram.com/your_username";
-                } else if (selectedText.includes("like") || selectedText.includes("comment") || serviceVal.includes("like") || serviceVal.includes("comment")) {
-                    label.innerText = "Instagram Post Link *";
-                    input.placeholder = "e.g. https://instagram.com/p/your_post_id";
-                } else {
-                    label.innerText = "Instagram Link *";
-                    input.placeholder = "e.g. https://instagram.com/your_username";
-                }
-            } else if (selectedPlatform.toLowerCase() === "youtube") {
-                if (selectedText.includes("subscriber") || selectedText.includes("channel") || serviceVal.includes("subscriber")) {
-                    label.innerText = "YouTube Channel Link *";
-                    input.placeholder = "e.g. https://youtube.com/@your_channel";
-                } else {
-                    label.innerText = "YouTube Video Link *";
-                    input.placeholder = "e.g. https://youtube.com/watch?v=...";
-                }
-            } else {
-                label.innerText = `${selectedPlatform} Link *`;
-                input.placeholder = "e.g. profile handle or post link";
-            }
-        }
-
-        function populateServiceTypes() {
-            const select = document.getElementById("serviceType");
-            if (!select) return;
-
-            // Filter rates for current platform
-            const platformRates = smmRates.filter(r => r.platform && r.platform.toLowerCase() === selectedPlatform.toLowerCase());
-            
-            if (platformRates.length === 0) {
-                select.innerHTML = `<option value="">No services available</option>`;
-                const totalPriceDisplay = document.getElementById("totalPriceDisplay");
-                if (totalPriceDisplay) totalPriceDisplay.innerText = "₹0.00";
-                const rateHint = document.getElementById("rateHint");
-                if (rateHint) rateHint.innerText = "No rates configured for this platform.";
-                
-                const countryGroupEl = document.getElementById("countryGroup");
-                if (countryGroupEl) countryGroupEl.style.display = "none";
-                const serviceDetailsBoxEl = document.getElementById("serviceDetailsBox");
-                if (serviceDetailsBoxEl) serviceDetailsBoxEl.style.display = "none";
+            if (!service || !Array.isArray(service.variants) || !service.variants.length) {
+                if (variantError) variantError.style.display = "block";
+                resetCurrentServiceState();
+                calculatePrice();
                 return;
             }
 
-            select.innerHTML = platformRates.map(package => {
-                console.log('Package Data:', package);
-                let priceLabel = '';
-                if (package.pricingVariants?.length > 0) {
-                    const validPrices = package.pricingVariants.map(v => v?.price).filter(p => p !== undefined && p !== null);
-                    if (validPrices.length > 0) {
-                        const lowestPrice = Math.min(...validPrices);
-                        priceLabel = ` (Starting at ₹${lowestPrice})`;
-                    }
-                } else if (package.ratePer1000 !== undefined && package.ratePer1000 !== null) {
-                    priceLabel = ` (₹${package.ratePer1000}/1k)`;
-                }
-                return `
-                    <option value="${package.serviceId}" data-rate="${package.ratePer1000 || ''}">${package.serviceType}${priceLabel}</option>
-                `;
-            }).join("");
-
-            handleServiceSelectionChange();
-        }
-
-        function filterQualityAndCascade() {
-            const package = window.currentPackage;
-            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
-
-            const targetCountrySelect = document.getElementById("targetCountry");
-            const accountQualitySelect = document.getElementById("accountQuality");
-
-            if (!targetCountrySelect || !accountQualitySelect) return;
-
-            const selectedCountry = targetCountrySelect.value;
-            let filteredVariants = package.pricingVariants;
-            if (selectedCountry) {
-                filteredVariants = package.pricingVariants.filter(v => v?.country === selectedCountry);
-                if (filteredVariants.length === 0) {
-                    filteredVariants = package.pricingVariants;
-                }
-            }
-
-            const uniqueQualities = [...new Set(filteredVariants.map(v => v?.quality || 'Standard').filter(Boolean))];
-
-            const prevQuality = accountQualitySelect.value;
-
-            accountQualitySelect.innerHTML = uniqueQualities.map(q => `<option value="${q}">${q}</option>`).join('');
-
-            if (uniqueQualities.includes(prevQuality)) {
-                accountQualitySelect.value = prevQuality;
-            } else if (uniqueQualities.length > 0) {
-                accountQualitySelect.value = uniqueQualities[0];
-            }
-
-            // Cascade down to Speed selection based on Quality
-            filterSpeedForQuality();
-        }
-
-        function filterSpeedForQuality() {
-            const package = window.currentPackage;
-            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
-
-            const targetCountrySelect = document.getElementById("targetCountry");
-            const accountQualitySelect = document.getElementById("accountQuality");
-            const serviceSpeedSelect = document.getElementById("serviceSpeed");
-
-            if (!targetCountrySelect || !accountQualitySelect || !serviceSpeedSelect) return;
-
-            const selectedCountry = targetCountrySelect.value;
-            const selectedQuality = accountQualitySelect.value;
-
-            let filteredVariants = package.pricingVariants;
-            if (selectedCountry) {
-                filteredVariants = filteredVariants.filter(v => v?.country === selectedCountry);
-            }
-            if (selectedQuality) {
-                filteredVariants = filteredVariants.filter(v => (v?.quality || 'Standard') === selectedQuality);
-            }
-
-            const uniqueSpeeds = [...new Set(filteredVariants.map(v => v?.speed).filter(Boolean))];
-
-            const prevSpeed = serviceSpeedSelect.value;
-
-            serviceSpeedSelect.innerHTML = uniqueSpeeds.map(s => `<option value="${s}">${s}</option>`).join('');
-
-            if (uniqueSpeeds.includes(prevSpeed)) {
-                serviceSpeedSelect.value = prevSpeed;
-            } else if (uniqueSpeeds.length > 0) {
-                serviceSpeedSelect.value = uniqueSpeeds[0];
-            }
-
-            // Cascade down to Refill selection based on Speed
-            filterRefillForSpeed();
-        }
-
-        function filterRefillForSpeed() {
-            const package = window.currentPackage;
-            if (!package || !package.pricingVariants || package.pricingVariants.length === 0) return;
-
-            const targetCountrySelect = document.getElementById("targetCountry");
-            const accountQualitySelect = document.getElementById("accountQuality");
-            const serviceSpeedSelect = document.getElementById("serviceSpeed");
-            const refillGuaranteeSelect = document.getElementById("refillGuarantee");
-
-            if (!targetCountrySelect || !accountQualitySelect || !serviceSpeedSelect || !refillGuaranteeSelect) return;
-
-            const selectedCountry = targetCountrySelect.value;
-            const selectedQuality = accountQualitySelect.value;
-            const selectedSpeed = serviceSpeedSelect.value;
-
-            let filteredVariants = package.pricingVariants;
-            if (selectedCountry) {
-                filteredVariants = filteredVariants.filter(v => v?.country === selectedCountry);
-            }
-            if (selectedQuality) {
-                filteredVariants = filteredVariants.filter(v => (v?.quality || 'Standard') === selectedQuality);
-            }
-            if (selectedSpeed) {
-                filteredVariants = filteredVariants.filter(v => v?.speed === selectedSpeed);
-            }
-
-            const uniqueRefills = [...new Set(filteredVariants.map(v => v?.refillGuarantee).filter(Boolean))];
-
-            const prevRefill = refillGuaranteeSelect.value;
-
-            refillGuaranteeSelect.innerHTML = uniqueRefills.map(r => `<option value="${r}">${r}</option>`).join('');
-
-            if (uniqueRefills.includes(prevRefill)) {
-                refillGuaranteeSelect.value = prevRefill;
-            } else if (uniqueRefills.length > 0) {
-                refillGuaranteeSelect.value = uniqueRefills[0];
-            }
-        }
-
-        function handleServiceSelectionChange() {
-            const select = document.getElementById("serviceType");
-            if (!select || select.value === "") return;
-
-            const serviceId = select.value;
-            window.currentPackage = smmRates.find(r => r.serviceId === serviceId);
-            const package = window.currentPackage;
-            if (!package) return;
-
-            const variantGroup = document.getElementById("variantSelectorsGroup");
-            const targetCountrySelect = document.getElementById("targetCountry");
-
-            if (variantGroup && package.pricingVariants?.length > 0) {
-                const uniqueCountries = [...new Set(package.pricingVariants.map(v => v?.country).filter(Boolean))];
-                targetCountrySelect.innerHTML = uniqueCountries.map(c => `<option value="${c}">${c}</option>`).join('');
-                
-                filterQualityAndCascade();
-                
-                variantGroup.style.display = "block";
-            } else {
-                if (variantGroup) variantGroup.style.display = "none";
-            }
-
-            const descEl = document.getElementById("detailDescription");
-            if (descEl) {
-                if (package.serviceDetails && package.serviceDetails.description) {
-                    descEl.innerText = package.serviceDetails.description;
-                    descEl.style.display = "block";
-                } else {
-                    descEl.style.display = "none";
-                }
-            }
-
-            updateTargetLinkLabel();
-            calculatePrice();
+            if (variantError) variantError.style.display = "none";
+            selectVariant(window.currentVariantIndex || 0);
         }
 
         function toggleDripFeed() {
@@ -1031,133 +1635,183 @@
         }
 
         function calculatePrice() {
-            const select = document.getElementById("serviceType");
             const qtyInput = document.getElementById("quantity");
             const priceDisplay = document.getElementById("totalPriceDisplay");
             const rateHint = document.getElementById("rateHint");
             const priceBox = document.getElementById("priceBox");
-            const variantError = document.getElementById("variantError");
+            const variant = getSelectedVariant();
 
-            if (!select || !qtyInput || select.value === "" || !window.currentPackage) return;
+            if (!qtyInput || !priceDisplay || !rateHint) return;
 
-            let rate = 0;
-            let qty = parseInt(qtyInput.value || 0);
-            
-            // Check variant
-            const package = window.currentPackage;
-            let matchedVariantIndex = -1;
-            
-            if (package.pricingVariants?.length > 0) {
-                const c = document.getElementById("targetCountry")?.value;
-                const q = document.getElementById("accountQuality")?.value;
-                const s = document.getElementById("serviceSpeed")?.value;
-                const r = document.getElementById("refillGuarantee")?.value;
-                
-                matchedVariantIndex = package.pricingVariants.findIndex(v => v?.country === c && (v?.quality || 'Standard') === q && v?.speed === s && v?.refillGuarantee === r);
-                
-                if (matchedVariantIndex === -1) {
-                    if (variantError) variantError.style.display = "block";
-                    priceDisplay.innerText = `₹0.00`;
-                    rateHint.innerText = `Combination not available`;
-                    window.currentVariantIndex = -1;
-                    return;
-                } else {
-                    if (variantError) variantError.style.display = "none";
-                    rate = Number(package.pricingVariants[matchedVariantIndex]?.price || 0);
-                    window.currentVariantIndex = matchedVariantIndex;
-                }
-            } else {
-                rate = parseFloat(package.ratePer1000 || 0);
-                window.currentVariantIndex = 0;
+            if (!variant) {
+                priceDisplay.innerText = "₹0.00";
+                rateHint.innerText = selectedCategory ? "Select a valid variant to see pricing." : "Select a platform and category to load rates.";
+                return;
             }
 
-            // Min / Max constraints
-            if (qty < 100) qty = 100;
-            if (qty > 100000) qty = 100000;
+            const qty = parseInt(qtyInput.value || 0, 10);
+            const minQty = variant.minQty != null ? Number(variant.minQty) : 10;
+            const maxQty = variant.maxQty != null ? Number(variant.maxQty) : 10000;
+            const rate = Number(variant.price || 0);
+            const effectiveQty = Number.isFinite(qty) && qty > 0 ? Math.min(maxQty, Math.max(minQty, qty)) : 0;
+            const totalPrice = effectiveQty > 0 ? parseFloat(((effectiveQty / 1000) * rate).toFixed(2)) : 0;
 
-            const totalPrice = parseFloat(((qty / 1000) * rate).toFixed(2));
-
-            // Update UI
             priceDisplay.innerText = `₹${totalPrice.toFixed(2)}`;
-            rateHint.innerText = `Base rate: ₹${rate} per 1,000 units`;
+            rateHint.innerText = `Base rate: ₹${rate.toFixed(2)} per 1,000 units`;
+            validateQuantityLimits();
 
-            // SMM Drip Feed Live calculation
             const dripEnabled = document.getElementById("enableDripFeed")?.checked;
             const dripRunsInput = document.getElementById("dripRuns");
             const dripIntervalInput = document.getElementById("dripInterval");
             const dripSummary = document.getElementById("dripFeedSummary");
 
-            if (dripEnabled && dripRunsInput && dripIntervalInput && dripSummary) {
-                let runs = parseInt(dripRunsInput.value || 0);
+            if (dripEnabled && dripRunsInput && dripIntervalInput && dripSummary && effectiveQty > 0) {
+                let runs = parseInt(dripRunsInput.value || 0, 10);
                 if (runs < 2) {
                     runs = 2;
                     dripRunsInput.value = 2;
                 }
-                let interval = parseInt(dripIntervalInput.value || 0);
+
+                let interval = parseInt(dripIntervalInput.value || 0, 10);
                 if (interval < 1) {
                     interval = 1;
                     dripIntervalInput.value = 1;
                 }
 
-                const qtyPerRun = Math.floor(qty / runs);
+                const qtyPerRun = Math.floor(effectiveQty / runs);
+                const dripLabel = normalizeText(variant.name || getCurrentService()?.category || 'units').toLowerCase();
                 dripSummary.style.display = "block";
-                const platformLabel = window.currentPackage?.serviceType || 'units';
-                dripSummary.innerText = `🔄 Drip Feed Active: Total ${qty.toLocaleString()} ${platformLabel.toLowerCase()} will be delivered as ${qtyPerRun.toLocaleString()} ${platformLabel.toLowerCase()} every ${interval} hour${interval !== 1 ? 's' : ''} across ${runs} runs.`;
+                dripSummary.innerText = `Drip Feed Active: Total ${effectiveQty.toLocaleString()} ${dripLabel} will be delivered as ${qtyPerRun.toLocaleString()} ${dripLabel} every ${interval} hour${interval !== 1 ? 's' : ''} across ${runs} runs.`;
             } else if (dripSummary) {
                 dripSummary.style.display = "none";
             }
 
-            // Micro-animation pulsing effect on price box
-            priceBox.classList.add("pulse");
-            setTimeout(() => priceBox.classList.remove("pulse"), 300);
+            if (priceBox) {
+                priceBox.classList.add("pulse");
+                setTimeout(() => priceBox.classList.remove("pulse"), 300);
+            }
+        }
+
+        async function loadSmmRates() {
+            try {
+                const res = await fetch("/api/smm/rates");
+                const data = await res.json();
+                if (data?.success) {
+                    smmRates = Array.isArray(data.rates) ? data.rates : [];
+                    requestedSelection = resolveRequestedSelection();
+                    populatePlatforms();
+                } else {
+                    document.getElementById("rateHint").innerText = "Failed to load rates.";
+                }
+            } catch (e) {
+                document.getElementById("rateHint").innerText = "Failed to fetch rates.";
+            }
         }
 
         function checkoutSmmService() {
-            const select = document.getElementById("serviceType");
+            const service = getCurrentService();
+            const variant = getSelectedVariant();
             const qtyInput = document.getElementById("quantity");
             const targetLinkInput = document.getElementById("targetLink");
 
-            if (!select || select.value === "") {
-                alert("⚠️ Please select a service type first.");
+            if (!service || !variant) {
+                alert("Please select a valid service variant first.");
                 return;
             }
 
-            const qty = parseInt(qtyInput.value || 0);
-            if (qty < 100 || qty > 100000) {
-                alert("⚠️ Please enter a quantity between 100 and 100,000.");
+            const qty = parseInt(qtyInput?.value || 0, 10);
+            const minQty = variant.minQty != null ? Number(variant.minQty) : 10;
+            const maxQty = variant.maxQty != null ? Number(variant.maxQty) : 10000;
+
+            if (qty < minQty || qty > maxQty) {
+                alert(`Please enter a quantity between ${minQty.toLocaleString()} and ${maxQty.toLocaleString()}.`);
                 return;
             }
 
-            const targetLink = targetLinkInput.value.trim();
+            const targetLink = normalizeText(targetLinkInput?.value);
             if (!targetLink) {
-                alert("⚠️ Please enter your profile handle or post link.");
+                alert("Please enter your profile handle or post link.");
                 return;
             }
 
-            let finalTargetLink = targetLink;
+            let extraInputVal = "";
+            let extraInputType = "none";
+            const hasDynamic = Boolean(variant?.hasDynamicInput) && variant?.inputType && variant.inputType !== 'none';
 
-            if (window.currentVariantIndex === -1) {
-                alert("⚠️ Please select a valid service specification combination.");
-                return;
+            if (hasDynamic) {
+                extraInputVal = document.getElementById("smmCustomInput")?.value || "";
+                if (!extraInputVal.trim()) {
+                    alert(`Please enter your ${variant.inputLabel || 'custom input'}.`);
+                    return;
+                }
+                extraInputType = variant.inputType;
             }
 
             const dripEnabled = document.getElementById("enableDripFeed")?.checked;
             const runs = dripEnabled ? Number(document.getElementById("dripRuns")?.value || 2) : 1;
             const interval = dripEnabled ? Number(document.getElementById("dripInterval")?.value || 24) : 0;
 
-            // Flow directly into the secure checkout page forwarding ONLY serviceId, quantity, and targetLink
             const urlParams = new URLSearchParams({
                 isSmm: 'true',
-                serviceId: select.value,
+                serviceId: service.serviceId,
+                variantId: Number.isInteger(Number(variant?.variantId)) ? String(Number(variant.variantId)) : '',
                 quantity: qty,
-                targetLink: finalTargetLink,
-                variantIndex: window.currentVariantIndex !== undefined ? window.currentVariantIndex : 0,
+                targetLink,
+                variantIndex: String(Number.isInteger(window.currentVariantIndex) ? window.currentVariantIndex : 0),
                 isDripFeed: dripEnabled ? 'true' : 'false',
-                runs: runs,
-                interval: interval
+                runs: String(runs),
+                interval: String(interval),
+                extraInput: extraInputVal,
+                extraInputType
             });
+
             window.location.href = `/checkout.html?${urlParams.toString()}`;
         }
+
+        window.selectPlatform = function(plat) {
+            selectedPlatform = normalizeText(plat);
+            updateFloatingLogo();
+            populateCategories();
+        };
+
+        window.selectCategory = function(category) {
+            selectedCategory = normalizeText(category);
+            populateVariantsForSelectedCategory();
+        };
+
+        window.selectVariant = selectVariant;
+        window.handleServiceSelectionChange = handleServiceSelectionChange;
+        window.handleCommentsInput = handleCommentsInput;
+        window.toggleDripFeed = toggleDripFeed;
+        window.checkoutSmmService = checkoutSmmService;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const dropdownTrigger = document.getElementById("variantDropdownTrigger");
+            const dropdownWrapper = document.getElementById("customVariantDropdownWrapper");
+
+            dropdownTrigger?.addEventListener("click", (event) => {
+                event.preventDefault();
+                toggleVariantDropdown();
+            });
+
+            window.addEventListener("click", (event) => {
+                if (!dropdownWrapper) return;
+                if (dropdownWrapper.contains(event.target)) return;
+                closeVariantDropdown();
+            });
+
+            window.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") {
+                    closeVariantDropdown();
+                }
+            });
+
+            document.getElementById("quantity")?.addEventListener("input", calculatePrice);
+            document.getElementById("quantity")?.addEventListener("keyup", calculatePrice);
+            document.getElementById("quantity")?.addEventListener("change", calculatePrice);
+            requestedSelection = resolveRequestedSelection();
+            await loadSmmRates();
+        });
     </script>
 </body>
 

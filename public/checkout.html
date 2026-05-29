@@ -709,7 +709,7 @@
                         <strong id="dispPkg">Loading...</strong>
                     </div>
                     <div class="summary-meta__row">
-                        <span>Instagram</span>
+                        <span>Target</span>
                         <strong id="dispInsta">...</strong>
                     </div>
                 </div>
@@ -748,9 +748,12 @@
         let smmQty = params.get('smmQty') ? Number(params.get('smmQty')) : (params.get('quantity') ? Number(params.get('quantity')) : (params.get('qty') ? Number(params.get('qty')) : null));
         let insta = params.get('insta') || params.get('targetLink') || null;
         let smmVariantIndex = params.get('variantIndex') ? Number(params.get('variantIndex')) : 0;
+        let smmVariantId = params.get('variantId') ? Number(params.get('variantId')) : null;
         let isDripFeed = params.get('isDripFeed') === 'true';
         let dripRuns = params.get('runs') ? Number(params.get('runs')) : 1;
         let dripInterval = params.get('interval') ? Number(params.get('interval')) : 0;
+        let extraInput = params.get('extraInput') || null;
+        let extraInputType = params.get('extraInputType') || 'none';
         let currencyFromURL = params.get('currency') || "INR";
         let validSmmService = !(smmServiceId && smmQty);
         let isCartCheckout = false;
@@ -895,6 +898,62 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function resolveSmmSelection(rates, requestedServiceId, requestedVariantIndex = 0, requestedVariantId = null) {
+            const token = String(requestedServiceId || '').trim();
+            if (!token || !Array.isArray(rates)) return null;
+            const numericVariantId = Number(requestedVariantId);
+            const hasVariantId = Number.isInteger(numericVariantId) && numericVariantId > 0;
+
+            for (const service of rates) {
+                if (!service) continue;
+
+                const serviceMatch = String(service.serviceId) === token
+                    || (Array.isArray(service.legacyServiceIds) && service.legacyServiceIds.some((legacyId) => String(legacyId) === token));
+
+                if (serviceMatch) {
+                    const variants = Array.isArray(service.variants) ? service.variants : [];
+                    const matchedVariantIndex = hasVariantId
+                        ? variants.findIndex((variant) => Number(variant?.variantId) === numericVariantId)
+                        : -1;
+                    const safeVariantIndex = matchedVariantIndex >= 0
+                        ? matchedVariantIndex
+                        : Math.min(Math.max(Number(requestedVariantIndex) || 0, 0), Math.max(variants.length - 1, 0));
+                    return {
+                        service,
+                        variantIndex: safeVariantIndex,
+                        variant: variants[safeVariantIndex] || null
+                    };
+                }
+
+                const variantIndex = Array.isArray(service.variants)
+                    ? service.variants.findIndex((variant) => (hasVariantId && Number(variant?.variantId) === numericVariantId) || (Array.isArray(variant?.legacyServiceIds) && variant.legacyServiceIds.some((legacyId) => String(legacyId) === token)))
+                    : -1;
+
+                if (variantIndex >= 0) {
+                    return {
+                        service,
+                        variantIndex,
+                        variant: service.variants[variantIndex] || null
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        function buildSmmPackageLabel(service, variant, quantity) {
+            const label = [service?.platform, service?.category, variant?.name].filter(Boolean).join(' • ') || 'SMM Service';
+            return `${label} (${Number(quantity || 0).toLocaleString()} units)`;
+        }
+
+        function buildSmmSummarySubtitle(service, variant, targetLink) {
+            const details = [variant?.country, variant?.speed, variant?.refill].filter(Boolean);
+            if (targetLink) {
+                return details.length ? `${targetLink} • ${details.join(' • ')}` : targetLink;
+            }
+            return details.length ? details.join(' • ') : `${service?.platform || 'SMM'} service`;
+        }
+
         function setCheckoutSubmitState(disabled) {
             const btn = document.querySelector('.btn-pay');
             if (!btn) return;
@@ -963,7 +1022,7 @@
                 document.getElementById('dispInsta').innerText = insta || "Not Provided";
                 renderSummaryItems([{
                     title: "Loading SMM package...",
-                    subtitle: insta ? `Instagram: ${insta}` : 'Direct SMM checkout',
+                    subtitle: insta ? `Target: ${insta}` : 'Direct SMM checkout',
                     amount: "..."
                 }]);
 
@@ -971,28 +1030,27 @@
                     const res = await fetch('/api/smm/rates');
                     const data = await res.json();
                     if (data && data.success && Array.isArray(data.rates)) {
-                        const service = data.rates.find(r => String(r.serviceId) === String(smmServiceId));
-                        if (service) {
-                            let ratePer1000 = Number(service.ratePer1000 || 0);
-                            if (service.pricingVariants && service.pricingVariants.length > 0) {
-                                const variant = service.pricingVariants[smmVariantIndex] || service.pricingVariants[0];
-                                ratePer1000 = Number(variant.price);
-                            }
+                        const selection = resolveSmmSelection(data.rates, smmServiceId, smmVariantIndex, smmVariantId);
+                        if (selection?.service && selection?.variant) {
+                            const ratePer1000 = Number(selection.variant.price || 0);
                             const computedPrice = parseFloat(((smmQty / 1000) * ratePer1000).toFixed(2));
-                            
-                            pkg = `${service.platform} ${service.serviceType} (${smmQty} units)`;
+
+                            smmServiceId = selection.service.serviceId;
+                            smmVariantIndex = selection.variantIndex;
+                            smmVariantId = Number(selection.variant.variantId || smmVariantId || null);
+                            pkg = buildSmmPackageLabel(selection.service, selection.variant, smmQty);
                             price = `₹${computedPrice.toFixed(2)}`;
-                            
+
                             validSmmService = true;
                             setSmmCheckoutError('');
                             document.getElementById('dispPkg').innerText = pkg;
                             document.getElementById('dispPrice').innerText = price;
                             document.getElementById('dispInsta').innerText = insta || "Not Provided";
                             setCheckoutSubmitState(false);
-                            
+
                             renderSummaryItems([{
                                 title: pkg,
-                                subtitle: insta ? `Instagram: ${insta}` : 'Direct SMM checkout',
+                                subtitle: buildSmmSummarySubtitle(selection.service, selection.variant, insta),
                                 amount: price
                             }]);
                         } else {
@@ -1041,7 +1099,7 @@
                         fieldLabel.setAttribute('for', 'smmTargetLink');
                         
                         fieldLabel.innerHTML = `
-                            <span class="field__label">Instagram Profile/Post Link</span>
+                            <span class="field__label">Target Profile / Post Link</span>
                             <input type="text" id="smmTargetLink" placeholder="Enter target profile or post link" required>
                         `;
                         formGrid.appendChild(fieldLabel);
@@ -1056,7 +1114,7 @@
                             // Also update the summary list subtitle
                             renderSummaryItems([{
                                 title: pkg,
-                                subtitle: val ? `Instagram: ${val}` : 'Direct SMM checkout',
+                                subtitle: val ? `Target: ${val}` : 'Direct SMM checkout',
                                 amount: price
                             }]);
                         });
@@ -1070,7 +1128,7 @@
                 setCheckoutSubmitState(false);
                 renderSummaryItems([{
                     title: pkg,
-                    subtitle: insta ? `Instagram: ${insta}` : 'Direct package checkout',
+                    subtitle: insta ? `Target: ${insta}` : 'Direct package checkout',
                     amount: price
                 }]);
             } else {
@@ -1238,7 +1296,9 @@
                             phone: phone,
                             email: email,
                             orderItems: isCartCheckout ? cartItems : [],
-                            orderType: smmServiceId && smmQty ? 'smm' : 'agency'
+                            orderType: smmServiceId && smmQty ? 'smm' : 'agency',
+                            extraInput: extraInput,
+                            extraInputType: extraInputType
                         }
                     };
 
@@ -1249,9 +1309,12 @@
                         walletPayload.targetLink = insta;
                         walletPayload.orderType = 'smm';
                         walletPayload.variantIndex = smmVariantIndex;
+                        walletPayload.variantId = smmVariantId;
                         walletPayload.isDripFeed = isDripFeed;
                         walletPayload.runs = dripRuns;
                         walletPayload.interval = dripInterval;
+                        walletPayload.extraInput = extraInput;
+                        walletPayload.extraInputType = extraInputType;
                     } else {
                         walletPayload.orderType = 'agency';
                     }
@@ -1307,9 +1370,12 @@
                     createPayload.quantity = smmQty;
                     createPayload.orderType = 'smm';
                     createPayload.variantIndex = smmVariantIndex;
+                    createPayload.variantId = smmVariantId;
                     createPayload.isDripFeed = isDripFeed;
                     createPayload.runs = dripRuns;
                     createPayload.interval = dripInterval;
+                    createPayload.extraInput = extraInput;
+                    createPayload.extraInputType = extraInputType;
                 } else {
                     createPayload.amount = finalAmount;
                     createPayload.orderType = 'agency';
@@ -1356,7 +1422,10 @@
                                 email: email,
                                 orderItems: isCartCheckout ? cartItems : [],
                                 orderType: smmServiceId && smmQty ? 'smm' : 'agency',
-                                variantIndex: smmServiceId && smmQty ? smmVariantIndex : undefined
+                                variantIndex: smmServiceId && smmQty ? smmVariantIndex : undefined,
+                                variantId: smmServiceId && smmQty ? smmVariantId : undefined,
+                                extraInput: extraInput,
+                                extraInputType: extraInputType
                             }
                         };
 
@@ -1366,9 +1435,12 @@
                             verifyPayload.quantity = smmQty;
                             verifyPayload.targetLink = insta;
                             verifyPayload.orderType = 'smm';
+                            verifyPayload.variantId = smmVariantId;
                             verifyPayload.isDripFeed = isDripFeed;
                             verifyPayload.runs = dripRuns;
                             verifyPayload.interval = dripInterval;
+                            verifyPayload.extraInput = extraInput;
+                            verifyPayload.extraInputType = extraInputType;
                         } else {
                             verifyPayload.orderType = 'agency';
                         }

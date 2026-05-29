@@ -3497,6 +3497,8 @@ const orderSchema = new mongoose.Schema({
     targetLink: { type: String, default: '' },
     quantity: { type: Number, default: 0 },
     serviceId: { type: String, default: '' },
+    selectedVariantName: { type: String, default: '' },
+    selectedVariantId: { type: Number, default: null },
     selectedCountry: { type: String, default: '' },
     selectedQuality: { type: String, default: '' },
     selectedSpeed: { type: String, default: '' },
@@ -3507,6 +3509,8 @@ const orderSchema = new mongoose.Schema({
     quantityPerRun: { type: Number, default: 0 },
     remainingRuns: { type: Number, default: 0 },
     nextRunAt: { type: Date, default: null },
+    extraInput: { type: String, default: '' },
+    extraInputType: { type: String, default: 'none' },
 
     // 🟢 NAYA: Commission Engine Fields
     assignedStaff: { type: String, default: '' }, // Staff ka email jisne pitch kiya tha
@@ -5572,95 +5576,657 @@ const SmmPlatform = mongoose.model('SmmPlatform', smmPlatformSchema);
 // ==========================================
 // 🚀 SMM SERVICE SCHEMA & MODEL
 // ==========================================
+const DEFAULT_SMM_PLATFORM_LOGO = '/assets/images/default-platform.png';
+
+const smmVariantSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    country: { type: String, default: '' },
+    speed: { type: String, default: '' },
+    refill: { type: String, default: '' },
+    variantId: { type: Number, default: null },
+    hasDynamicInput: { type: Boolean, default: false },
+    inputType: { type: String, enum: ['none', 'text', 'textarea'], default: 'none' },
+    inputLabel: { type: String, default: '' },
+    price: { type: Number, required: true },
+    minQty: { type: Number, required: true },
+    maxQty: { type: Number, required: true },
+    legacyServiceIds: { type: [String], default: [] } // Internal compatibility map for legacy links
+}, { _id: false });
+
 const smmServiceSchema = new mongoose.Schema({
-    serviceId: { type: String, required: true, unique: true }, // e.g., 'ig-followers'
-    platform: { type: String, required: true },               // e.g., 'Instagram', 'YouTube'
-    serviceType: { type: String, required: true },            // e.g., 'Followers', 'Likes'
-    pricingVariants: [{
-        country: { type: String, required: true },
-        quality: { type: String, default: 'Standard' },
-        speed: { type: String, required: true },
-        refillGuarantee: { type: String, required: true },
-        price: { type: Number, required: true } // Price per 1000 units in INR
-    }],
-    ratePer1000: { type: Number }, // Legacy
-    targetCountries: { type: [String], default: [] }, // Legacy
-    serviceDetails: { // Legacy
-        startTime: { type: String, default: '' },
-        refillGuarantee: { type: String, default: '' },
-        speed: { type: String, default: '' },
-        description: { type: String, default: '' }
-    }
+    serviceId: { type: Number, required: true, unique: true },
+    legacyServiceIds: { type: [String], default: [] },
+    platform: { type: String, required: true },
+    category: { type: String, required: true },
+    description: { type: String, default: '' },
+    variants: { type: [smmVariantSchema], default: [] }
 }, { timestamps: true });
 const SmmService = mongoose.model('SmmService', smmServiceSchema);
 
-// Seeding Default SMM rates
+function trimSmmText(value, fallback = '') {
+    const normalized = value == null ? '' : String(value).trim();
+    return normalized || fallback;
+}
+
+function uniqueSmmStrings(values = []) {
+    return [...new Set((Array.isArray(values) ? values : [values]).map((value) => trimSmmText(value)).filter(Boolean))];
+}
+
+function compareSmmStrings(left, right) {
+    return trimSmmText(left).localeCompare(trimSmmText(right), 'en', { sensitivity: 'base' });
+}
+
+function normalizeSmmInputType(value) {
+    const normalized = trimSmmText(value).toLowerCase();
+    if (normalized === 'textarea') return 'textarea';
+    if (normalized === 'text') return 'text';
+    return 'none';
+}
+
+function normalizeSmmQuantity(value, fallback) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+    }
+    return Math.round(parsed);
+}
+
+function normalizeSmmPrice(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return fallback;
+    }
+    return Number(parsed.toFixed(2));
+}
+
+function buildSmmPlatformPrefix(platform) {
+    const normalized = trimSmmText(platform).toLowerCase();
+    if (normalized.includes('insta')) return 'ig';
+    if (normalized.includes('youtube') || normalized === 'yt') return 'yt';
+    if (normalized.includes('facebook') || normalized === 'fb') return 'fb';
+    if (normalized.includes('twitter') || normalized === 'x') return 'tw';
+    if (normalized.includes('tiktok')) return 'tk';
+    if (normalized.includes('telegram')) return 'tg';
+    return (normalized.replace(/[^a-z0-9]/g, '').slice(0, 3) || 'smm');
+}
+
+function buildSmmServiceId(platform, category) {
+    const prefix = buildSmmPlatformPrefix(platform);
+    const slug = trimSmmText(category)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    return `${prefix}-${slug || 'service'}`;
+}
+
+function normalizeSmmServiceIdValue(value) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function collectSmmVariantIdState(services = []) {
+    const state = {
+        usedIds: new Set(),
+        maxId: 1097
+    };
+
+    const register = (value) => {
+        const parsed = Number(value);
+        if (Number.isInteger(parsed) && parsed >= 1098) {
+            state.usedIds.add(parsed);
+            if (parsed > state.maxId) {
+                state.maxId = parsed;
+            }
+        }
+    };
+
+    (Array.isArray(services) ? services : []).forEach((service) => {
+        (Array.isArray(service?.variants) ? service.variants : []).forEach((variant) => register(variant?.variantId));
+    });
+
+    return state;
+}
+
+function assignSmmVariantIdsInPlace(variants = [], state = collectSmmVariantIdState()) {
+    const nextState = state || collectSmmVariantIdState();
+
+    return (Array.isArray(variants) ? variants : []).map((variant) => {
+        let variantId = normalizeSmmServiceIdValue(variant?.variantId);
+        if (!Number.isInteger(variantId) || variantId < 1098 || nextState.usedIds.has(variantId)) {
+            do {
+                nextState.maxId += 1;
+                variantId = nextState.maxId;
+            } while (nextState.usedIds.has(variantId));
+        }
+
+        nextState.usedIds.add(variantId);
+        if (variantId > nextState.maxId) {
+            nextState.maxId = variantId;
+        }
+
+        return {
+            ...variant,
+            variantId
+        };
+    });
+}
+
+async function getNextSmmServiceId(startAt = 1098) {
+    const lastService = await SmmService.findOne({ serviceId: { $type: 'number' } })
+        .sort({ serviceId: -1 })
+        .lean();
+    const lastServiceId = Number(lastService?.serviceId);
+    if (Number.isFinite(lastServiceId) && lastServiceId >= startAt) {
+        return lastServiceId + 1;
+    }
+    return startAt;
+}
+
+async function getSmmVariantIdState(excludeServiceId = null) {
+    const query = Number.isInteger(Number(excludeServiceId))
+        ? { serviceId: { $ne: Number(excludeServiceId) } }
+        : {};
+    const services = await SmmService.find(query, 'variants.variantId').lean();
+    return collectSmmVariantIdState(services);
+}
+
+async function findSmmServiceByAnyId(anyServiceId) {
+    const normalizedId = trimSmmText(anyServiceId);
+    if (!normalizedId) return null;
+
+    const numericServiceId = normalizeSmmServiceIdValue(normalizedId);
+    return SmmService.findOne({
+        $or: [
+            ...(numericServiceId !== null ? [{ serviceId: numericServiceId }] : []),
+            { legacyServiceIds: normalizedId },
+            { 'variants.legacyServiceIds': normalizedId }
+        ]
+    });
+}
+
+function buildLegacySmmDescription(rawDoc = {}) {
+    const description = trimSmmText(rawDoc.description || rawDoc.serviceDetails?.description);
+    const startTime = trimSmmText(rawDoc.serviceDetails?.startTime);
+    const parts = [];
+    if (description) parts.push(description);
+    if (startTime) parts.push(`Start time: ${startTime}`);
+    return parts.join('\n\n');
+}
+
+function buildLegacyDynamicInput(rawDoc = {}) {
+    const legacyExtraType = trimSmmText(rawDoc.extraInputType).toLowerCase();
+    const hasDynamicInput = rawDoc.hasDynamicInput === true
+        || rawDoc.hasCustomInput === true
+        || ['custom_comments', 'poll_option', 'mentions'].includes(legacyExtraType);
+
+    if (!hasDynamicInput) {
+        return {
+            hasDynamicInput: false,
+            inputType: 'none',
+            inputLabel: ''
+        };
+    }
+
+    let inputType = normalizeSmmInputType(rawDoc.inputType || rawDoc.customInputType);
+    if (inputType === 'none') {
+        inputType = legacyExtraType === 'custom_comments' ? 'textarea' : 'text';
+    }
+
+    const inputLabel = trimSmmText(
+        rawDoc.inputLabel
+        || rawDoc.customInputLabel
+        || (legacyExtraType === 'custom_comments' ? 'Enter Custom Comments (1 per line)' : 'Enter details')
+    );
+
+    return {
+        hasDynamicInput: true,
+        inputType,
+        inputLabel
+    };
+}
+
+function normalizeSmmVariantDynamicInput(rawVariant = {}, fallback = {}) {
+    const rawInputType = normalizeSmmInputType(rawVariant.inputType || rawVariant.customInputType);
+    const fallbackInputType = normalizeSmmInputType(fallback.inputType);
+    const rawLabel = trimSmmText(rawVariant.inputLabel || rawVariant.customInputLabel);
+    const fallbackLabel = trimSmmText(fallback.inputLabel);
+    const hasDynamicInput = rawVariant.hasDynamicInput === true
+        || rawVariant.hasCustomInput === true
+        || fallback.hasDynamicInput === true
+        || rawInputType !== 'none'
+        || fallbackInputType !== 'none'
+        || Boolean(rawLabel || fallbackLabel);
+
+    if (!hasDynamicInput) {
+        return {
+            hasDynamicInput: false,
+            inputType: 'none',
+            inputLabel: ''
+        };
+    }
+
+    const inputType = rawInputType !== 'none'
+        ? rawInputType
+        : (fallbackInputType !== 'none' ? fallbackInputType : 'text');
+
+    return {
+        hasDynamicInput: true,
+        inputType,
+        inputLabel: rawLabel || fallbackLabel || (inputType === 'textarea' ? 'Enter Custom Comments (1 per line)' : 'Enter details')
+    };
+}
+
+function buildLegacyVariantName(rawDoc = {}, rawVariant = {}, category = '') {
+    const explicitName = trimSmmText(rawVariant.name);
+    if (explicitName) {
+        return explicitName;
+    }
+
+    const serviceType = trimSmmText(rawDoc.serviceType);
+    const quality = trimSmmText(rawVariant.quality);
+
+    if (serviceType && quality && quality.toLowerCase() !== 'standard' && !serviceType.toLowerCase().includes(quality.toLowerCase())) {
+        return `${serviceType} - ${quality}`;
+    }
+
+    return serviceType || quality || trimSmmText(category, 'Standard');
+}
+
+function normalizeSmmVariant(rawVariant = {}, fallback = {}) {
+    const name = trimSmmText(rawVariant.name || fallback.name, 'Standard');
+    const minQty = normalizeSmmQuantity(rawVariant.minQty ?? fallback.minQty, fallback.minQty ?? 10);
+    const fallbackMaxQty = Math.max(minQty, normalizeSmmQuantity(fallback.maxQty, 10000));
+    let maxQty = normalizeSmmQuantity(rawVariant.maxQty ?? fallback.maxQty, fallbackMaxQty);
+    if (maxQty < minQty) {
+        maxQty = minQty;
+    }
+
+    return {
+        name,
+        country: trimSmmText(rawVariant.country || fallback.country),
+        speed: trimSmmText(rawVariant.speed || fallback.speed),
+        refill: trimSmmText(rawVariant.refill ?? rawVariant.refillGuarantee ?? fallback.refill),
+        ...normalizeSmmVariantDynamicInput(rawVariant, fallback),
+        price: normalizeSmmPrice(rawVariant.price, normalizeSmmPrice(fallback.price, 0)),
+        minQty,
+        maxQty,
+        legacyServiceIds: uniqueSmmStrings(rawVariant.legacyServiceIds || fallback.legacyServiceIds || [])
+    };
+}
+
+function getSmmVariantSignature(variant = {}) {
+    return [
+        trimSmmText(variant.name).toLowerCase(),
+        trimSmmText(variant.country).toLowerCase(),
+        trimSmmText(variant.speed).toLowerCase(),
+        trimSmmText(variant.refill).toLowerCase(),
+        Number(variant.price || 0).toFixed(2),
+        Number(variant.minQty || 0),
+        Number(variant.maxQty || 0)
+    ].join('|');
+}
+
+function buildCanonicalSmmDefaults() {
+    let nextServiceId = 1098;
+    const defaults = [
+        {
+            platform: 'Instagram',
+            category: 'Followers',
+            variants: [{ name: 'Standard Followers', country: 'Global', speed: '1K-5K/day', refill: '30 Days Refill', price: 150, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'Instagram',
+            category: 'Likes',
+            variants: [{ name: 'Real Likes', country: 'Global', speed: 'Instant', refill: 'No Refill', price: 80, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'Instagram',
+            category: 'Comments',
+            variants: [{ name: 'Custom Text Comments', country: 'Global', speed: 'Custom', refill: 'No Refill', hasDynamicInput: true, inputType: 'textarea', inputLabel: 'Enter Custom Comments (1 per line)', price: 350, minQty: 1, maxQty: 10000 }]
+        },
+        {
+            platform: 'Instagram',
+            category: 'Views',
+            variants: [{ name: 'Video Views', country: 'Global', speed: 'Instant', refill: 'No Refill', price: 50, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'YouTube',
+            category: 'Subscribers',
+            variants: [{ name: 'Channel Subscribers', country: 'Global', speed: '100-500/day', refill: '30 Days Refill', price: 800, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'YouTube',
+            category: 'Likes',
+            variants: [{ name: 'Video Likes', country: 'Global', speed: '1K/day', refill: 'No Refill', price: 200, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'YouTube',
+            category: 'Views',
+            variants: [{ name: 'High Retention Views', country: 'Global', speed: '10K/day', refill: 'No Refill', price: 300, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'Facebook',
+            category: 'Followers',
+            variants: [{ name: 'Profile Followers', country: 'Global', speed: '1K-2K/day', refill: '30 Days Refill', price: 180, minQty: 10, maxQty: 10000 }]
+        },
+        {
+            platform: 'Facebook',
+            category: 'Likes',
+            variants: [{ name: 'Post Likes', country: 'Global', speed: '1K-2K/day', refill: '30 Days Refill', price: 100, minQty: 10, maxQty: 10000 }]
+        }
+    ];
+
+    return defaults.map((service) => ({
+        serviceId: nextServiceId++,
+        legacyServiceIds: [],
+        platform: service.platform,
+        category: service.category,
+        description: '',
+        variants: assignSmmVariantIdsInPlace(service.variants.map((variant) => normalizeSmmVariant(variant)))
+    }));
+}
+
+function buildCanonicalSmmDocuments(sourceDocs = []) {
+    const buckets = new Map();
+    const conflicts = [];
+    const now = new Date();
+
+    for (const rawDoc of sourceDocs) {
+        const platform = trimSmmText(rawDoc?.platform, 'Instagram');
+        const category = trimSmmText(rawDoc?.category || rawDoc?.serviceType, 'General');
+        const bucketKey = `${platform.toLowerCase()}::${category.toLowerCase()}`;
+        const sourceServiceId = trimSmmText(rawDoc?.serviceId);
+        const numericSourceServiceId = normalizeSmmServiceIdValue(sourceServiceId);
+        const dynamicConfig = buildLegacyDynamicInput(rawDoc);
+        const defaultMinQty = rawDoc?.minQty ?? (dynamicConfig.inputType === 'textarea' ? 1 : 10);
+        const defaultMaxQty = rawDoc?.maxQty ?? 10000;
+
+        if (!buckets.has(bucketKey)) {
+            buckets.set(bucketKey, {
+                platform,
+                category,
+                description: '',
+                legacyServiceIds: new Set(),
+                preferredServiceId: null,
+                variants: new Map(),
+                createdAt: rawDoc?.createdAt ? new Date(rawDoc.createdAt) : now
+            });
+        }
+
+        const bucket = buckets.get(bucketKey);
+        if (numericSourceServiceId !== null && numericSourceServiceId >= 1098 && bucket.preferredServiceId === null) {
+            bucket.preferredServiceId = numericSourceServiceId;
+        }
+        const createdAt = rawDoc?.createdAt ? new Date(rawDoc.createdAt) : null;
+        if (createdAt && !Number.isNaN(createdAt.getTime()) && createdAt < bucket.createdAt) {
+            bucket.createdAt = createdAt;
+        }
+
+        uniqueSmmStrings([sourceServiceId, ...(Array.isArray(rawDoc?.legacyServiceIds) ? rawDoc.legacyServiceIds : [])]).forEach((legacyId) => {
+            bucket.legacyServiceIds.add(legacyId);
+        });
+
+        const description = buildLegacySmmDescription(rawDoc);
+        if (description && !bucket.description) {
+            bucket.description = description;
+        } else if (description && bucket.description && bucket.description !== description) {
+            conflicts.push(`SMM migration kept the first description for ${platform} / ${category} and ignored a conflicting description from ${sourceServiceId || rawDoc?._id}.`);
+        }
+
+        let sourceVariants = [];
+        if (Array.isArray(rawDoc?.variants) && rawDoc.variants.length > 0) {
+            sourceVariants = rawDoc.variants.map((variant) => ({ ...variant }));
+        } else if (Array.isArray(rawDoc?.pricingVariants) && rawDoc.pricingVariants.length > 0) {
+            sourceVariants = rawDoc.pricingVariants.map((variant, index) => ({
+                name: buildLegacyVariantName(rawDoc, variant, category),
+                country: trimSmmText(variant?.country || (index === 0 ? rawDoc?.targetCountries?.[0] : '')),
+                speed: trimSmmText(variant?.speed || rawDoc?.serviceDetails?.speed),
+                refill: trimSmmText(variant?.refill ?? variant?.refillGuarantee ?? rawDoc?.serviceDetails?.refillGuarantee),
+                price: variant?.price ?? rawDoc?.ratePer1000 ?? 0,
+                minQty: variant?.minQty ?? defaultMinQty,
+                maxQty: variant?.maxQty ?? defaultMaxQty,
+                legacyServiceIds: index === 0 && sourceServiceId ? [sourceServiceId] : []
+            }));
+        } else if (sourceServiceId || trimSmmText(rawDoc?.serviceType)) {
+            sourceVariants = [{
+                name: buildLegacyVariantName(rawDoc, rawDoc, category),
+                country: trimSmmText(rawDoc?.targetCountries?.[0]),
+                speed: trimSmmText(rawDoc?.serviceDetails?.speed),
+                refill: trimSmmText(rawDoc?.serviceDetails?.refillGuarantee),
+                price: rawDoc?.ratePer1000 ?? 0,
+                minQty: defaultMinQty,
+                maxQty: defaultMaxQty,
+                legacyServiceIds: sourceServiceId ? [sourceServiceId] : []
+            }];
+        }
+
+        for (const sourceVariant of sourceVariants) {
+            const variant = normalizeSmmVariant(sourceVariant, {
+                name: buildLegacyVariantName(rawDoc, sourceVariant, category),
+                minQty: defaultMinQty,
+                maxQty: defaultMaxQty,
+                speed: trimSmmText(rawDoc?.serviceDetails?.speed),
+                refill: trimSmmText(rawDoc?.serviceDetails?.refillGuarantee),
+                ...dynamicConfig
+            });
+            const signature = getSmmVariantSignature(variant);
+            const existing = bucket.variants.get(signature);
+            if (existing) {
+                existing.legacyServiceIds = uniqueSmmStrings([...(existing.legacyServiceIds || []), ...(variant.legacyServiceIds || [])]);
+            } else {
+                bucket.variants.set(signature, variant);
+            }
+        }
+    }
+
+    const sortedBuckets = Array.from(buckets.values()).sort((left, right) => {
+        const platformSort = compareSmmStrings(left.platform, right.platform);
+        if (platformSort !== 0) return platformSort;
+        return compareSmmStrings(left.category, right.category);
+    });
+
+    const usedServiceIds = new Set();
+    const highestPreferredServiceId = sortedBuckets.reduce((max, bucket) => {
+        const preferredServiceId = Number(bucket.preferredServiceId);
+        if (Number.isInteger(preferredServiceId) && preferredServiceId >= 1098) {
+            return Math.max(max, preferredServiceId);
+        }
+        return max;
+    }, 1097);
+    let nextServiceId = Math.max(1098, highestPreferredServiceId + 1);
+
+    const canonicalDocs = sortedBuckets.map((bucket) => {
+        let serviceId = Number(bucket.preferredServiceId);
+        if (!Number.isInteger(serviceId) || serviceId < 1098 || usedServiceIds.has(serviceId)) {
+            while (usedServiceIds.has(nextServiceId)) {
+                nextServiceId += 1;
+            }
+            serviceId = nextServiceId;
+            nextServiceId += 1;
+        }
+        usedServiceIds.add(serviceId);
+
+        const variants = Array.from(bucket.variants.values())
+            .map((variant) => ({
+                ...variant,
+                legacyServiceIds: uniqueSmmStrings(variant.legacyServiceIds || [])
+            }))
+            .sort((left, right) => {
+                const nameSort = compareSmmStrings(left.name, right.name);
+                if (nameSort !== 0) return nameSort;
+                return Number(left.price || 0) - Number(right.price || 0);
+            });
+
+        const legacyServiceIds = uniqueSmmStrings([...bucket.legacyServiceIds]).filter((legacyId) => Number(legacyId) !== serviceId);
+        if (legacyServiceIds.length && variants.length && !variants.some((variant) => variant.legacyServiceIds?.length)) {
+            variants[0].legacyServiceIds = uniqueSmmStrings([...(variants[0].legacyServiceIds || []), legacyServiceIds[0]]);
+        }
+
+        return {
+            serviceId,
+            legacyServiceIds,
+            platform: bucket.platform,
+            category: bucket.category,
+            description: bucket.description,
+            variants: assignSmmVariantIdsInPlace(
+                variants.length ? variants : [normalizeSmmVariant({ name: bucket.category, price: 0, minQty: dynamicConfig.inputType === 'textarea' ? 1 : 10, maxQty: 10000 }, dynamicConfig)]
+            ),
+            createdAt: bucket.createdAt
+        };
+    });
+
+    return { canonicalDocs, conflicts };
+}
+
+async function persistCanonicalSmmServices(canonicalDocs = []) {
+    if (!canonicalDocs.length) return;
+
+    const now = new Date();
+    const keepServiceIds = canonicalDocs.map((service) => service.serviceId);
+    const operations = canonicalDocs.map((service) => ({
+        replaceOne: {
+            filter: { serviceId: service.serviceId },
+            replacement: {
+                ...service,
+                createdAt: service.createdAt instanceof Date && !Number.isNaN(service.createdAt.getTime()) ? service.createdAt : now,
+                updatedAt: now
+            },
+            upsert: true
+        }
+    }));
+
+    await SmmService.collection.bulkWrite(operations, { ordered: false });
+    await SmmService.collection.deleteMany({ serviceId: { $nin: keepServiceIds } });
+}
+
+async function ensureSmmPlatformExists(platformName) {
+    const normalizedName = trimSmmText(platformName);
+    if (!normalizedName) return;
+
+    const existingPlatform = await SmmPlatform.findOne({
+        name: new RegExp(`^${escapeRegex(normalizedName)}$`, 'i')
+    });
+
+    if (!existingPlatform) {
+        await SmmPlatform.create({
+            name: normalizedName,
+            logoUrl: DEFAULT_SMM_PLATFORM_LOGO
+        });
+    }
+}
+
+function getSmmVariantQuantityBounds(variant = {}) {
+    const minQty = normalizeSmmQuantity(variant?.minQty, 1);
+    let maxQty = normalizeSmmQuantity(variant?.maxQty, Math.max(minQty, 1));
+    if (maxQty < minQty) {
+        maxQty = minQty;
+    }
+    return { minQty, maxQty };
+}
+
+function calculateSmmVariantTotal(quantity, variant = {}) {
+    const parsedQuantity = Number(quantity);
+    const ratePer1000 = Number(variant?.price || 0);
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0 || !Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
+        return 0;
+    }
+    return parseFloat(((parsedQuantity / 1000) * ratePer1000).toFixed(2));
+}
+
+async function resolveSmmServiceSelection(anyServiceId, requestedVariantIndex = 0, requestedVariantId = null) {
+    const normalizedId = trimSmmText(anyServiceId);
+    const normalizedVariantId = normalizeSmmServiceIdValue(requestedVariantId);
+    if (!normalizedId && normalizedVariantId === null) return null;
+    const numericServiceId = normalizeSmmServiceIdValue(normalizedId);
+
+    const service = await SmmService.findOne({
+        $or: [
+            ...(numericServiceId !== null ? [{ serviceId: numericServiceId }] : []),
+            { legacyServiceIds: normalizedId },
+            { 'variants.legacyServiceIds': normalizedId },
+            ...(numericServiceId !== null ? [{ 'variants.variantId': numericServiceId }] : []),
+            ...(normalizedVariantId !== null ? [{ 'variants.variantId': normalizedVariantId }] : [])
+        ]
+    }).lean();
+
+    if (!service) {
+        return null;
+    }
+
+    const variants = Array.isArray(service.variants) ? service.variants : [];
+    let variantIndex = Number.isInteger(Number(requestedVariantIndex)) ? Number(requestedVariantIndex) : 0;
+
+    if (normalizedVariantId !== null) {
+        const matchedVariantIndex = variants.findIndex((variant) => Number(variant?.variantId) === normalizedVariantId);
+        if (matchedVariantIndex >= 0) {
+            variantIndex = matchedVariantIndex;
+        }
+    }
+
+    if (numericServiceId === null || Number(service.serviceId) !== numericServiceId) {
+        const mappedVariantIndex = variants.findIndex((variant) => Array.isArray(variant?.legacyServiceIds) && variant.legacyServiceIds.includes(normalizedId));
+        if (mappedVariantIndex >= 0) {
+            variantIndex = mappedVariantIndex;
+        }
+    }
+
+    if (variantIndex < 0 || variantIndex >= variants.length) {
+        variantIndex = 0;
+    }
+
+    return {
+        service,
+        canonicalServiceId: service.serviceId,
+        variantIndex,
+        variant: variants[variantIndex] || null
+    };
+}
+
 async function initSmmServices() {
     try {
-        const count = await SmmService.countDocuments();
-        if (count === 0) {
-            const defaults = [
-                { 
-                    serviceId: 'ig-followers', platform: 'Instagram', serviceType: 'Followers', 
-                    pricingVariants: [{ country: 'Global', speed: '1K-5K/day', refillGuarantee: '30 Days Refill', price: 150 }] 
-                },
-                { 
-                    serviceId: 'ig-likes', platform: 'Instagram', serviceType: 'Likes', 
-                    pricingVariants: [{ country: 'Global', speed: 'Instant', refillGuarantee: 'No Refill', price: 80 }] 
-                },
-                { 
-                    serviceId: 'ig-comments', platform: 'Instagram', serviceType: 'Comments', 
-                    pricingVariants: [{ country: 'Global', speed: 'Custom', refillGuarantee: 'No Refill', price: 350 }] 
-                },
-                { 
-                    serviceId: 'ig-views', platform: 'Instagram', serviceType: 'Views', 
-                    pricingVariants: [{ country: 'Global', speed: 'Instant', refillGuarantee: 'No Refill', price: 50 }] 
-                },
-                { 
-                    serviceId: 'yt-subscribers', platform: 'YouTube', serviceType: 'Subscribers', 
-                    pricingVariants: [{ country: 'Global', speed: '100-500/day', refillGuarantee: '30 Days Refill', price: 800 }] 
-                },
-                { 
-                    serviceId: 'yt-likes', platform: 'YouTube', serviceType: 'Likes', 
-                    pricingVariants: [{ country: 'Global', speed: '1K/day', refillGuarantee: 'No Refill', price: 200 }] 
-                },
-                { 
-                    serviceId: 'yt-views', platform: 'YouTube', serviceType: 'Views', 
-                    pricingVariants: [{ country: 'Global', speed: '10K/day', refillGuarantee: 'No Refill', price: 300 }] 
-                },
-                { 
-                    serviceId: 'fb-followers', platform: 'Facebook', serviceType: 'Followers', 
-                    pricingVariants: [{ country: 'Global', speed: '1K-2K/day', refillGuarantee: '30 Days Refill', price: 180 }] 
-                },
-                { 
-                    serviceId: 'fb-likes', platform: 'Facebook', serviceType: 'Likes', 
-                    pricingVariants: [{ country: 'Global', speed: '1K-2K/day', refillGuarantee: '30 Days Refill', price: 100 }] 
-                }
-            ];
-            await SmmService.insertMany(defaults);
-            console.log("🚀 Default SMM rates initialized successfully.");
+        const rawDocs = await SmmService.find({}).lean();
+        const sourceDocs = rawDocs.length ? rawDocs : buildCanonicalSmmDefaults();
+        const { canonicalDocs, conflicts } = buildCanonicalSmmDocuments(sourceDocs);
+        const documentsToPersist = canonicalDocs.length ? canonicalDocs : buildCanonicalSmmDefaults();
+
+        await persistCanonicalSmmServices(documentsToPersist);
+        await Promise.all(documentsToPersist.map((service) => ensureSmmPlatformExists(service.platform)));
+
+        console.log(`🚀 SMM services normalized successfully (${documentsToPersist.length} canonical records).`);
+        if (conflicts.length) {
+            conflicts.forEach((message) => console.warn(`⚠️ ${message}`));
         }
     } catch (e) {
-        console.error("⚠️ Failed to initialize default SMM rates:", e);
+        console.error("⚠️ Failed to initialize SMM rates:", e);
     }
 }
 initSmmServices();
 
 async function initSmmPlatforms() {
     try {
-        const count = await SmmPlatform.countDocuments();
-        if (count === 0) {
-            const defaults = [
-                { name: "Instagram", logoUrl: "https://img.icons8.com/color/96/instagram-new.png" },
-                { name: "YouTube", logoUrl: "https://img.icons8.com/color/96/youtube-play.png" },
-                { name: "Facebook", logoUrl: "https://img.icons8.com/color/96/facebook-new.png" },
-                { name: "Twitter", logoUrl: "https://img.icons8.com/color/96/twitter--v1.png" },
-                { name: "TikTok", logoUrl: "https://img.icons8.com/color/96/tiktok.png" },
-                { name: "Telegram", logoUrl: "https://img.icons8.com/color/96/telegram-app.png" }
-            ];
-            await SmmPlatform.insertMany(defaults);
-            console.log("🚀 Default SMM platforms initialized successfully.");
+        const defaults = [
+            { name: "Instagram", logoUrl: "https://img.icons8.com/color/96/instagram-new.png" },
+            { name: "YouTube", logoUrl: "https://img.icons8.com/color/96/youtube-play.png" },
+            { name: "Facebook", logoUrl: "https://img.icons8.com/color/96/facebook-new.png" },
+            { name: "Twitter", logoUrl: "https://img.icons8.com/color/96/twitter--v1.png" },
+            { name: "TikTok", logoUrl: "https://img.icons8.com/color/96/tiktok.png" },
+            { name: "Telegram", logoUrl: "https://img.icons8.com/color/96/telegram-app.png" }
+        ];
+
+        for (const platform of defaults) {
+            const existingPlatform = await SmmPlatform.findOne({
+                name: new RegExp(`^${escapeRegex(platform.name)}$`, 'i')
+            });
+
+            if (!existingPlatform) {
+                await SmmPlatform.create(platform);
+            } else if (!existingPlatform.logoUrl || existingPlatform.logoUrl === DEFAULT_SMM_PLATFORM_LOGO) {
+                existingPlatform.logoUrl = platform.logoUrl;
+                await existingPlatform.save();
+            }
         }
+
+        console.log("🚀 Default SMM platforms initialized successfully.");
     } catch (e) {
         console.error("⚠️ Failed to initialize default SMM platforms:", e);
     }
@@ -5692,7 +6258,7 @@ app.post('/api/platforms', checkAuth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Name and logoUrl are required.' });
         }
         
-        const existing = await SmmPlatform.findOne({ name: new RegExp(`^${name}$`, 'i') });
+        const existing = await SmmPlatform.findOne({ name: new RegExp(`^${escapeRegex(name)}$`, 'i') });
         if (existing) {
             return res.status(400).json({ success: false, error: 'Platform name already exists.' });
         }
@@ -5720,7 +6286,7 @@ app.put('/api/platforms/:id', checkAuth, async (req, res) => {
         }
         
         if (name) {
-            const dupe = await SmmPlatform.findOne({ _id: { $ne: id }, name: new RegExp(`^${name}$`, 'i') });
+            const dupe = await SmmPlatform.findOne({ _id: { $ne: id }, name: new RegExp(`^${escapeRegex(name)}$`, 'i') });
             if (dupe) {
                 return res.status(400).json({ success: false, error: 'Another platform with this name already exists.' });
             }
@@ -5758,12 +6324,43 @@ app.delete('/api/platforms/:id', checkAuth, async (req, res) => {
 // 🚀 SMM RATE API ENDPOINTS
 // ==========================================
 
+app.get('/api/admin/smm/options', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const requestedPlatform = trimSmmText(req.query.platform);
+        const [servicePlatforms, brandedPlatforms] = await Promise.all([
+            SmmService.distinct('platform'),
+            SmmPlatform.distinct('name')
+        ]);
+
+        const platforms = uniqueSmmStrings([...servicePlatforms, ...brandedPlatforms]).sort(compareSmmStrings);
+        let categories = [];
+
+        if (requestedPlatform) {
+            categories = uniqueSmmStrings(await SmmService.find({
+                platform: new RegExp(`^${escapeRegex(requestedPlatform)}$`, 'i')
+            }).distinct('category')).sort(compareSmmStrings);
+        }
+
+        res.json({ success: true, platforms, categories });
+    } catch (e) {
+        console.error("Error in GET /api/admin/smm/options:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // GET all SMM rates (Public)
 app.get('/api/smm/rates', async (req, res) => {
     try {
-        const rates = await SmmService.find().sort({ platform: 1, serviceType: 1 });
+        const rates = await SmmService.find({}, 'serviceId legacyServiceIds platform category description variants')
+            .sort({ platform: 1, category: 1 })
+            .lean();
         res.json({ success: true, rates });
     } catch (e) {
+        console.error("Error in GET /api/smm/rates:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
@@ -5774,32 +6371,103 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
         if (req.user.role !== 'Admin') {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
-        const { serviceId, platform, serviceType, pricingVariants, serviceDetails } = req.body;
-        if (!serviceId || !platform || !serviceType || !pricingVariants || !Array.isArray(pricingVariants)) {
-            return res.status(400).json({ success: false, error: 'Missing required fields or invalid pricingVariants' });
-        }
-        
-        const existing = await SmmService.findOne({ serviceId });
-        if (existing) {
-            existing.platform = platform;
-            existing.serviceType = serviceType;
-            existing.pricingVariants = pricingVariants;
-            if (serviceDetails) {
-                existing.serviceDetails = serviceDetails;
-            }
-            await existing.save();
-            return res.json({ success: true, message: 'SMM rate updated successfully.' });
-        }
-        const newSmm = new SmmService({
-            serviceId,
+        const {
+            existingServiceId,
             platform,
-            serviceType,
-            pricingVariants,
-            serviceDetails: serviceDetails || {}
+            category,
+            description,
+            hasDynamicInput,
+            inputType,
+            inputLabel,
+            variants
+        } = req.body;
+
+        const normalizedPlatform = trimSmmText(platform);
+        const normalizedCategory = trimSmmText(category);
+        const legacyDynamicEnabled = hasDynamicInput === true || hasDynamicInput === 'true';
+        const legacyDynamicType = normalizeSmmInputType(inputType);
+        const legacyDynamicLabel = trimSmmText(inputLabel);
+        const existingService = await findSmmServiceByAnyId(existingServiceId);
+        const variantIdState = await getSmmVariantIdState(existingService?.serviceId ?? null);
+
+        if (!normalizedPlatform || !normalizedCategory || !Array.isArray(variants) || variants.length === 0) {
+            return res.status(400).json({ success: false, error: 'Platform, category, and at least one variant are required.' });
+        }
+
+        const normalizedVariants = variants.map((variant) => normalizeSmmVariant(variant, {
+            minQty: variant?.hasDynamicInput === true && normalizeSmmInputType(variant.inputType) === 'textarea' ? 1 : 10,
+            maxQty: 10000,
+            hasDynamicInput: legacyDynamicEnabled,
+            inputType: legacyDynamicType,
+            inputLabel: legacyDynamicLabel
+        }));
+        const normalizedVariantsWithIds = assignSmmVariantIdsInPlace(normalizedVariants, variantIdState);
+
+        const invalidVariant = normalizedVariantsWithIds.find((variant) => {
+            return !trimSmmText(variant.name)
+                || !Number.isFinite(Number(variant.price))
+                || Number(variant.price) <= 0
+                || !Number.isFinite(Number(variant.minQty))
+                || Number(variant.minQty) <= 0
+                || !Number.isFinite(Number(variant.maxQty))
+                || Number(variant.maxQty) < Number(variant.minQty);
         });
-        await newSmm.save();
-        res.json({ success: true, message: 'SMM rate created successfully.' });
+
+        if (invalidVariant) {
+            return res.status(400).json({ success: false, error: 'Each variant must have a name, positive price, and valid min/max quantities.' });
+        }
+
+        const duplicateFilter = {
+            platform: new RegExp(`^${escapeRegex(normalizedPlatform)}$`, 'i'),
+            category: new RegExp(`^${escapeRegex(normalizedCategory)}$`, 'i')
+        };
+        if (existingService?.serviceId != null) {
+            duplicateFilter.serviceId = { $ne: existingService.serviceId };
+        }
+
+        const duplicate = await SmmService.findOne(duplicateFilter);
+
+        if (duplicate) {
+            return res.status(409).json({ success: false, error: 'A service for this platform and category already exists.' });
+        }
+
+        let service = existingService;
+        if (!service) {
+            service = await SmmService.findOne({
+                platform: new RegExp(`^${escapeRegex(normalizedPlatform)}$`, 'i'),
+                category: new RegExp(`^${escapeRegex(normalizedCategory)}$`, 'i')
+            });
+        }
+
+        const serviceId = service?.serviceId || await getNextSmmServiceId();
+        const nextService = {
+            serviceId,
+            legacyServiceIds: uniqueSmmStrings(service?.legacyServiceIds || []).filter((legacyId) => Number(legacyId) !== Number(serviceId)),
+            platform: normalizedPlatform,
+            category: normalizedCategory,
+            description: trimSmmText(description),
+            variants: normalizedVariantsWithIds.map((variant) => ({
+                ...variant,
+                legacyServiceIds: uniqueSmmStrings(variant.legacyServiceIds || [])
+            }))
+        };
+
+        await ensureSmmPlatformExists(normalizedPlatform);
+
+        if (service) {
+            service.platform = nextService.platform;
+            service.category = nextService.category;
+            service.description = nextService.description;
+            service.variants = nextService.variants;
+            service.legacyServiceIds = nextService.legacyServiceIds;
+            await service.save();
+            return res.json({ success: true, message: 'SMM rate updated successfully.', serviceId });
+        }
+
+        await new SmmService(nextService).save();
+        res.json({ success: true, message: 'SMM rate created successfully.', serviceId });
     } catch (e) {
+        console.error("Error in POST /api/admin/smm/rates:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
@@ -5811,9 +6479,14 @@ app.delete('/api/admin/smm/rates/:serviceId', checkAuth, async (req, res) => {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const { serviceId } = req.params;
-        await SmmService.deleteOne({ serviceId });
+        const service = await findSmmServiceByAnyId(serviceId);
+        if (!service) {
+            return res.status(404).json({ success: false, error: 'SMM service not found.' });
+        }
+        await SmmService.deleteOne({ serviceId: service.serviceId });
         res.json({ success: true, message: 'SMM rate deleted successfully.' });
     } catch (e) {
+        console.error("Error in DELETE /api/admin/smm/rates/:serviceId:", e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
@@ -6456,7 +7129,7 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
-        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex } = req.body;
+        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex, variantId } = req.body;
         const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
 
         if (!razorpayKeyId) {
@@ -6472,21 +7145,20 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             if (!serviceId || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
                 return res.status(400).json({ success: false, error: 'serviceId and quantity required' });
             }
-            const smmSvc = await SmmService.findOne({ serviceId });
-            if (!smmSvc) {
+            const selection = await resolveSmmServiceSelection(serviceId, variantIndex, variantId);
+            if (!selection?.service || !selection?.variant) {
                 return res.status(404).json({ success: false, error: 'SMM Service not found' });
             }
-            let ratePer1000 = smmSvc.ratePer1000 || 0;
-            if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
-                const sVar = smmSvc.pricingVariants[variantIndex] || smmSvc.pricingVariants[0];
-                ratePer1000 = Number(sVar.price);
+            const { minQty, maxQty } = getSmmVariantQuantityBounds(selection.variant);
+            if (parsedQuantity < minQty || parsedQuantity > maxQty) {
+                return res.status(400).json({ success: false, error: `Quantity must be between ${minQty} and ${maxQty}.` });
             }
-            if (!Number.isFinite(ratePer1000) || ratePer1000 <= 0) {
-                return res.status(400).json({ success: false, error: 'Invalid ratePer1000, must be a positive number' });
+            finalPrice = calculateSmmVariantTotal(parsedQuantity, selection.variant);
+            if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
+                return res.status(400).json({ success: false, error: 'Invalid SMM variant price.' });
             }
-            finalPrice = parseFloat(((parsedQuantity / 1000) * ratePer1000).toFixed(2));
             cleanCurrency = "INR";
-            console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${serviceId}`);
+            console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${selection.canonicalServiceId}`);
         } else {
             // Normal agency orders
             if (amount == null) {
@@ -6525,6 +7197,8 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         let resolvedServiceId = '';
         let resolvedQuantity = 0;
         let resolvedTargetLink = '';
+        let selectedVariantName = '';
+        let selectedVariantId = null;
         let selectedCountry = '';
         let selectedQuality = '';
         let selectedSpeed = '';
@@ -6532,28 +7206,28 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
         if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
             orderType = 'smm';
-            resolvedServiceId = serviceId || orderDetails?.serviceId || '';
+            const requestedServiceId = serviceId || orderDetails?.serviceId || '';
+            resolvedServiceId = requestedServiceId;
             resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
             resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
             if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
                 resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
             }
             const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
+            const requestedVariantId = orderDetails?.variantId != null ? orderDetails.variantId : req.body.variantId;
 
             // Secure recalculation on server side
             try {
-                const smmSvc = await SmmService.findOne({ serviceId: resolvedServiceId });
-                if (smmSvc) {
-                    let rRate = smmSvc.ratePer1000 || 0;
-                    if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
-                        const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
-                        rRate = Number(sVar.price);
-                        selectedCountry = sVar.country || '';
-                        selectedQuality = sVar.quality || 'Standard';
-                        selectedSpeed = sVar.speed || '';
-                        selectedRefill = sVar.refillGuarantee || '';
-                    }
-                    normalizedOrderAmount = parseFloat(((resolvedQuantity / 1000) * rRate).toFixed(2));
+                const selection = await resolveSmmServiceSelection(requestedServiceId, variantIdx, requestedVariantId);
+                if (selection?.service && selection?.variant) {
+                    resolvedServiceId = selection.canonicalServiceId;
+                    selectedVariantName = trimSmmText(selection.variant.name);
+                    selectedVariantId = normalizeSmmServiceIdValue(selection.variant.variantId);
+                    selectedCountry = trimSmmText(selection.variant.country);
+                    selectedQuality = selectedVariantName;
+                    selectedSpeed = trimSmmText(selection.variant.speed);
+                    selectedRefill = trimSmmText(selection.variant.refill);
+                    normalizedOrderAmount = calculateSmmVariantTotal(resolvedQuantity, selection.variant);
                 }
             } catch (err) {
                 console.error("Server side recalculation error:", err);
@@ -6608,6 +7282,8 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             quantity: resolvedQuantity,
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
+            selectedVariantName: selectedVariantName,
+            selectedVariantId: selectedVariantId,
             selectedCountry: selectedCountry,
             selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
@@ -6618,6 +7294,8 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             quantityPerRun: qtyPerRun,
             remainingRuns: remainingRunsVal,
             nextRunAt: nextRunTimestamp,
+            extraInput: req.body.extraInput || orderDetails?.extraInput || '',
+            extraInputType: req.body.extraInputType || orderDetails?.extraInputType || 'none',
             date: new Date().toLocaleString()
         });
 
@@ -6895,9 +7573,53 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         }
 
         const { amount, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
-        const parsedAmount = Number(amount);
+        let finalChargeAmount = Number(amount);
+        let orderType = 'agency';
+        let resolvedServiceId = '';
+        let resolvedQuantity = 0;
+        let resolvedTargetLink = '';
+        let selectedVariantName = '';
+        let selectedVariantId = null;
+        let selectedCountry = '';
+        let selectedQuality = '';
+        let selectedSpeed = '';
+        let selectedRefill = '';
 
-        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
+            orderType = 'smm';
+            const requestedServiceId = serviceId || orderDetails?.serviceId || '';
+            resolvedServiceId = requestedServiceId;
+            resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
+            resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
+            if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+            }
+
+            const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
+            const requestedVariantId = orderDetails?.variantId != null ? orderDetails.variantId : req.body.variantId;
+            const selection = await resolveSmmServiceSelection(requestedServiceId, variantIdx, requestedVariantId);
+            if (!selection?.service || !selection?.variant) {
+                return res.status(404).json({ success: false, error: 'SMM Service not found.' });
+            }
+
+            const { minQty, maxQty } = getSmmVariantQuantityBounds(selection.variant);
+            if (!Number.isFinite(resolvedQuantity) || resolvedQuantity < minQty || resolvedQuantity > maxQty) {
+                return res.status(400).json({ success: false, error: `Quantity must be between ${minQty} and ${maxQty}.` });
+            }
+
+            resolvedServiceId = selection.canonicalServiceId;
+            selectedVariantName = trimSmmText(selection.variant.name);
+            selectedVariantId = normalizeSmmServiceIdValue(selection.variant.variantId);
+            selectedCountry = trimSmmText(selection.variant.country);
+            selectedQuality = selectedVariantName;
+            selectedSpeed = trimSmmText(selection.variant.speed);
+            selectedRefill = trimSmmText(selection.variant.refill);
+            finalChargeAmount = calculateSmmVariantTotal(resolvedQuantity, selection.variant);
+
+            if (!Number.isFinite(finalChargeAmount) || finalChargeAmount <= 0) {
+                return res.status(400).json({ success: false, error: 'Invalid SMM variant price.' });
+            }
+        } else if (isNaN(finalChargeAmount) || finalChargeAmount <= 0) {
             return res.status(400).json({ success: false, error: 'Invalid checkout amount.' });
         }
 
@@ -6913,51 +7635,16 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         }
 
         // Check wallet balance
-        if ((user.walletBalance || 0) < parsedAmount) {
+        if ((user.walletBalance || 0) < finalChargeAmount) {
             return res.status(400).json({ success: false, error: 'Insufficient Wallet Balance.' });
         }
 
         // Deduct balance
-        user.walletBalance = (user.walletBalance || 0) - parsedAmount;
+        user.walletBalance = (user.walletBalance || 0) - finalChargeAmount;
         await user.save();
 
         // Pre-generate Order ID for transaction linking
         const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
-
-        // Create Order Document first so newOrder is fully defined and accessible
-        let orderType = 'agency';
-        let resolvedServiceId = '';
-        let resolvedQuantity = 0;
-        let resolvedTargetLink = '';
-        let selectedCountry = '';
-        let selectedQuality = '';
-        let selectedSpeed = '';
-        let selectedRefill = '';
-
-        if (isSmm || orderDetails?.isSmm || incomingOrderType === 'smm' || orderDetails?.orderType === 'smm') {
-            orderType = 'smm';
-            resolvedServiceId = serviceId || orderDetails?.serviceId || '';
-            resolvedQuantity = Number(quantity || orderDetails?.quantity || 0);
-            resolvedTargetLink = targetLink || orderDetails?.targetLink || orderDetails?.instaLink || '';
-            if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
-                resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
-            }
-            const variantIdx = orderDetails?.variantIndex != null ? orderDetails.variantIndex : (req.body.variantIndex || 0);
-            try {
-                const smmSvc = await SmmService.findOne({ serviceId: resolvedServiceId });
-                if (smmSvc) {
-                    if (smmSvc.pricingVariants && smmSvc.pricingVariants.length > 0) {
-                        const sVar = smmSvc.pricingVariants[variantIdx] || smmSvc.pricingVariants[0];
-                        selectedCountry = sVar.country || '';
-                        selectedQuality = sVar.quality || 'Standard';
-                        selectedSpeed = sVar.speed || '';
-                        selectedRefill = sVar.refillGuarantee || '';
-                    }
-                }
-            } catch (err) {
-                console.error("Wallet checkout SMM variant fetch error:", err);
-            }
-        }
 
         const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
 
@@ -6975,14 +7662,16 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
         // Create transaction history document first to get its unique _id
         const packageName = orderDetails?.package || 'Service Package';
         let txnDescription = `Purchased ${packageName} (Order ${generatedOrderId})`;
-        if (orderType === 'smm' && selectedCountry && selectedSpeed) {
-            const qualityStr = selectedQuality ? `, ${selectedQuality}` : '';
-            txnDescription = `Purchased ${packageName} (${selectedCountry}${qualityStr}, ${selectedSpeed}) (Order ${generatedOrderId})`;
+        if (orderType === 'smm') {
+            const detailParts = [selectedVariantName, selectedCountry, selectedSpeed].filter(Boolean);
+            if (detailParts.length) {
+                txnDescription = `Purchased ${packageName} (${detailParts.join(', ')}) (Order ${generatedOrderId})`;
+            }
         }
         const transaction = new Transaction({
             userId: user._id,
             type: 'Debit',
-            amount: parsedAmount,
+            amount: finalChargeAmount,
             description: txnDescription,
             status: 'Success'
         });
@@ -6998,13 +7687,15 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             status: 'Work Pending',
             userId: user._id,
             ...orderDetails,
-            orderAmount: parsedAmount,
+            orderAmount: finalChargeAmount,
             orderItems: resolvedOrderItems,
             orderType: orderType,
             serviceId: resolvedServiceId,
             quantity: resolvedQuantity,
             targetLink: resolvedTargetLink,
             instaLink: resolvedTargetLink || orderDetails?.instaLink || '', // backward compatibility
+            selectedVariantName: selectedVariantName,
+            selectedVariantId: selectedVariantId,
             selectedCountry: selectedCountry,
             selectedQuality: selectedQuality,
             selectedSpeed: selectedSpeed,
@@ -7015,6 +7706,8 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             quantityPerRun: qtyPerRun,
             remainingRuns: remainingRunsVal,
             nextRunAt: nextRunTimestamp,
+            extraInput: req.body.extraInput || orderDetails?.extraInput || '',
+            extraInputType: req.body.extraInputType || orderDetails?.extraInputType || 'none',
             date: new Date().toLocaleString()
         });
 

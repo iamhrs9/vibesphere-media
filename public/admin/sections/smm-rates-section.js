@@ -1,95 +1,795 @@
 (function () {
+    const state = {
+        rates: [],
+        allSmmServices: [],
+        platformOptions: [],
+        categoryOptions: [],
+        currentVariants: [],
+        editingServiceId: '',
+        editingPlatformId: '',
+        serviceToDeleteId: null,
+        modalBindingsReady: false,
+        activePlatformFilter: 'All'
+    };
+
     const SECTION_HTML = {
         "smm-rates-section": `
             <div id="smm-rates-section" class="section" data-module-mounted="true">
-                <div class="premium-section">
-                    <div class="section-header">
+                <style>
+                    .smm-admin-shell {
+                        --smm-accent: #0f766e;
+                        --smm-accent-strong: #115e59;
+                        --smm-ink: #0f172a;
+                        --smm-subtle: #64748b;
+                        --smm-line: rgba(148, 163, 184, 0.22);
+                        --smm-surface: #ffffff;
+                        --smm-surface-soft: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 1));
+                        --smm-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+                    }
+
+                    #smm-rates-section .smm-panel {
+                        background: #ffffff;
+                        border: 1px solid var(--smm-line);
+                        border-radius: 24px;
+                        box-shadow: var(--smm-shadow);
+                    }
+
+                    #smm-rates-section .smm-toolbar {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 16px;
+                        padding: 28px;
+                        margin-bottom: 22px;
+                    }
+
+                    #smm-rates-section .smm-kicker {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 8px 12px;
+                        border-radius: 999px;
+                        background: rgba(15, 118, 110, 0.1);
+                        color: var(--smm-accent-strong);
+                        font-size: 0.78rem;
+                        font-weight: 800;
+                        text-transform: uppercase;
+                        letter-spacing: 0.08em;
+                    }
+
+                    #smm-rates-section .smm-title {
+                        margin: 12px 0 6px;
+                        color: var(--smm-ink);
+                        font-size: 1.5rem;
+                        font-weight: 800;
+                    }
+
+                    #smm-rates-section .smm-subtitle {
+                        margin: 0;
+                        color: var(--smm-subtle);
+                        line-height: 1.6;
+                        max-width: 720px;
+                    }
+
+                    #smm-rates-section .smm-toolbar-actions {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                    }
+
+                    #smm-rates-section .smm-btn {
+                        appearance: none;
+                        -webkit-appearance: none;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        border: 1px solid transparent;
+                        border-radius: 16px;
+                        padding: 12px 18px;
+                        line-height: 1.1;
+                        font-weight: 700;
+                        text-decoration: none;
+                        cursor: pointer;
+                        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+                        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+                    }
+
+                    #smm-rates-section .smm-btn:hover {
+                        transform: translateY(-1px);
+                    }
+
+                    #smm-rates-section .smm-btn:focus-visible,
+                    #smm-rates-section .smm-action-btn:focus-visible,
+                    #smm-rates-section .smm-remove-variant:focus-visible,
+                    #smm-rates-section .smm-close-btn:focus-visible {
+                        outline: none;
+                        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+                    }
+
+                    #smm-rates-section .smm-btn-primary {
+                        background: linear-gradient(135deg, #0f766e, #0ea5a4);
+                        color: #ffffff;
+                        box-shadow: 0 18px 34px rgba(15, 118, 110, 0.24);
+                    }
+
+                    #smm-rates-section .smm-btn-primary:hover {
+                        background: linear-gradient(135deg, #0f6b65, #139c9b);
+                        box-shadow: 0 22px 38px rgba(15, 118, 110, 0.28);
+                    }
+
+                    #smm-rates-section .smm-btn-secondary {
+                        background: linear-gradient(180deg, #f8fafc, #eef2f7);
+                        border-color: rgba(203, 213, 225, 0.95);
+                        color: #334155;
+                        box-shadow: 0 10px 20px rgba(148, 163, 184, 0.12);
+                    }
+
+                    #smm-rates-section .smm-btn-secondary:hover {
+                        background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+                        border-color: rgba(148, 163, 184, 0.95);
+                        color: #0f172a;
+                    }
+
+                    #smm-rates-section .smm-btn-ghost {
+                        background: linear-gradient(180deg, #ffffff, #f8fafc);
+                        border-color: rgba(203, 213, 225, 0.95);
+                        color: #334155;
+                        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+                    }
+
+                    #smm-rates-section .smm-btn-ghost:hover {
+                        background: linear-gradient(180deg, #ffffff, #f1f5f9);
+                        border-color: rgba(148, 163, 184, 0.9);
+                        color: #0f172a;
+                    }
+
+                    #smm-rates-section .smm-btn-soft {
+                        background: linear-gradient(180deg, #f8fafc, #eef2f7);
+                        border-color: rgba(203, 213, 225, 0.95);
+                        color: #334155;
+                        box-shadow: none;
+                    }
+
+                    #smm-rates-section .smm-btn-soft:hover {
+                        background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+                        border-color: rgba(148, 163, 184, 0.95);
+                        color: #0f172a;
+                        box-shadow: 0 12px 24px rgba(148, 163, 184, 0.14);
+                    }
+
+                    #smm-rates-section .smm-table-wrap {
+                        overflow: hidden;
+                    }
+
+                    #smm-rates-section .smm-filter-bar {
+                        display: flex;
+                        gap: 10px;
+                        margin: 0 0 18px;
+                        padding: 0 2px 4px;
+                        overflow-x: auto;
+                        scrollbar-width: thin;
+                    }
+
+                    #smm-rates-section .smm-filter-pill {
+                        border: 1px solid rgba(203, 213, 225, 0.95);
+                        border-radius: 999px;
+                        padding: 10px 16px;
+                        background: #f8fafc;
+                        color: #475569;
+                        font-size: 0.82rem;
+                        font-weight: 800;
+                        white-space: nowrap;
+                        cursor: pointer;
+                        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+                    }
+
+                    #smm-rates-section .smm-filter-pill:hover {
+                        transform: translateY(-1px);
+                        border-color: rgba(15, 118, 110, 0.24);
+                        color: var(--smm-ink);
+                    }
+
+                    #smm-rates-section .smm-filter-pill.active {
+                        background: linear-gradient(135deg, #0f766e, #0ea5a4);
+                        border-color: transparent;
+                        color: #ffffff;
+                        box-shadow: 0 14px 28px rgba(15, 118, 110, 0.18);
+                    }
+
+                    #smm-rates-section .smm-table-scroll {
+                        overflow-x: auto;
+                    }
+
+                    #smm-rates-section .smm-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+
+                    #smm-rates-section .smm-table thead th {
+                        padding: 16px 20px;
+                        text-align: left;
+                        font-size: 0.77rem;
+                        font-weight: 800;
+                        letter-spacing: 0.06em;
+                        text-transform: uppercase;
+                        color: #475569;
+                        background: rgba(248, 250, 252, 0.92);
+                        border-bottom: 1px solid var(--smm-line);
+                    }
+
+                    #smm-rates-section .smm-table tbody td {
+                        padding: 18px 20px;
+                        vertical-align: top;
+                        border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+                    }
+
+                    #smm-rates-section .smm-service-meta strong {
+                        display: block;
+                        color: var(--smm-ink);
+                        font-size: 0.97rem;
+                        margin-bottom: 6px;
+                    }
+
+                    #smm-rates-section .smm-muted {
+                        color: var(--smm-subtle);
+                        font-size: 0.82rem;
+                        line-height: 1.55;
+                    }
+
+                    #smm-rates-section .smm-badge-row {
+                        display: flex;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        margin-top: 10px;
+                    }
+
+                    #smm-rates-section .smm-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 5px 10px;
+                        border-radius: 999px;
+                        background: #ecfeff;
+                        color: #155e75;
+                        font-size: 0.74rem;
+                        font-weight: 700;
+                    }
+
+                    #smm-rates-section .smm-badge-neutral {
+                        background: #f1f5f9;
+                        color: #475569;
+                    }
+
+                    #smm-rates-section .smm-price {
+                        color: #0f766e;
+                        font-size: 1rem;
+                        font-weight: 800;
+                    }
+
+                    #smm-rates-section .smm-actions {
+                        display: flex;
+                        gap: 8px;
+                        justify-content: flex-end;
+                        flex-wrap: wrap;
+                    }
+
+                    #smm-rates-section .smm-action-btn {
+                        appearance: none;
+                        -webkit-appearance: none;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 1px solid transparent;
+                        border-radius: 999px;
+                        padding: 9px 14px;
+                        line-height: 1;
+                        font-size: 0.8rem;
+                        font-weight: 700;
+                        cursor: pointer;
+                        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+                        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+                    }
+
+                    #smm-rates-section .smm-action-btn:hover {
+                        transform: translateY(-1px);
+                    }
+
+                    #smm-rates-section .smm-action-edit {
+                        background: linear-gradient(180deg, #ecfdf3, #dcfce7);
+                        border-color: rgba(134, 239, 172, 0.95);
+                        color: #166534;
+                    }
+
+                    #smm-rates-section .smm-action-edit:hover {
+                        background: linear-gradient(180deg, #dcfce7, #bbf7d0);
+                        box-shadow: 0 14px 24px rgba(34, 197, 94, 0.16);
+                    }
+
+                    #smm-rates-section .smm-action-delete {
+                        background: linear-gradient(180deg, #fff1f2, #ffe4e6);
+                        border-color: rgba(253, 164, 175, 0.9);
+                        color: #be123c;
+                    }
+
+                    #smm-rates-section .smm-action-delete:hover {
+                        background: linear-gradient(180deg, #ffe4e6, #fecdd3);
+                        box-shadow: 0 14px 24px rgba(244, 63, 94, 0.14);
+                    }
+
+                    .smm-modal-overlay {
+                        display: none;
+                        position: fixed;
+                        inset: 0;
+                        z-index: 9999;
+                        background: rgba(15, 23, 42, 0.74);
+                        backdrop-filter: blur(10px);
+                        padding: 24px;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .smm-modal-dialog {
+                        width: min(1080px, 100%);
+                        max-height: calc(100vh - 48px);
+                        overflow: hidden;
+                        background: #ffffff;
+                        border-radius: 28px;
+                        border: 1px solid rgba(255, 255, 255, 0.92);
+                        box-shadow: 0 36px 80px rgba(15, 23, 42, 0.22);
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .smm-modal-dialog.smm-platform-dialog {
+                        width: min(560px, 100%);
+                    }
+
+                    .smm-modal-dialog.smm-platform-list-dialog {
+                        width: min(760px, 100%);
+                    }
+
+                    #smm-rates-section #customDeleteModal {
+                        display: none;
+                        position: fixed;
+                        inset: 0;
+                        z-index: 10050;
+                        background: rgba(15, 23, 42, 0.74);
+                        backdrop-filter: blur(10px);
+                        padding: 24px;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    #smm-rates-section #customDeleteModal:not(.hidden) {
+                        display: flex;
+                    }
+
+                    #smm-rates-section #customDeleteModal.hidden {
+                        display: none !important;
+                    }
+
+                    #smm-rates-section #customDeleteModal > div {
+                        width: min(520px, 100%);
+                        max-height: calc(100vh - 48px);
+                        overflow: hidden;
+                        background: #ffffff;
+                        border-radius: 24px;
+                        border: 1px solid rgba(255, 255, 255, 0.92);
+                        box-shadow: 0 36px 80px rgba(15, 23, 42, 0.22);
+                    }
+
+                    #smm-rates-section .smm-delete-modal-card {
+                        width: min(520px, 100%);
+                        max-height: calc(100vh - 48px);
+                        overflow: hidden;
+                        background: #ffffff;
+                        border-radius: 24px;
+                        border: 1px solid rgba(255, 255, 255, 0.92);
+                        box-shadow: 0 36px 80px rgba(15, 23, 42, 0.22);
+                        padding: 28px;
+                    }
+
+                    #smm-rates-section .smm-delete-modal-title {
+                        margin: 0 0 8px;
+                        color: var(--smm-ink);
+                        font-size: 1.35rem;
+                        font-weight: 800;
+                        letter-spacing: -0.02em;
+                    }
+
+                    #smm-rates-section .smm-delete-modal-copy {
+                        margin: 0 0 24px;
+                        color: var(--smm-subtle);
+                        line-height: 1.65;
+                        font-size: 0.95rem;
+                    }
+
+                    #smm-rates-section .smm-delete-modal-actions {
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                    }
+
+                    #smm-rates-section .smm-delete-btn-secondary,
+                    #smm-rates-section .smm-delete-btn-danger {
+                        appearance: none;
+                        -webkit-appearance: none;
+                        border: 1px solid transparent;
+                        border-radius: 14px;
+                        padding: 11px 16px;
+                        font-size: 0.92rem;
+                        font-weight: 700;
+                        line-height: 1;
+                        cursor: pointer;
+                        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+                    }
+
+                    #smm-rates-section .smm-delete-btn-secondary:hover,
+                    #smm-rates-section .smm-delete-btn-danger:hover {
+                        transform: translateY(-1px);
+                    }
+
+                    #smm-rates-section .smm-delete-btn-secondary {
+                        background: linear-gradient(180deg, #f8fafc, #eef2f7);
+                        border-color: rgba(203, 213, 225, 0.95);
+                        color: #334155;
+                        box-shadow: 0 10px 20px rgba(148, 163, 184, 0.12);
+                    }
+
+                    #smm-rates-section .smm-delete-btn-secondary:hover {
+                        background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+                    }
+
+                    #smm-rates-section .smm-delete-btn-danger {
+                        background: linear-gradient(135deg, #dc2626, #ef4444);
+                        color: #ffffff;
+                        box-shadow: 0 16px 28px rgba(239, 68, 68, 0.22);
+                    }
+
+                    #smm-rates-section .smm-delete-btn-danger:hover {
+                        background: linear-gradient(135deg, #b91c1c, #dc2626);
+                        box-shadow: 0 18px 32px rgba(239, 68, 68, 0.28);
+                    }
+
+                    .smm-modal-header {
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: space-between;
+                        gap: 20px;
+                        padding: 28px 30px 20px;
+                        border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+                        background: #ffffff;
+                    }
+
+                    .smm-modal-title {
+                        margin: 0 0 8px;
+                        color: var(--smm-ink);
+                        font-size: 1.32rem;
+                        font-weight: 800;
+                    }
+
+                    .smm-modal-copy {
+                        margin: 0;
+                        color: var(--smm-subtle);
+                        line-height: 1.55;
+                    }
+
+                    #smm-rates-section .smm-close-btn {
+                        width: 42px;
+                        height: 42px;
+                        border: none;
+                        border-radius: 14px;
+                        background: rgba(255, 255, 255, 0.9);
+                        color: #334155;
+                        font-size: 1.25rem;
+                        cursor: pointer;
+                    }
+
+                    #smm-rates-section .smm-modal-body {
+                        padding: 26px 30px;
+                        overflow-y: auto;
+                        background: #ffffff;
+                    }
+
+                    .smm-form-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 18px;
+                    }
+
+                    .smm-form-card {
+                        background: linear-gradient(180deg, #ffffff, #f8fafc);
+                        border: 1px solid rgba(226, 232, 240, 0.9);
+                        border-radius: 22px;
+                        padding: 22px;
+                    }
+
+                    .smm-form-card.smm-form-card-full {
+                        grid-column: 1 / -1;
+                    }
+
+                    .smm-form-card h4 {
+                        margin: 0 0 8px;
+                        color: var(--smm-ink);
+                        font-size: 1rem;
+                        font-weight: 800;
+                    }
+
+                    .smm-form-card p {
+                        margin: 0 0 18px;
+                        color: var(--smm-subtle);
+                        font-size: 0.84rem;
+                        line-height: 1.55;
+                    }
+
+                    .smm-field-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                        gap: 16px;
+                    }
+
+                    .smm-field {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+
+                    .smm-field label {
+                        color: #334155;
+                        font-size: 0.82rem;
+                        font-weight: 700;
+                    }
+
+                    .smm-input,
+                    .smm-select,
+                    .smm-textarea {
+                        width: 100%;
+                        border: 1px solid #dbe3ee;
+                        border-radius: 14px;
+                        padding: 12px 14px;
+                        background: #ffffff;
+                        color: var(--smm-ink);
+                        font-size: 0.94rem;
+                        outline: none;
+                        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+                    }
+
+                    .smm-input:focus,
+                    .smm-select:focus,
+                    .smm-textarea:focus {
+                        border-color: rgba(15, 118, 110, 0.5);
+                        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.08);
+                    }
+
+                    .smm-textarea {
+                        min-height: 130px;
+                        resize: vertical;
+                        font-family: inherit;
+                    }
+
+                    .smm-inline-toggle {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        padding: 12px 14px;
+                        border-radius: 14px;
+                        background: #f8fafc;
+                        border: 1px solid rgba(226, 232, 240, 0.9);
+                        color: #0f172a;
+                        font-weight: 700;
+                    }
+
+                    .smm-inline-toggle input {
+                        width: 18px;
+                        height: 18px;
+                        accent-color: var(--smm-accent);
+                    }
+
+                    .smm-dynamic-grid {
+                        display: none;
+                        margin-top: 16px;
+                    }
+
+                    .smm-add-new-wrap {
+                        display: none;
+                    }
+
+                    .smm-error {
+                        display: none;
+                        margin: 0 0 18px;
+                        padding: 12px 14px;
+                        border-radius: 14px;
+                        background: #fef2f2;
+                        color: #b91c1c;
+                        font-size: 0.84rem;
+                        font-weight: 700;
+                    }
+
+                    .smm-variant-stack {
+                        display: grid;
+                        gap: 14px;
+                    }
+
+                    .smm-variant-card {
+                        border: 1px solid rgba(203, 213, 225, 0.9);
+                        border-radius: 18px;
+                        padding: 18px;
+                        background: #ffffff;
+                    }
+
+                    .smm-variant-head {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        margin-bottom: 14px;
+                    }
+
+                    .smm-variant-head strong {
+                        color: var(--smm-ink);
+                        font-size: 0.94rem;
+                    }
+
+                    #smm-rates-section .smm-remove-variant {
+                        appearance: none;
+                        -webkit-appearance: none;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 1px solid rgba(253, 164, 175, 0.95);
+                        border-radius: 999px;
+                        padding: 8px 12px;
+                        background: linear-gradient(180deg, #fff1f2, #ffe4e6);
+                        color: #be123c;
+                        line-height: 1;
+                        box-shadow: 0 8px 18px rgba(244, 63, 94, 0.08);
+                        font-weight: 700;
+                        cursor: pointer;
+                        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+                    }
+
+                    #smm-rates-section .smm-remove-variant:hover {
+                        transform: translateY(-1px);
+                        background: linear-gradient(180deg, #ffe4e6, #fecdd3);
+                        box-shadow: 0 12px 24px rgba(244, 63, 94, 0.14);
+                    }
+
+                    #smm-rates-section .smm-modal-footer {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 12px;
+                        align-items: center;
+                        padding: 20px 30px 28px;
+                        border-top: 1px solid rgba(226, 232, 240, 0.85);
+                        background: #ffffff;
+                    }
+
+                    #smm-rates-section .smm-modal-footer-actions {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                    }
+
+                    #smm-rates-section .smm-logo-preview {
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 18px;
+                        border: 1px solid rgba(203, 213, 225, 0.95);
+                        background: #f8fafc;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        overflow: hidden;
+                        color: #475569;
+                        font-size: 1.3rem;
+                        font-weight: 800;
+                    }
+
+                    #smm-rates-section .smm-platform-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        background: #ffffff;
+                    }
+
+                    #smm-rates-section .smm-platform-table th,
+                    #smm-rates-section .smm-platform-table td {
+                        padding: 14px 16px;
+                        border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+                        text-align: left;
+                        background: #ffffff;
+                    }
+
+                    #smm-rates-section .smm-platform-table th {
+                        font-size: 0.77rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.06em;
+                        color: #64748b;
+                    }
+
+                    #smm-rates-section .smm-platform-table tbody tr,
+                    #smm-rates-section .smm-platform-table tbody tr:nth-child(even),
+                    #smm-rates-section .smm-platform-table tbody tr:hover,
+                    #smm-rates-section .smm-platform-table tbody td {
+                        background: #ffffff !important;
+                    }
+
+                    #smm-rates-section .smm-table tbody tr,
+                    #smm-rates-section .smm-table tbody tr:nth-child(even),
+                    #smm-rates-section .smm-table tbody tr:hover,
+                    #smm-rates-section .smm-table tbody td {
+                        background: #ffffff !important;
+                    }
+
+                    @media (max-width: 900px) {
+                        #smm-rates-section .smm-toolbar {
+                            flex-direction: column;
+                            align-items: flex-start;
+                        }
+
+                        .smm-modal-overlay {
+                            padding: 12px;
+                        }
+
+                        #smm-rates-section .smm-modal-dialog,
+                        #smm-rates-section .smm-modal-dialog.smm-platform-dialog,
+                        #smm-rates-section .smm-modal-dialog.smm-platform-list-dialog {
+                            width: 100%;
+                            border-radius: 22px;
+                        }
+
+                        #smm-rates-section .smm-modal-header,
+                        #smm-rates-section .smm-modal-body,
+                        #smm-rates-section .smm-modal-footer {
+                            padding-left: 18px;
+                            padding-right: 18px;
+                        }
+
+                        #smm-rates-section .smm-modal-footer {
+                            flex-direction: column;
+                            align-items: stretch;
+                        }
+
+                        #smm-rates-section .smm-modal-footer-actions {
+                            width: 100%;
+                            justify-content: stretch;
+                        }
+                    }
+                </style>
+
+                <div class="premium-section smm-admin-shell">
+                    <div class="smm-panel smm-toolbar">
                         <div>
-                            <h2 class="section-title" style="font-size:1.4rem;">🚀 SMM Rate Manager</h2>
-                            <p class="section-subtitle" style="margin-top:6px;">Update pricing base rates (per 1,000 units in INR) for platform SMM services.</p>
+                            <span class="smm-kicker">Premium SMM Control</span>
+                            <h2 class="smm-title">SMM Service Ecosystem</h2>
+                            <p class="smm-subtitle">Manage category-level SMM services with clean variant pricing, dynamic user input rules, and safer data handling across the admin panel.</p>
+                        </div>
+                        <div class="smm-toolbar-actions">
+                            <button type="button" class="smm-btn smm-btn-secondary" onclick="window.openManagePlatformsModal()">Manage Platforms</button>
+                            <button type="button" class="smm-btn smm-btn-primary" onclick="window.openSmmServiceModal()">+ Add Service</button>
                         </div>
                     </div>
 
-                    <div class="staff-card" style="padding:24px;margin-bottom:24px;background:#ffffff;border-radius:18px;border:1px solid rgba(148,163,184,0.12);box-shadow:0 4px 20px rgba(0,0,0,0.02);">
-                        <h3 id="smm-form-title" style="margin-bottom:16px;font-size:1.1rem;color:#1e293b;font-weight:700;">➕ Add / Update SMM Service Rate</h3>
-                        <p id="smm-form-error" style="display:none;margin:0 0 14px;color:#b91c1c;font-weight:600;"></p>
-                        
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:16px;">
-                            <div>
-                                <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Platform *</label>
-                                <select id="smmPlatform" onchange="handlePlatformDropdownChange(this)" style="width:100%;padding:11px 14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#1e293b;font-weight:600;outline:none;transition:0.2s;">
-                                    <option value="Instagram">Instagram</option>
-                                    <option value="YouTube">YouTube</option>
-                                    <option value="Facebook">Facebook</option>
-                                    <option value="Twitter">Twitter</option>
-                                    <option value="TikTok">TikTok</option>
-                                    <option value="Telegram">Telegram</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Service Type *</label>
-                                <input type="text" id="smmServiceType" placeholder="e.g. Followers, Likes, Views"
-                                    style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
-                            </div>
-                        </div>
+                    <div id="platformFilters" class="smm-filter-bar" aria-label="Platform filters"></div>
 
-                        <!-- Restored Service Details Fields -->
-                        <div style="border-top:1px solid rgba(148,163,184,0.12);padding-top:16px;margin-bottom:20px;">
-                            <h4 style="margin:0 0 12px 0;font-size:0.95rem;color:#1e293b;font-weight:700;">ℹ️ Service Details</h4>
-                            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:16px;">
-                                <div>
-                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Start Time</label>
-                                    <input type="text" id="smmStartTime" placeholder="e.g. 0-1 Hours, Instant"
-                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
-                                </div>
-                                <div>
-                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Refill Guarantee</label>
-                                    <input type="text" id="smmRefillGuarantee" placeholder="e.g. 30 Days Refill, No Refill"
-                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
-                                </div>
-                                <div>
-                                    <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Speed</label>
-                                    <input type="text" id="smmSpeed" placeholder="e.g. 1K - 5K / Day"
-                                        style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;">
-                                </div>
-                            </div>
-                            <div style="margin-bottom:16px;">
-                                <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Detailed Description</label>
-                                <textarea id="smmDescription" placeholder="Enter service details, start time info, or rules here..." rows="3"
-                                    style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;color:#1e293b;font-weight:600;outline:none;font-family:inherit;resize:vertical;"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Dynamic Pricing Variants Section -->
-                        <div style="border-top:1px solid rgba(148,163,184,0.12);padding-top:16px;margin-bottom:20px;">
-                            <h4 style="margin:0 0 12px 0;font-size:0.95rem;color:#1e293b;font-weight:700;">💰 Dynamic Pricing Variants</h4>
-                            <div id="smmVariantsContainer">
-                                <!-- Variants will be added here -->
-                            </div>
-                            <button type="button" onclick="addSmmVariant()" style="margin-top:10px;background:#f1f5f9;color:#475569;border:1px dashed #cbd5e1;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;width:100%;">+ Add Variant</button>
-                        </div>
-
-                        <div style="display:flex;gap:10px;">
-                            <button onclick="saveSmmRate()" class="btn-publish" style="background:#6c63ff;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">💾 Save Rate</button>
-                            <button id="smm-cancel-btn" onclick="resetSmmForm()" class="btn-cancel" style="display:none;background:#f1f5f9;color:#475569;border:none;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer;">Cancel</button>
-                        </div>
-                    </div>
-
-                    <div class="modern-table-shell" style="background:#ffffff;border-radius:18px;border:1px solid rgba(148,163,184,0.12);box-shadow:0 4px 20px rgba(0,0,0,0.02);overflow:hidden;">
-                        <div class="table-responsive" style="overflow-x:auto;width:100%;">
-                            <table class="modern-list-table" style="width:100%;border-collapse:collapse;text-align:left;">
+                    <div class="smm-panel smm-table-wrap">
+                        <div class="smm-table-scroll">
+                            <table class="smm-table">
                                 <thead>
-                                    <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
-                                        <th style="padding:16px 20px;font-weight:700;color:#475569;font-size:0.85rem;">Platform</th>
-                                        <th style="padding:16px 20px;font-weight:700;color:#475569;font-size:0.85rem;">Service Type</th>
-                                        <th style="padding:16px 20px;font-weight:700;color:#475569;font-size:0.85rem;">Service ID</th>
-                                        <th style="padding:16px 20px;font-weight:700;color:#475569;font-size:0.85rem;">Rate Per 1,000</th>
-                                        <th style="padding:16px 20px;font-weight:700;color:#475569;font-size:0.85rem;text-align:right;">Actions</th>
+                                    <tr>
+                                        <th>Platform</th>
+                                        <th>Category</th>
+                                        <th>Details</th>
+                                        <th>Starting Price</th>
+                                        <th>Updated</th>
+                                        <th style="text-align:right;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="smmRatesTable">
                                     <tr>
-                                        <td colspan="5" style="text-align:center;padding:24px;color:#64748b;">Loading SMM rates...</td>
+                                        <td colspan="6" style="padding:28px;text-align:center;color:#64748b;">Loading SMM services...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -97,83 +797,168 @@
                     </div>
                 </div>
 
-                <!-- Premium Modal Overlay for Adding Dynamic SMM Platform -->
-                <div id="addPlatformModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center;">
-                    <div style="background:#ffffff; border-radius:20px; width:100%; max-width:480px; padding:32px; box-shadow:0 20px 40px rgba(0,0,0,0.15); border:1px solid rgba(148,163,184,0.12); position:relative; margin: 20px; animation: modalFadeIn 0.3s ease;">
-                        <h3 style="margin-top:0; margin-bottom:8px; font-size:1.3rem; color:#1e293b; font-weight:800; display:flex; align-items:center; gap:8px;">➕ Add New SMM Platform</h3>
-                        <p style="margin:0 0 20px 0; color:#64748b; font-size:0.85rem;">Create a custom platform by entering its name and uploading its logo.</p>
-                        
-                        <div style="margin-bottom:16px;">
-                            <label style="display:block; margin-bottom:6px; font-size:0.8rem; font-weight:700; color:#475569;">Platform Name *</label>
-                            <input type="text" id="newPlatformName" placeholder="e.g. Spotify, LinkedIn" style="width:100%; padding:11px 14px; border:1px solid #cbd5e1; border-radius:10px; color:#1e293b; font-weight:600; outline:none; transition:0.2s;">
-                        </div>
-                        
-                        <div style="margin-bottom:24px;">
-                            <label style="display:block; margin-bottom:6px; font-size:0.8rem; font-weight:700; color:#475569;">Platform Logo *</label>
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <div id="newPlatformLogoPreview" style="width:48px; height:48px; border-radius:10px; background:#f1f5f9; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:1.2rem; color:#64748b;">
-                                    🌐
-                                </div>
-                                <div style="flex-grow:1;">
-                                    <input type="file" id="newPlatformLogoFile" accept="image/*" style="display:none;" onchange="handleNewPlatformLogoUpload(event)">
-                                    <button type="button" onclick="document.getElementById('newPlatformLogoFile').click()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.8rem; transition:0.2s;">📁 Choose Image</button>
-                                    <span id="newPlatformUploadStatus" style="font-size:0.75rem; color:#64748b; margin-left:8px; display:inline-block; vertical-align:middle;"></span>
-                                </div>
+                <div id="smmServiceModal" class="smm-modal-overlay">
+                    <div class="smm-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="smmServiceModalTitle">
+                        <div class="smm-modal-header">
+                            <div>
+                                <h3 id="smmServiceModalTitle" class="smm-modal-title">Add SMM Service</h3>
+                                <p class="smm-modal-copy">Create or update a clean category-level service record. Platform and category are DB-aware, while variants carry the sellable pricing options.</p>
                             </div>
-                            <input type="hidden" id="newPlatformLogoUrl">
+                            <button type="button" class="smm-close-btn" onclick="window.closeSmmServiceModal()">×</button>
                         </div>
-                        
-                        <div style="display:flex; justify-content:flex-end; gap:12px;">
-                            <button type="button" onclick="closeAddPlatformModal()" style="background:#f1f5f9; color:#475569; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem;">Cancel</button>
-                            <button type="button" id="submitNewPlatformBtn" onclick="submitNewPlatform()" style="background:#6c63ff; color:#fff; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center; gap:8px;">Add Platform</button>
-                        </div>
-                    </div>
+                        <div class="smm-modal-body">
+                            <p id="smmServiceError" class="smm-error"></p>
+                            <div class="smm-form-grid">
+                                <section class="smm-form-card">
+                                    <h4>Basics</h4>
+                                    <p>Choose an existing platform/category or create a new one on the fly without leaving this modal.</p>
+                                    <div class="smm-field-grid">
+                                        <div class="smm-field">
+                                            <label for="smmPlatform">Platform</label>
+                                            <select id="smmPlatform" class="smm-select" onchange="window.handleSmmPlatformSelectChange()"></select>
+                                        </div>
+                                        <div class="smm-field smm-add-new-wrap" id="smmPlatformCustomWrap">
+                                            <label for="smmPlatformCustom">New Platform Name</label>
+                                            <input id="smmPlatformCustom" class="smm-input" type="text" placeholder="e.g. LinkedIn">
+                                        </div>
+                                        <div class="smm-field">
+                                            <label for="smmCategory">Category</label>
+                                            <select id="smmCategory" class="smm-select" onchange="window.handleSmmCategorySelectChange()"></select>
+                                        </div>
+                                        <div class="smm-field smm-add-new-wrap" id="smmCategoryCustomWrap">
+                                            <label for="smmCategoryCustom">New Category Name</label>
+                                            <input id="smmCategoryCustom" class="smm-input" type="text" placeholder="e.g. Subscribers">
+                                        </div>
+                                    </div>
+                                </section>
 
-                    <!-- Premium Modal Overlay for Managing Platforms -->
-                    <div id="managePlatformsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9998; align-items:center; justify-content:center;">
-                        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:600px; padding:32px; box-shadow:0 20px 40px rgba(0,0,0,0.15); border:1px solid rgba(148,163,184,0.12); position:relative; margin: 20px; display:flex; flex-direction:column; max-height:85vh; animation: modalFadeIn 0.3s ease;">
-                            <h3 style="margin-top:0; margin-bottom:8px; font-size:1.3rem; color:#1e293b; font-weight:800; display:flex; align-items:center; gap:8px;">⚙️ Manage SMM Platforms</h3>
-                            <p style="margin:0 0 20px 0; color:#64748b; font-size:0.85rem;">View, edit, or delete the platform branding parameters in the system database.</p>
-                            
-                            <div style="overflow-y:auto; flex-grow:1; margin-bottom:20px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; padding:8px;">
-                                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
-                                    <thead>
-                                        <tr style="border-bottom:2px solid #e2e8f0; color:#475569; font-weight:700;">
-                                            <th style="padding:10px 14px; width:64px;">Logo</th>
-                                            <th style="padding:10px 14px;">Platform Name</th>
-                                            <th style="padding:10px 14px; text-align:right;">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="managePlatformsTableBody">
-                                        <!-- Dynamically loaded rows -->
-                                    </tbody>
-                                </table>
+                                <section class="smm-form-card">
+                                    <h4>Rules & Copy</h4>
+                                    <p>This description appears as the service rules/info block on the user side.</p>
+                                    <div class="smm-field">
+                                        <label for="smmDescription">Description</label>
+                                        <textarea id="smmDescription" class="smm-textarea" placeholder="Important rules, delivery notes, or service info..."></textarea>
+                                    </div>
+                                </section>
+
+                                <section class="smm-form-card smm-form-card-full">
+                                    <h4>Variant Builder</h4>
+                                    <p>Each variant represents a sellable option. Country, speed, and refill can stay blank if they do not apply.</p>
+                                    <div id="smmVariantsContainer" class="smm-variant-stack"></div>
+                                    <div style="margin-top:16px;">
+                                        <button type="button" class="smm-btn smm-btn-secondary" onclick="window.addSmmVariant()">+ Add Variant</button>
+                                    </div>
+                                </section>
                             </div>
-                            
-                            <div style="display:flex; justify-content:flex-end;">
-                                <button type="button" onclick="closeManagePlatformsModal()" style="background:#f1f5f9; color:#475569; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem;">Close</button>
+                        </div>
+                        <div class="smm-modal-footer">
+                            <span class="smm-muted">Changes save directly to the canonical SMM service schema.</span>
+                            <div class="smm-modal-footer-actions">
+                                <button type="button" class="smm-btn smm-btn-secondary" onclick="window.closeSmmServiceModal()">Cancel</button>
+                                <button type="button" class="smm-btn smm-btn-primary" id="smmServiceSaveButton" onclick="window.saveSmmService()">Save Service</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <style>
-                @keyframes modalFadeIn {
-                    from { opacity: 0; transform: scale(0.95); }
-                    to { opacity: 1; transform: scale(1); }
-                }
-                </style>
+
+                <div id="managePlatformsModal" class="smm-modal-overlay">
+                    <div class="smm-modal-dialog smm-platform-list-dialog" role="dialog" aria-modal="true" aria-labelledby="managePlatformsTitle">
+                        <div class="smm-modal-header">
+                            <div>
+                                <h3 id="managePlatformsTitle" class="smm-modal-title">Platform Branding</h3>
+                                <p class="smm-modal-copy">Review, edit, or remove branded platform entries used by the public SMM platform selector.</p>
+                            </div>
+                            <button type="button" class="smm-close-btn" onclick="window.closeManagePlatformsModal()">×</button>
+                        </div>
+                        <div class="smm-modal-body">
+                            <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+                                <button type="button" class="smm-btn smm-btn-primary" onclick="window.openPlatformBrandingModal()">+ Add Platform Branding</button>
+                            </div>
+                            <div class="smm-panel" style="border-radius:20px;overflow:hidden;">
+                                <table class="smm-platform-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:92px;">Logo</th>
+                                            <th>Name</th>
+                                            <th style="text-align:right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="managePlatformsTableBody">
+                                        <tr><td colspan="3" style="color:#64748b;">Loading platforms...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="platformBrandingModal" class="smm-modal-overlay">
+                    <div class="smm-modal-dialog smm-platform-dialog" role="dialog" aria-modal="true" aria-labelledby="platformBrandingTitle">
+                        <div class="smm-modal-header">
+                            <div>
+                                <h3 id="platformBrandingTitle" class="smm-modal-title">Platform Branding</h3>
+                                <p class="smm-modal-copy">Add or update the public logo used for a specific SMM platform.</p>
+                            </div>
+                            <button type="button" class="smm-close-btn" onclick="window.closePlatformBrandingModal()">×</button>
+                        </div>
+                        <div class="smm-modal-body">
+                            <div class="smm-field" style="margin-bottom:18px;">
+                                <label for="platformBrandingName">Platform Name</label>
+                                <input id="platformBrandingName" class="smm-input" type="text" placeholder="e.g. Instagram">
+                            </div>
+                            <div class="smm-field">
+                                <label>Platform Logo</label>
+                                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                                    <div id="platformBrandingPreview" class="smm-logo-preview">🌐</div>
+                                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                        <input id="platformBrandingLogoFile" type="file" accept="image/*" style="display:none;" onchange="window.handlePlatformLogoUpload(event)">
+                                        <input id="platformBrandingLogoUrl" type="hidden">
+                                        <button type="button" class="smm-btn smm-btn-ghost" onclick="document.getElementById('platformBrandingLogoFile').click()">Choose Logo</button>
+                                        <span id="platformBrandingUploadStatus" class="smm-muted"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="smm-modal-footer">
+                            <span class="smm-muted">If no logo is uploaded, the default platform image will be used.</span>
+                            <div class="smm-modal-footer-actions">
+                                <button type="button" class="smm-btn smm-btn-secondary" onclick="window.closePlatformBrandingModal()">Cancel</button>
+                                <button type="button" class="smm-btn smm-btn-primary" onclick="window.submitPlatformBranding()">Save Branding</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="customDeleteModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
+                    <div class="smm-delete-modal-card">
+                        <h3 class="smm-delete-modal-title">Delete Service?</h3>
+                        <p class="smm-delete-modal-copy">Are you sure you want to delete <span id="deleteModalServiceName" class="font-semibold text-gray-800"></span>? This action cannot be undone and will remove all its variants.</p>
+                        <div class="smm-delete-modal-actions">
+                            <button id="cancelDeleteBtn" type="button" class="smm-delete-btn-secondary">Cancel</button>
+                            <button id="confirmDeleteBtn" type="button" class="smm-delete-btn-danger">Yes, Delete</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `
     };
 
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
+    function normalizeText(value) {
+        return (value == null ? '' : String(value)).trim();
+    }
+
+    function sameText(left, right) {
+        return normalizeText(left).toLowerCase() === normalizeText(right).toLowerCase();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
     function mountSections(sectionIds) {
         sectionIds.forEach((sectionId) => {
@@ -184,594 +969,870 @@
         });
     }
 
-    window.mountAdminSmmRatesSection = function () {
-        mountSections(["smm-rates-section"]);
-        if (typeof renderSmmVariants === 'function') renderSmmVariants();
-        window.populateSmmPlatforms();
-    };
+    function cloneVariant(variant = {}) {
+        const inferredInputType = normalizeText(variant.inputType) === 'textarea'
+            ? 'textarea'
+            : (normalizeText(variant.inputType) === 'text' ? 'text' : 'none');
+        const inferredHasDynamicInput = variant.hasDynamicInput === true
+            || inferredInputType !== 'none'
+            || Boolean(normalizeText(variant.inputLabel));
 
-    window.currentSmmVariants = [];
+        return {
+            name: normalizeText(variant.name),
+            country: normalizeText(variant.country),
+            speed: normalizeText(variant.speed),
+            refill: normalizeText(variant.refill),
+            variantId: variant.variantId != null ? String(variant.variantId) : '',
+            hasDynamicInput: inferredHasDynamicInput,
+            inputType: inferredHasDynamicInput ? (inferredInputType === 'textarea' ? 'textarea' : 'text') : 'none',
+            inputLabel: normalizeText(variant.inputLabel),
+            price: variant.price != null ? String(variant.price) : '',
+            minQty: variant.minQty != null ? String(variant.minQty) : '10',
+            maxQty: variant.maxQty != null ? String(variant.maxQty) : '10000',
+            legacyServiceIds: Array.isArray(variant.legacyServiceIds) ? [...variant.legacyServiceIds] : []
+        };
+    }
 
-    window.addSmmVariant = function() {
-        window.currentSmmVariants.push({ country: '', quality: 'Standard', speed: '', refillGuarantee: 'No Refill', price: '' });
-        window.renderSmmVariants();
-    };
+    function makeEmptyVariant() {
+        return {
+            name: '',
+            country: '',
+            speed: '',
+            refill: '',
+            variantId: '',
+            hasDynamicInput: false,
+            inputType: 'none',
+            inputLabel: '',
+            price: '',
+            minQty: '10',
+            maxQty: '10000',
+            legacyServiceIds: []
+        };
+    }
 
-    window.removeSmmVariant = function(index) {
-        window.currentSmmVariants.splice(index, 1);
-        window.renderSmmVariants();
-    };
+    function showServiceError(message) {
+        const errorEl = document.getElementById('smmServiceError');
+        if (!errorEl) return;
+        errorEl.textContent = normalizeText(message);
+        errorEl.style.display = message ? 'block' : 'none';
+    }
 
-    window.updateSmmVariant = function(index, field, value) {
-        window.currentSmmVariants[index][field] = value;
-    };
+    function setModalOpen(modalId, isOpen) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = isOpen ? 'flex' : 'none';
+        }
+    }
 
-    window.renderSmmVariants = function() {
+    function formatUpdatedAt(value) {
+        if (!value) return '—';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return '—';
+        return parsed.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function getLowestVariantPrice(variants) {
+        const prices = (Array.isArray(variants) ? variants : [])
+            .map((variant) => Number(variant?.price))
+            .filter((price) => Number.isFinite(price) && price > 0);
+        if (!prices.length) return null;
+        return Math.min(...prices);
+    }
+
+    function buildVariantMetaSummary(variants) {
+        const variantCount = Array.isArray(variants) ? variants.length : 0;
+        return `${variantCount} variant${variantCount === 1 ? '' : 's'}`;
+    }
+
+    async function fetchAdminSmmOptions(platformName = '') {
+        const query = platformName ? `?platform=${encodeURIComponent(platformName)}` : '';
+        const res = await fetch(`/api/admin/smm/options${query}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load SMM options.');
+        }
+        return data;
+    }
+
+    function resolvePlatformSelection(fallback = '') {
+        const select = document.getElementById('smmPlatform');
+        const input = document.getElementById('smmPlatformCustom');
+        if (!select) return fallback;
+        if (select.value === '__add_new__') {
+            return normalizeText(input?.value) || fallback;
+        }
+        return normalizeText(select.value) || fallback;
+    }
+
+    function resolveCategorySelection(fallback = '') {
+        const select = document.getElementById('smmCategory');
+        const input = document.getElementById('smmCategoryCustom');
+        if (!select) return fallback;
+        if (select.value === '__add_new__') {
+            return normalizeText(input?.value) || fallback;
+        }
+        return normalizeText(select.value) || fallback;
+    }
+
+    function toggleAddNewWrap(selectId, wrapId, shouldShow, seedValue = '') {
+        const wrap = document.getElementById(wrapId);
+        if (!wrap) return;
+        wrap.style.display = shouldShow ? 'flex' : 'none';
+        const input = wrap.querySelector('input');
+        if (input && shouldShow && seedValue && !normalizeText(input.value)) {
+            input.value = seedValue;
+        }
+        if (input && shouldShow) {
+            input.focus();
+        }
+        if (input && !shouldShow && !seedValue) {
+            input.value = '';
+        }
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.style.display = 'block';
+        }
+    }
+
+    function populatePlatformSelect(selectedValue = '') {
+        const select = document.getElementById('smmPlatform');
+        if (!select) return;
+
+        const options = [...state.platformOptions];
+        if (selectedValue && selectedValue !== '__add_new__' && !options.some((option) => sameText(option, selectedValue))) {
+            options.unshift(selectedValue);
+        }
+
+        select.innerHTML = options
+            .map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`)
+            .join('') + '<option value="__add_new__">[+ Add New]</option>';
+
+        if (selectedValue) {
+            if (options.some((option) => sameText(option, selectedValue))) {
+                select.value = options.find((option) => sameText(option, selectedValue)) || selectedValue;
+                toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', false);
+            } else {
+                select.value = '__add_new__';
+                toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', true, selectedValue);
+            }
+        } else if (options.length) {
+            select.value = options[0];
+            toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', false);
+        } else {
+            select.value = '__add_new__';
+            toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', true);
+        }
+    }
+
+    function populateCategorySelect(selectedValue = '') {
+        const select = document.getElementById('smmCategory');
+        if (!select) return;
+
+        const options = [...state.categoryOptions];
+        if (selectedValue && selectedValue !== '__add_new__' && !options.some((option) => sameText(option, selectedValue))) {
+            options.unshift(selectedValue);
+        }
+
+        select.innerHTML = options
+            .map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`)
+            .join('') + '<option value="__add_new__">[+ Add New]</option>';
+
+        if (selectedValue) {
+            if (options.some((option) => sameText(option, selectedValue))) {
+                select.value = options.find((option) => sameText(option, selectedValue)) || selectedValue;
+                toggleAddNewWrap('smmCategory', 'smmCategoryCustomWrap', false);
+            } else {
+                select.value = '__add_new__';
+                toggleAddNewWrap('smmCategory', 'smmCategoryCustomWrap', true, selectedValue);
+            }
+        } else if (options.length) {
+            select.value = options[0];
+            toggleAddNewWrap('smmCategory', 'smmCategoryCustomWrap', false);
+        } else {
+            select.value = '__add_new__';
+            toggleAddNewWrap('smmCategory', 'smmCategoryCustomWrap', true);
+        }
+    }
+
+    async function refreshCategoryOptions(platformName = '', selectedCategory = '') {
+        if (!normalizeText(platformName)) {
+            state.categoryOptions = [];
+            populateCategorySelect(selectedCategory || '__add_new__');
+            return;
+        }
+
+        const data = await fetchAdminSmmOptions(platformName);
+        state.categoryOptions = Array.isArray(data.categories) ? data.categories : [];
+        populateCategorySelect(selectedCategory);
+    }
+
+    async function refreshAdminSmmOptions(selectedPlatform = '', selectedCategory = '') {
+        const data = await fetchAdminSmmOptions();
+        state.platformOptions = Array.isArray(data.platforms) ? data.platforms : [];
+        populatePlatformSelect(selectedPlatform);
+
+        const platformToUse = selectedPlatform || resolvePlatformSelection() || state.platformOptions[0] || '';
+        if (normalizeText(platformToUse)) {
+            await refreshCategoryOptions(platformToUse, selectedCategory);
+        } else {
+            state.categoryOptions = [];
+            populateCategorySelect(selectedCategory || '__add_new__');
+        }
+    }
+
+    function renderVariants() {
         const container = document.getElementById('smmVariantsContainer');
         if (!container) return;
-        if (window.currentSmmVariants.length === 0) {
-            container.innerHTML = '<p style="color:#64748b;font-size:0.85rem;">No variants added. Add at least one variant to define pricing.</p>';
-            return;
+
+        if (!state.currentVariants.length) {
+            state.currentVariants = [makeEmptyVariant()];
         }
-        container.innerHTML = window.currentSmmVariants.map((v, i) => `
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr 1fr auto;gap:10px;margin-bottom:10px;align-items:end;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
-                <div>
-                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Country</label>
-                    <input type="text" value="${escapeHtml(v.country)}" onchange="updateSmmVariant(${i}, 'country', this.value)" placeholder="e.g. Global" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+
+        container.innerHTML = state.currentVariants.map((variant, index) => `
+            <article class="smm-variant-card">
+                <div class="smm-variant-head">
+                    <strong>Variant ${index + 1}</strong>
+                    <button type="button" class="smm-remove-variant" onclick="window.removeSmmVariant(${index})">Remove</button>
                 </div>
-                <div>
-                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Quality/Type</label>
-                    <input type="text" value="${escapeHtml(v.quality || 'Standard')}" onchange="updateSmmVariant(${i}, 'quality', this.value)" placeholder="e.g. High Quality" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
+                <div class="smm-field-grid">
+                    <div class="smm-field">
+                        <label>Name</label>
+                        <input type="text" class="smm-input" value="${escapeHtml(variant.name)}" placeholder="e.g. Standard, Premium" oninput="window.updateSmmVariant(${index}, 'name', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Country <span class="smm-muted">(Optional)</span></label>
+                        <input type="text" class="smm-input" value="${escapeHtml(variant.country)}" placeholder="e.g. Global" oninput="window.updateSmmVariant(${index}, 'country', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Speed <span class="smm-muted">(Optional)</span></label>
+                        <input type="text" class="smm-input" value="${escapeHtml(variant.speed)}" placeholder="e.g. 1K/day" oninput="window.updateSmmVariant(${index}, 'speed', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Refill <span class="smm-muted">(Optional)</span></label>
+                        <input type="text" class="smm-input" value="${escapeHtml(variant.refill)}" placeholder="e.g. 30 Days Refill" oninput="window.updateSmmVariant(${index}, 'refill', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Price / 1K</label>
+                        <input type="number" min="0.01" step="0.01" class="smm-input" value="${escapeHtml(variant.price)}" placeholder="e.g. 150" oninput="window.updateSmmVariant(${index}, 'price', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Min Quantity</label>
+                        <input type="number" min="1" step="1" class="smm-input" value="${escapeHtml(variant.minQty)}" oninput="window.updateSmmVariant(${index}, 'minQty', this.value)">
+                    </div>
+                    <div class="smm-field">
+                        <label>Max Quantity</label>
+                        <input type="number" min="1" step="1" class="smm-input" value="${escapeHtml(variant.maxQty)}" oninput="window.updateSmmVariant(${index}, 'maxQty', this.value)">
+                    </div>
+                    <div class="smm-field" style="grid-column: 1 / -1;">
+                        <label class="smm-inline-toggle" style="margin:0;">
+                            <input type="checkbox" ${variant.hasDynamicInput ? 'checked' : ''} onchange="window.toggleSmmVariantDynamicFields(${index}, this.checked)">
+                            <span>Require additional user input</span>
+                        </label>
+                    </div>
+                    <div class="smm-field-grid smm-dynamic-grid" style="grid-column: 1 / -1; display: ${variant.hasDynamicInput ? 'grid' : 'none'};">
+                        <div class="smm-field">
+                            <label>Input Type</label>
+                            <select class="smm-select" onchange="window.updateSmmVariant(${index}, 'inputType', this.value)">
+                                <option value="text" ${variant.inputType === 'text' ? 'selected' : ''}>Short Text</option>
+                                <option value="textarea" ${variant.inputType === 'textarea' ? 'selected' : ''}>Textarea</option>
+                            </select>
+                        </div>
+                        <div class="smm-field" style="grid-column: 1 / -1;">
+                            <label>Input Label</label>
+                            <input type="text" class="smm-input" value="${escapeHtml(variant.inputLabel)}" placeholder="e.g. Enter Custom Comments (1 per line)" oninput="window.updateSmmVariant(${index}, 'inputLabel', this.value)">
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Speed</label>
-                    <input type="text" value="${escapeHtml(v.speed)}" onchange="updateSmmVariant(${i}, 'speed', this.value)" placeholder="e.g. 1K-5K/day" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Refill Guarantee</label>
-                    <select onchange="updateSmmVariant(${i}, 'refillGuarantee', this.value)" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
-                        <option value="No Refill" ${v.refillGuarantee === 'No Refill' ? 'selected' : ''}>No Refill</option>
-                        <option value="30 Days Refill" ${v.refillGuarantee === '30 Days Refill' ? 'selected' : ''}>30 Days Refill</option>
-                        <option value="60 Days Refill" ${v.refillGuarantee === '60 Days Refill' ? 'selected' : ''}>60 Days Refill</option>
-                        <option value="Lifetime Refill" ${v.refillGuarantee === 'Lifetime Refill' ? 'selected' : ''}>Lifetime Refill</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:4px;font-size:0.75rem;font-weight:600;color:#475569">Price/1k</label>
-                    <input type="number" value="${v.price}" onchange="updateSmmVariant(${i}, 'price', this.value)" placeholder="e.g. 150" min="0" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;outline:none;">
-                </div>
-                <div>
-                    <button type="button" onclick="removeSmmVariant(${i})" style="background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">🗑️</button>
+            </article>
+        `).join('');
+    }
+
+    function fillServiceForm(service) {
+        document.getElementById('smmDescription').value = normalizeText(service?.description);
+
+        state.currentVariants = (Array.isArray(service?.variants) && service.variants.length ? service.variants : [makeEmptyVariant()]).map(cloneVariant);
+        renderVariants();
+    }
+
+    async function resetServiceForm() {
+        state.editingServiceId = '';
+        state.currentVariants = [makeEmptyVariant()];
+        showServiceError('');
+
+        const title = document.getElementById('smmServiceModalTitle');
+        const saveButton = document.getElementById('smmServiceSaveButton');
+        if (title) title.textContent = 'Add SMM Service';
+        if (saveButton) saveButton.textContent = 'Save Service';
+
+        document.getElementById('smmDescription').value = '';
+        await refreshAdminSmmOptions();
+        renderVariants();
+    }
+
+    function getServiceById(serviceId) {
+        return state.rates.find((rate) => sameText(rate?.serviceId, serviceId)) || null;
+    }
+
+    function buildDetailsCell(rate) {
+        const description = normalizeText(rate?.description);
+        const variants = Array.isArray(rate?.variants) ? rate.variants : [];
+        const summary = buildVariantMetaSummary(variants);
+        const dynamicBadge = variants.some((variant) => variant?.hasDynamicInput === true)
+            ? '<span class="smm-badge">Dynamic Input</span>'
+            : '<span class="smm-badge smm-badge-neutral">Static Checkout</span>';
+        const descriptionHtml = description
+            ? `<span class="smm-muted">${escapeHtml(description.length > 110 ? `${description.slice(0, 107)}...` : description)}</span>`
+            : '<span class="smm-muted">No description added yet.</span>';
+
+        return `
+            <div class="smm-service-meta">
+                <strong>${escapeHtml(summary)}</strong>
+                ${descriptionHtml}
+                <div class="smm-badge-row">
+                    ${dynamicBadge}
                 </div>
             </div>
+        `;
+    }
+
+    function getFilteredRates(platformName = state.activePlatformFilter) {
+        if (sameText(platformName, 'All')) {
+            return [...state.allSmmServices];
+        }
+
+        return state.allSmmServices.filter((rate) => sameText(rate?.platform, platformName));
+    }
+
+    function renderPlatformFilters() {
+        const container = document.getElementById('platformFilters');
+        if (!container) return;
+
+        const uniquePlatforms = state.allSmmServices
+            .map((rate) => normalizeText(rate?.platform))
+            .filter(Boolean)
+            .filter((platform, index, platforms) => platforms.findIndex((entry) => sameText(entry, platform)) === index)
+            .sort((left, right) => left.localeCompare(right));
+
+        const activeFilter = sameText(state.activePlatformFilter, 'All')
+            || uniquePlatforms.some((platform) => sameText(platform, state.activePlatformFilter))
+            ? state.activePlatformFilter
+            : 'All';
+
+        state.activePlatformFilter = activeFilter;
+
+        container.innerHTML = ['All', ...uniquePlatforms].map((platform) => `
+            <button
+                type="button"
+                class="smm-filter-pill ${sameText(activeFilter, platform) ? 'active' : ''}"
+                data-platform="${escapeHtml(platform)}"
+                onclick="window.handleSmmPlatformFilterClick(this.dataset.platform || 'All')"
+            >
+                ${escapeHtml(platform)}
+            </button>
         `).join('');
-    };
+    }
 
-    let previousPlatformValue = 'Instagram';
-    let editingPlatformId = null;
-
-    window.populateSmmPlatforms = async function (selectedVal) {
-        const selectEl = document.getElementById('smmPlatform');
-        if (!selectEl) return;
-
-        const currentVal = selectedVal || selectEl.value || previousPlatformValue || 'Instagram';
-
-        let platforms = [];
-        try {
-            const res = await fetch('/api/platforms');
-            const data = await res.json();
-            if (data.success && data.platforms) {
-                platforms = data.platforms;
-            }
-        } catch (e) {
-            console.error('Failed to load platforms from API, falling back to local storage cache.', e);
-        }
-
-        // Standard default list fallback if API failed or returned empty
-        if (platforms.length === 0) {
-            const defaultPlatforms = ["Instagram", "YouTube", "Facebook", "Twitter", "TikTok", "Telegram"];
-            platforms = defaultPlatforms.map(p => ({
-                name: p,
-                logoUrl: p === "Instagram" ? "https://img.icons8.com/color/96/instagram-new.png" :
-                         p === "YouTube" ? "https://img.icons8.com/color/96/youtube-play.png" :
-                         p === "Facebook" ? "https://img.icons8.com/color/96/facebook-new.png" :
-                         p === "Twitter" ? "https://img.icons8.com/color/96/twitter--v1.png" :
-                         p === "TikTok" ? "https://img.icons8.com/color/96/tiktok.png" :
-                         "https://img.icons8.com/color/96/telegram-app.png"
-            }));
-        }
-
-        // Map options
-        let optionsHtml = platforms.map(plat => {
-            return `<option value="${escapeHtml(plat.name)}">${escapeHtml(plat.name)}</option>`;
-        }).join('');
-
-        // Add special options at the bottom
-        optionsHtml += `<option value="manage_platforms" style="font-weight:700;color:#e11d48;">⚙️ Manage Platforms...</option>`;
-        optionsHtml += `<option value="add_new" class="add-new-opt" style="font-weight:700;color:#6c63ff;">➕ Add New Platform...</option>`;
-
-        selectEl.innerHTML = optionsHtml;
-
-        // Set value
-        const platformNames = platforms.map(p => p.name);
-        if (platformNames.includes(currentVal)) {
-            selectEl.value = currentVal;
-            previousPlatformValue = currentVal;
-        } else {
-            selectEl.value = platformNames[0] || 'Instagram';
-            previousPlatformValue = selectEl.value;
-        }
-    };
-
-    window.handlePlatformDropdownChange = function (select) {
-        if (select.value === 'manage_platforms') {
-            window.openManagePlatformsModal();
-            select.value = previousPlatformValue || 'Instagram';
-        } else if (select.value === 'add_new') {
-            window.openAddPlatformModal();
-            select.value = previousPlatformValue || 'Instagram';
-        } else {
-            previousPlatformValue = select.value;
-        }
-    };
-
-    window.openAddPlatformModal = function (editId, name, logoUrl) {
-        const modal = document.getElementById('addPlatformModal');
-        if (!modal) return;
-        
-        editingPlatformId = editId || null;
-        
-        const titleEl = modal.querySelector('h3');
-        const submitBtn = document.getElementById('submitNewPlatformBtn');
-        const nameInput = document.getElementById('newPlatformName');
-        const previewEl = document.getElementById('newPlatformLogoPreview');
-        const urlInput = document.getElementById('newPlatformLogoUrl');
-        const statusEl = document.getElementById('newPlatformUploadStatus');
-        
-        if (editingPlatformId) {
-            titleEl.textContent = '✏️ Edit SMM Platform';
-            submitBtn.textContent = 'Save Changes';
-            nameInput.value = name || '';
-            urlInput.value = logoUrl || '';
-            previewEl.innerHTML = logoUrl ? `<img src="${logoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : '🌐';
-            statusEl.textContent = '';
-        } else {
-            titleEl.textContent = '➕ Add New SMM Platform';
-            submitBtn.textContent = 'Add Platform';
-            nameInput.value = '';
-            urlInput.value = '';
-            previewEl.innerHTML = '🌐';
-            statusEl.textContent = '';
-        }
-        
-        modal.style.display = 'flex';
-    };
-
-    window.closeAddPlatformModal = function () {
-        const modal = document.getElementById('addPlatformModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        editingPlatformId = null;
-    };
-
-    window.handleNewPlatformLogoUpload = async function (event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        if (file.size > 5 * 1024 * 1024) {
-            alert('⚠️ Image size must be less than 5MB!');
-            return;
-        }
-        
-        const statusEl = document.getElementById('newPlatformUploadStatus');
-        const previewEl = document.getElementById('newPlatformLogoPreview');
-        const urlInput = document.getElementById('newPlatformLogoUrl');
-        
-        statusEl.textContent = '⏳ Uploading...';
-        statusEl.style.color = '#4f46e5';
-        
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const res = await fetch('/api/chat/upload?cloudinary=true', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include'
-            });
-            
-            const data = await res.json();
-            if (data.success && data.fileUrl) {
-                urlInput.value = data.fileUrl;
-                previewEl.innerHTML = `<img src="${data.fileUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
-                statusEl.textContent = '✅ Uploaded!';
-                statusEl.style.color = '#10b981';
-            } else {
-                throw new Error(data.message || 'Upload failed');
-            }
-        } catch (err) {
-            console.error('Platform logo upload failed:', err);
-            statusEl.textContent = '❌ Upload failed';
-            statusEl.style.color = '#ef4444';
-            alert('⚠️ Upload failed: ' + err.message);
-        }
-    };
-
-    window.submitNewPlatform = async function () {
-        const nameInput = document.getElementById('newPlatformName');
-        const logoUrlInput = document.getElementById('newPlatformLogoUrl');
-        
-        const name = nameInput.value.trim();
-        let logoUrl = logoUrlInput.value.trim();
-        
-        if (!name) {
-            alert('⚠️ Please enter a Platform Name.');
-            return;
-        }
-        
-        if (!logoUrl) {
-            logoUrl = '/assets/images/default-platform.png';
-        }
-        
-        try {
-            const url = editingPlatformId ? `/api/platforms/${editingPlatformId}` : '/api/platforms';
-            const method = editingPlatformId ? 'PUT' : 'POST';
-            
-            const res = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, logoUrl }),
-                credentials: 'include'
-            });
-            
-            const data = await res.json();
-            if (data.success) {
-                alert(editingPlatformId ? '✅ Platform updated successfully!' : '✅ Platform added successfully!');
-                
-                // Keep frontend localStorage custom_platform_logos map synchronized for SMM calculator page fallback
-                const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
-                storedLogos[name.toLowerCase()] = logoUrl;
-                localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
-                
-                // Re-populate and auto-select
-                await window.populateSmmPlatforms(name);
-                
-                // Close forms
-                window.closeAddPlatformModal();
-                
-                // If manage modal is active, reload its table
-                const manageModal = document.getElementById('managePlatformsModal');
-                if (manageModal && manageModal.style.display === 'flex') {
-                    window.renderManagePlatformsList();
-                }
-            } else {
-                alert('⚠️ Error: ' + (data.error || 'Failed to save platform'));
-            }
-        } catch (e) {
-            console.error(e);
-            alert('⚠️ Server Error while saving platform.');
-        }
-    };
-
-    window.openManagePlatformsModal = function () {
-        const modal = document.getElementById('managePlatformsModal');
-        if (!modal) return;
-        modal.style.display = 'flex';
-        window.renderManagePlatformsList();
-    };
-
-    window.closeManagePlatformsModal = function () {
-        const modal = document.getElementById('managePlatformsModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    };
-
-    window.renderManagePlatformsList = async function () {
-        const tbody = document.getElementById('managePlatformsTableBody');
+    function renderRatesTable(rates = state.rates) {
+        const tbody = document.getElementById('smmRatesTable');
         if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#64748b;">Loading platforms...</td></tr>';
-        
-        try {
-            const res = await fetch('/api/platforms');
-            const data = await res.json();
-            if (!data.success || !data.platforms || !data.platforms.length) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#64748b;">No platforms found. Add one above.</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = data.platforms.map(p => {
-                const logo = p.logoUrl || '/assets/images/default-platform.png';
-                return `
-                    <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:10px 14px; width:64px;">
-                            <img src="${escapeHtml(logo)}" style="width:36px; height:36px; object-fit:contain; border-radius:6px; border:1px solid #e2e8f0; display:block;" onerror="this.onerror=null; this.src='/assets/images/default-platform.png';">
-                        </td>
-                        <td style="padding:10px 14px; font-weight:600; color:#1e293b;">
-                            ${escapeHtml(p.name)}
-                        </td>
-                        <td style="padding:10px 14px; text-align:right;">
-                            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                                <button type="button" onclick="window.editPlatform('${p._id}', '${escapeHtml(p.name)}', '${escapeHtml(p.logoUrl)}')" style="background:#4f46e5; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">✏️ Edit</button>
-                                <button type="button" onclick="window.deletePlatform('${p._id}', '${escapeHtml(p.name)}')" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">🗑️ Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#ef4444;">Failed to load SMM platforms.</td></tr>';
-        }
-    };
 
-    window.editPlatform = function (id, name, logoUrl) {
-        window.openAddPlatformModal(id, name, logoUrl);
-    };
-
-    window.deletePlatform = async function (id, name) {
-        if (!confirm(`⚠️ Are you sure you want to delete platform "${name}"?\nThis will remove the platform logo and branding entry. Service rates belonging to this platform will remain in the database.`)) {
+        if (!state.allSmmServices.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:28px;text-align:center;color:#64748b;">No SMM services defined yet. Create the first one to get started.</td></tr>';
             return;
         }
-        
-        try {
-            const res = await fetch(`/api/platforms/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            const data = await res.json();
-            if (data.success) {
-                alert('✅ Platform deleted successfully!');
-                
-                // Keep custom_platform_logos map clean
-                const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
-                delete storedLogos[name.toLowerCase()];
-                localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
-                
-                // Repopulate select and manage modal lists
-                await window.populateSmmPlatforms();
-                window.renderManagePlatformsList();
-            } else {
-                alert('⚠️ Error: ' + (data.error || 'Failed to delete platform'));
-            }
-        } catch (e) {
-            console.error(e);
-            alert('⚠️ Server Error while deleting platform.');
-        }
-    };
-})();
 
-async function fetchAdminSmmRates() {
-    const tbody = document.getElementById('smmRatesTable');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#888;">Loading rates...</td></tr>';
-    try {
-        const res = await fetch('/api/smm/rates');
-        const data = await res.json();
-        if (!data.success || !data.rates || !data.rates.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b;">No SMM rates defined. Add one above.</td></tr>';
-            window.allSmmRates = [];
-            window.populateSmmPlatforms();
+        if (!rates.length) {
+            const label = sameText(state.activePlatformFilter, 'All') ? 'the selected platform' : state.activePlatformFilter;
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:28px;text-align:center;color:#64748b;">No SMM services match ${escapeHtml(label)} right now.</td></tr>`;
             return;
         }
-        window.allSmmRates = data.rates;
-        window.populateSmmPlatforms();
-        tbody.innerHTML = data.rates.map((rate) => {
-            let priceDisplayHtml = '';
-            if (rate.pricingVariants?.length > 0) {
-                const validPrices = rate.pricingVariants.map(v => v?.price).filter(p => p !== undefined && p !== null);
-                if (validPrices.length > 0) {
-                    const lowestPrice = Math.min(...validPrices);
-                    priceDisplayHtml = `
-                        <div style="line-height:1.2;">
-                            <strong style="color:#10b981;font-size:0.9rem;">Starting at ₹${lowestPrice}</strong>
-                            <br/>
-                            <span style="display:inline-block;margin-top:4px;font-size:0.7rem;font-weight:600;color:#6366f1;background:#e0e7ff;padding:2px 6px;border-radius:10px;">${rate.pricingVariants.length} variants</span>
-                        </div>
-                    `;
-                } else {
-                    priceDisplayHtml = `<span style="color:#94a3b8;font-size:0.85rem;">No valid pricing</span>`;
-                }
-            } else if (rate.ratePer1000 !== undefined && rate.ratePer1000 !== null) {
-                priceDisplayHtml = `<strong style="color:#475569;">₹${Number(rate.ratePer1000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>`;
-            } else {
-                priceDisplayHtml = `<span style="color:#94a3b8;font-size:0.85rem;">₹0.00</span>`;
-            }
+
+        tbody.innerHTML = rates.map((rate) => {
+            const platform = normalizeText(rate?.platform) || 'Unspecified';
+            const category = normalizeText(rate?.category) || 'Uncategorized';
+            const serviceId = normalizeText(rate?.serviceId) || 'unknown-service';
+            const lowestPrice = getLowestVariantPrice(rate?.variants);
 
             return `
-                <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:16px 20px;"><strong>${escapeHtml(rate.platform)}</strong></td>
-                    <td style="padding:16px 20px;">${escapeHtml(rate.serviceType)}</td>
-                    <td style="padding:16px 20px;"><code>${escapeHtml(rate.serviceId)}</code></td>
-                    <td style="padding:16px 20px;">${priceDisplayHtml}</td>
-                    <td style="padding:16px 20px;text-align:right;">
-                        <div style="display:flex;gap:8px;justify-content:flex-end;">
-                            <button type="button" class="btn-publish smm-edit-btn" data-rate="${escapeHtml(JSON.stringify(rate))}" style="background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">✏️ Edit</button>
-                            <button type="button" class="delete-btn smm-delete-btn" data-service-id="${escapeHtml(rate.serviceId)}" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;">🗑️ Delete</button>
+                <tr>
+                    <td><strong>${escapeHtml(platform)}</strong></td>
+                    <td><strong>${escapeHtml(category)}</strong><div class="smm-muted" style="margin-top:6px;"><code>${escapeHtml(serviceId)}</code></div></td>
+                    <td>${buildDetailsCell(rate)}</td>
+                    <td><span class="smm-price">${lowestPrice != null ? `₹${lowestPrice}` : '—'}</span></td>
+                    <td><span class="smm-muted">${escapeHtml(formatUpdatedAt(rate?.updatedAt))}</span></td>
+                    <td>
+                        <div class="smm-actions">
+                            <button type="button" class="smm-action-btn smm-action-edit" data-service-id="${escapeHtml(serviceId)}" onclick="window.openSmmServiceModal('${escapeHtml(serviceId)}')">Edit</button>
+                            <button type="button" class="smm-action-btn smm-action-delete" data-service-id="${escapeHtml(serviceId)}" onclick="window.deleteSmmService('${escapeHtml(serviceId)}')">Delete</button>
                         </div>
                     </td>
                 </tr>
             `;
         }).join('');
+    }
 
-        tbody.querySelectorAll('.smm-edit-btn').forEach((button) => {
-            button.addEventListener('click', () => {
-                try {
-                    editSmmRate(JSON.parse(button.dataset.rate || '{}'));
-                } catch (err) {
-                    editSmmRate(null);
-                }
+    async function fetchAdminSmmRates() {
+        const tbody = document.getElementById('smmRatesTable');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:28px;text-align:center;color:#64748b;">Loading SMM services...</td></tr>';
+        }
+
+        try {
+            const res = await fetch('/api/smm/rates', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load SMM services.');
+            }
+
+            state.allSmmServices = Array.isArray(data.rates) ? data.rates : [];
+            state.rates = [...state.allSmmServices];
+            renderPlatformFilters();
+            renderRatesTable(getFilteredRates());
+        } catch (error) {
+            const filters = document.getElementById('platformFilters');
+            if (filters) {
+                filters.innerHTML = '';
+            }
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" style="padding:28px;text-align:center;color:#b91c1c;">${escapeHtml(error.message || 'Failed to load SMM services.')}</td></tr>`;
+            }
+        }
+    }
+
+    async function renderManagePlatformsList() {
+        const tbody = document.getElementById('managePlatformsTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#64748b;">Loading platforms...</td></tr>';
+
+        try {
+            const res = await fetch('/api/platforms', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load platforms.');
+            }
+
+            const platforms = Array.isArray(data.platforms) ? data.platforms : [];
+            if (!platforms.length) {
+                tbody.innerHTML = '<tr><td colspan="3" style="color:#64748b;">No platforms found yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = platforms.map((platform) => {
+                const logoUrl = normalizeText(platform?.logoUrl) || '/assets/images/default-platform.png';
+                const name = normalizeText(platform?.name) || 'Unnamed Platform';
+                return `
+                    <tr>
+                        <td><img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name)}" style="width:42px;height:42px;object-fit:contain;border-radius:12px;border:1px solid rgba(203,213,225,0.9);background:#fff;" onerror="this.onerror=null;this.src='/assets/images/default-platform.png';"></td>
+                        <td><strong>${escapeHtml(name)}</strong></td>
+                        <td style="text-align:right;">
+                            <div class="smm-actions">
+                                <button type="button" class="smm-action-btn smm-action-edit" onclick="window.openPlatformBrandingModal('${escapeHtml(platform?._id || '')}', '${escapeHtml(name)}', '${escapeHtml(logoUrl)}')">Edit</button>
+                                <button type="button" class="smm-action-btn smm-action-delete" onclick="window.deletePlatform('${escapeHtml(platform?._id || '')}', '${escapeHtml(name)}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="3" style="color:#b91c1c;">${escapeHtml(error.message || 'Failed to load platforms.')}</td></tr>`;
+        }
+    }
+
+    function bindModalEvents() {
+        if (state.modalBindingsReady) return;
+        state.modalBindingsReady = true;
+
+        ['smmServiceModal', 'managePlatformsModal', 'platformBrandingModal', 'customDeleteModal'].forEach((modalId) => {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.addEventListener('click', (event) => {
+                if (event.target !== modal) return;
+                if (modalId === 'smmServiceModal') window.closeSmmServiceModal();
+                if (modalId === 'managePlatformsModal') window.closeManagePlatformsModal();
+                if (modalId === 'platformBrandingModal') window.closePlatformBrandingModal();
+                if (modalId === 'customDeleteModal') window.cancelSmmServiceDelete();
             });
         });
 
-        tbody.querySelectorAll('.smm-delete-btn').forEach((button) => {
-            button.addEventListener('click', () => {
-                deleteSmmRate(button.dataset.serviceId || '');
-            });
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            window.cancelSmmServiceDelete();
+            window.closePlatformBrandingModal();
+            window.closeManagePlatformsModal();
+            window.closeSmmServiceModal();
         });
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:red;text-align:center;padding:24px;">Error loading SMM rates.</td></tr>';
-    }
-}
 
-function editSmmRate(rate) {
-    try {
-        if (!rate || typeof rate !== 'object') {
-            throw new Error('Invalid SMM rate data');
+        const cancelBtn = document.getElementById('cancelDeleteBtn');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', window.cancelSmmServiceDelete);
         }
-        const errorEl = document.getElementById('smm-form-error');
-        if (errorEl) {
-            errorEl.textContent = '';
-            errorEl.style.display = 'none';
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', window.confirmSmmServiceDelete);
         }
-        document.getElementById('smmPlatform').value = rate.platform || 'Instagram';
-        document.getElementById('smmServiceType').value = rate.serviceType || '';
-        document.getElementById('smmStartTime').value = rate.serviceDetails?.startTime || '';
-        document.getElementById('smmRefillGuarantee').value = rate.serviceDetails?.refillGuarantee || '';
-        document.getElementById('smmSpeed').value = rate.serviceDetails?.speed || '';
-        document.getElementById('smmDescription').value = rate.serviceDetails?.description || '';
-        
-        window.currentSmmVariants = rate.pricingVariants ? JSON.parse(JSON.stringify(rate.pricingVariants)) : [];
-        if (window.currentSmmVariants.length === 0 && rate.ratePer1000) {
-            // Legacy mapping
-            window.currentSmmVariants.push({
-                country: Array.isArray(rate.targetCountries) && rate.targetCountries.length > 0 ? rate.targetCountries[0] : 'Global',
-                speed: rate.serviceDetails?.speed || 'Instant',
-                refillGuarantee: rate.serviceDetails?.refillGuarantee || 'No Refill',
-                price: rate.ratePer1000
-            });
-        }
-        window.renderSmmVariants();
-
-        document.getElementById('smm-form-title').textContent = '✏️ Edit SMM Service Rate';
-        document.getElementById('smm-cancel-btn').style.display = 'inline-block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-        console.error("Failed to parse SMM rate", err);
-        const errorEl = document.getElementById('smm-form-error');
-        if (errorEl) {
-            errorEl.textContent = 'Invalid SMM rate data. Please try editing again or refresh the list.';
-            errorEl.style.display = 'block';
-        } else {
-            window.alert('Invalid SMM rate data. Please try again.');
-        }
-        document.getElementById('smm-form-title').textContent = '➕ Add / Update SMM Service Rate';
-        document.getElementById('smm-cancel-btn').style.display = 'none';
-    }
-}
-
-function resetSmmForm() {
-    document.getElementById('smmServiceType').value = '';
-    document.getElementById('smmStartTime').value = '';
-    document.getElementById('smmRefillGuarantee').value = '';
-    document.getElementById('smmSpeed').value = '';
-    document.getElementById('smmDescription').value = '';
-    window.currentSmmVariants = [];
-    window.renderSmmVariants();
-    document.getElementById('smm-form-title').textContent = '➕ Add / Update SMM Service Rate';
-    document.getElementById('smm-cancel-btn').style.display = 'none';
-    const errorEl = document.getElementById('smm-form-error');
-    if (errorEl) {
-        errorEl.textContent = '';
-        errorEl.style.display = 'none';
-    }
-}
-
-async function saveSmmRate() {
-    const platform = document.getElementById('smmPlatform').value;
-    const serviceType = document.getElementById('smmServiceType').value.trim();
-    const startTime = document.getElementById('smmStartTime').value.trim();
-    const refillGuarantee = document.getElementById('smmRefillGuarantee').value.trim();
-    const speed = document.getElementById('smmSpeed').value.trim();
-    const description = document.getElementById('smmDescription').value.trim();
-
-    if (!platform || !serviceType || window.currentSmmVariants.length === 0) {
-        alert('⚠️ Platform, service type, and at least one pricing variant are required.');
-        return;
     }
 
-    // Validate variants
-    for (const v of window.currentSmmVariants) {
-        if (!v.quality || !v.quality.trim()) {
-            v.quality = 'Standard';
-        }
-        if (!v.country || !v.speed || !v.refillGuarantee || v.price === '' || isNaN(v.price) || Number(v.price) <= 0) {
-            alert('⚠️ All variant fields (country, speed, refill, valid price) must be filled correctly.');
+    window.mountAdminSmmRatesSection = async function () {
+        mountSections(["smm-rates-section"]);
+        bindModalEvents();
+        state.currentVariants = state.currentVariants.length ? state.currentVariants : [makeEmptyVariant()];
+        renderVariants();
+        await refreshAdminSmmOptions();
+        await fetchAdminSmmRates();
+    };
+
+    window.handleSmmPlatformSelectChange = async function () {
+        const select = document.getElementById('smmPlatform');
+        if (!select) return;
+
+        if (select.value === '__add_new__') {
+            toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', true);
+            state.categoryOptions = [];
+            populateCategorySelect('__add_new__');
             return;
         }
-        v.price = Number(v.price);
-    }
 
-    // Auto-generate service ID from platform and serviceType, e.g. ig-followers
-    const getPrefix = (plat) => {
-        const p = plat.toLowerCase();
-        if (p.includes('insta')) return 'ig';
-        if (p.includes('youtube') || p.includes('yt')) return 'yt';
-        if (p.includes('fb') || p.includes('facebook')) return 'fb';
-        if (p.includes('twitter')) return 'tw';
-        if (p.includes('tiktok')) return 'tk';
-        if (p.includes('telegram')) return 'tg';
-        return p.slice(0, 3);
-    };
-    const cleanType = serviceType.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const serviceId = `${getPrefix(platform)}-${cleanType}`;
-
-    const payload = { 
-        serviceId, 
-        platform, 
-        serviceType, 
-        pricingVariants: window.currentSmmVariants,
-        serviceDetails: {
-            startTime,
-            refillGuarantee,
-            speed,
-            description
-        }
+        toggleAddNewWrap('smmPlatform', 'smmPlatformCustomWrap', false);
+        await refreshCategoryOptions(select.value);
     };
 
-    try {
-        const res = await fetch('/api/admin/smm/rates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            credentials: 'include'
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert('✅ SMM rate saved successfully!');
-            resetSmmForm();
-            fetchAdminSmmRates();
-        } else {
-            alert('Error: ' + data.error);
-        }
-    } catch (e) {
-        alert('Server Error');
-    }
-}
+    window.handleSmmCategorySelectChange = function () {
+        const select = document.getElementById('smmCategory');
+        if (!select) return;
+        toggleAddNewWrap('smmCategory', 'smmCategoryCustomWrap', select.value === '__add_new__');
+    };
 
-async function deleteSmmRate(serviceId) {
-    if (!confirm(`Are you sure you want to delete SMM rate for service "${serviceId}"?`)) return;
-    try {
-        const res = await fetch(`/api/admin/smm/rates/${serviceId}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert('✅ SMM rate deleted.');
-            fetchAdminSmmRates();
-        } else {
-            alert('Error: ' + data.error);
-        }
-    } catch (e) {
-        alert('Server Error');
-    }
-}
+    window.handleSmmPlatformFilterClick = function (platformName = 'All') {
+        state.activePlatformFilter = normalizeText(platformName) || 'All';
+        renderPlatformFilters();
+        renderRatesTable(getFilteredRates());
+    };
 
-// Bindings to window for global access (required by inline HTML event handlers)
-window.fetchAdminSmmRates = fetchAdminSmmRates;
-window.editSmmRate = editSmmRate;
-window.resetSmmForm = resetSmmForm;
-window.saveSmmRate = saveSmmRate;
-window.deleteSmmRate = deleteSmmRate;
+    window.toggleSmmVariantDynamicFields = function (index, checked) {
+        if (!state.currentVariants[index]) return;
+        state.currentVariants[index].hasDynamicInput = Boolean(checked);
+        if (!state.currentVariants[index].hasDynamicInput) {
+            state.currentVariants[index].inputType = 'none';
+            state.currentVariants[index].inputLabel = '';
+        } else if (state.currentVariants[index].inputType === 'none') {
+            state.currentVariants[index].inputType = 'text';
+        }
+        renderVariants();
+    };
+
+    window.addSmmVariant = function () {
+        state.currentVariants.push(makeEmptyVariant());
+        renderVariants();
+    };
+
+    window.removeSmmVariant = function (index) {
+        state.currentVariants.splice(index, 1);
+        if (!state.currentVariants.length) {
+            state.currentVariants.push(makeEmptyVariant());
+        }
+        renderVariants();
+    };
+
+    window.updateSmmVariant = function (index, field, value) {
+        if (!state.currentVariants[index]) return;
+        state.currentVariants[index][field] = value;
+    };
+
+    window.openSmmServiceModal = async function (serviceId = '') {
+        bindModalEvents();
+        showServiceError('');
+
+        if (!serviceId) {
+            await resetServiceForm();
+            setModalOpen('smmServiceModal', true);
+            return;
+        }
+
+        const service = getServiceById(serviceId);
+        if (!service) {
+            alert('The selected SMM service could not be found. Please refresh the table and try again.');
+            return;
+        }
+
+        state.editingServiceId = normalizeText(service.serviceId);
+        await refreshAdminSmmOptions(service.platform, service.category);
+        fillServiceForm(service);
+
+        const title = document.getElementById('smmServiceModalTitle');
+        const saveButton = document.getElementById('smmServiceSaveButton');
+        if (title) title.textContent = 'Edit SMM Service';
+        if (saveButton) saveButton.textContent = 'Update Service';
+
+        setModalOpen('smmServiceModal', true);
+    };
+
+    window.closeSmmServiceModal = function () {
+        setModalOpen('smmServiceModal', false);
+        showServiceError('');
+    };
+
+    window.saveSmmService = async function () {
+        showServiceError('');
+
+        const platform = resolvePlatformSelection();
+        const category = resolveCategorySelection();
+        const description = normalizeText(document.getElementById('smmDescription')?.value);
+
+        if (!platform) {
+            showServiceError('Please select or create a platform.');
+            return;
+        }
+
+        if (!category) {
+            showServiceError('Please select or create a category.');
+            return;
+        }
+
+        const normalizedVariants = state.currentVariants.map((variant) => ({
+            name: normalizeText(variant.name),
+            country: normalizeText(variant.country),
+            speed: normalizeText(variant.speed),
+            refill: normalizeText(variant.refill),
+            variantId: variant.variantId != null ? Number(variant.variantId) : null,
+            hasDynamicInput: variant.hasDynamicInput === true,
+            inputType: variant.hasDynamicInput ? (normalizeText(variant.inputType) === 'textarea' ? 'textarea' : 'text') : 'none',
+            inputLabel: variant.hasDynamicInput ? normalizeText(variant.inputLabel) : '',
+            price: Number(variant.price),
+            minQty: Number(variant.minQty),
+            maxQty: Number(variant.maxQty),
+            legacyServiceIds: Array.isArray(variant.legacyServiceIds) ? [...variant.legacyServiceIds] : []
+        }));
+
+        const invalidVariant = normalizedVariants.find((variant) => {
+            return !variant.name
+                || (variant.hasDynamicInput === true && !variant.inputLabel)
+                || !Number.isFinite(variant.price)
+                || variant.price <= 0
+                || !Number.isFinite(variant.minQty)
+                || variant.minQty <= 0
+                || !Number.isFinite(variant.maxQty)
+                || variant.maxQty < variant.minQty;
+        });
+
+        if (invalidVariant) {
+            showServiceError('Every variant needs a name, positive price, valid min/max quantity values, and a dynamic input label when enabled.');
+            return;
+        }
+
+        const payload = {
+            existingServiceId: state.editingServiceId,
+            platform,
+            category,
+            description,
+            variants: normalizedVariants
+        };
+
+        try {
+            const res = await fetch('/api/admin/smm/rates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to save SMM service.');
+            }
+
+            await refreshAdminSmmOptions(platform, category);
+            await fetchAdminSmmRates();
+            window.closeSmmServiceModal();
+        } catch (error) {
+            showServiceError(error.message || 'Failed to save SMM service.');
+        }
+    };
+
+    window.openSmmServiceDeleteModal = function (serviceId) {
+        const service = getServiceById(serviceId);
+        state.serviceToDeleteId = normalizeText(serviceId);
+
+        const nameEl = document.getElementById('deleteModalServiceName');
+        const modal = document.getElementById('customDeleteModal');
+        if (nameEl) {
+            nameEl.textContent = normalizeText(service?.category) || normalizeText(serviceId) || 'this service';
+        }
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    };
+
+    window.cancelSmmServiceDelete = function () {
+        state.serviceToDeleteId = null;
+        const modal = document.getElementById('customDeleteModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    };
+
+    window.confirmSmmServiceDelete = async function () {
+        const serviceId = normalizeText(state.serviceToDeleteId);
+        if (!serviceId) {
+            window.cancelSmmServiceDelete();
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/smm/rates/${encodeURIComponent(serviceId)}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to delete SMM service.');
+            }
+
+            await fetchAdminSmmRates();
+            window.cancelSmmServiceDelete();
+        } catch (error) {
+            alert(error.message || 'Failed to delete SMM service.');
+        }
+    };
+
+    window.deleteSmmService = function (serviceId) {
+        window.openSmmServiceDeleteModal(serviceId);
+    };
+
+    window.openManagePlatformsModal = async function () {
+        bindModalEvents();
+        setModalOpen('managePlatformsModal', true);
+        await renderManagePlatformsList();
+    };
+
+    window.closeManagePlatformsModal = function () {
+        setModalOpen('managePlatformsModal', false);
+    };
+
+    window.openPlatformBrandingModal = function (platformId = '', name = '', logoUrl = '') {
+        state.editingPlatformId = normalizeText(platformId);
+        const title = document.getElementById('platformBrandingTitle');
+        const nameInput = document.getElementById('platformBrandingName');
+        const logoInput = document.getElementById('platformBrandingLogoUrl');
+        const preview = document.getElementById('platformBrandingPreview');
+        const status = document.getElementById('platformBrandingUploadStatus');
+
+        if (title) title.textContent = state.editingPlatformId ? 'Edit Platform Branding' : 'Add Platform Branding';
+        if (nameInput) nameInput.value = normalizeText(name);
+        if (logoInput) logoInput.value = normalizeText(logoUrl);
+        if (status) status.textContent = '';
+        if (preview) {
+            preview.innerHTML = normalizeText(logoUrl)
+                ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(name || 'Platform Logo')}" style="width:100%;height:100%;object-fit:cover;">`
+                : '🌐';
+        }
+
+        setModalOpen('platformBrandingModal', true);
+    };
+
+    window.closePlatformBrandingModal = function () {
+        setModalOpen('platformBrandingModal', false);
+        state.editingPlatformId = '';
+    };
+
+    window.handlePlatformLogoUpload = async function (event) {
+        const file = event.target?.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Platform logos must be under 5 MB.');
+            return;
+        }
+
+        const status = document.getElementById('platformBrandingUploadStatus');
+        const preview = document.getElementById('platformBrandingPreview');
+        const urlInput = document.getElementById('platformBrandingLogoUrl');
+        if (status) status.textContent = 'Uploading...';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/chat/upload?cloudinary=true', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (!data.success || !data.fileUrl) {
+                throw new Error(data.message || 'Upload failed.');
+            }
+
+            if (urlInput) urlInput.value = data.fileUrl;
+            if (status) status.textContent = 'Uploaded';
+            if (preview) {
+                preview.innerHTML = `<img src="${escapeHtml(data.fileUrl)}" alt="Platform Logo" style="width:100%;height:100%;object-fit:cover;">`;
+            }
+        } catch (error) {
+            if (status) status.textContent = 'Upload failed';
+            alert(error.message || 'Platform logo upload failed.');
+        }
+    };
+
+    window.submitPlatformBranding = async function () {
+        const name = normalizeText(document.getElementById('platformBrandingName')?.value);
+        const logoUrl = normalizeText(document.getElementById('platformBrandingLogoUrl')?.value) || '/assets/images/default-platform.png';
+
+        if (!name) {
+            alert('Please enter a platform name.');
+            return;
+        }
+
+        try {
+            const url = state.editingPlatformId ? `/api/platforms/${encodeURIComponent(state.editingPlatformId)}` : '/api/platforms';
+            const method = state.editingPlatformId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name, logoUrl })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to save platform branding.');
+            }
+
+            const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
+            storedLogos[name.toLowerCase()] = logoUrl;
+            localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
+
+            await renderManagePlatformsList();
+            await refreshAdminSmmOptions(resolvePlatformSelection(name), resolveCategorySelection());
+            window.closePlatformBrandingModal();
+        } catch (error) {
+            alert(error.message || 'Failed to save platform branding.');
+        }
+    };
+
+    window.deletePlatform = async function (platformId, name) {
+        if (!confirm(`Delete platform "${name}"? Existing SMM services will keep the platform name but lose this branding entry.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/platforms/${encodeURIComponent(platformId)}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to delete platform.');
+            }
+
+            const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
+            delete storedLogos[normalizeText(name).toLowerCase()];
+            localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
+
+            await renderManagePlatformsList();
+            await refreshAdminSmmOptions();
+        } catch (error) {
+            alert(error.message || 'Failed to delete platform.');
+        }
+    };
+
+    window.fetchAdminSmmRates = fetchAdminSmmRates;
+    window.editSmmRate = window.openSmmServiceModal;
+})();

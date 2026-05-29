@@ -1996,14 +1996,15 @@
                                     }
 
                                     const country = order.selectedCountry || order.country || '';
-                                    const quality = order.selectedQuality || order.quality || '';
+                                    const quality = order.selectedVariantName || order.selectedQuality || order.quality || '';
+                                    const variantId = order.selectedVariantId || order.variantId || '';
                                     const speed = order.selectedSpeed || order.speed || '';
                                     const refill = order.selectedRefill || order.refill || '';
                                     let variantHtml = '';
-                                    if (country?.length || quality?.length || speed?.length || refill?.length) {
+                                    if (country?.length || quality?.length || variantId || speed?.length || refill?.length) {
                                         let details = [];
                                         if (country?.length) details.push(`📍 Country: ${country}`);
-                                        if (quality?.length) details.push(`💎 Quality: ${quality}`);
+                                        if (quality?.length) details.push(`💎 Variant: ${quality}${variantId ? ` (#${variantId})` : ''}`);
                                         if (speed?.length) details.push(`⚡ Speed: ${speed}`);
                                         if (refill?.length) details.push(`🔄 Refill: ${refill}`);
                                         variantHtml = `<div class="text-xs text-gray-500 mt-1" style="font-size:0.75rem;color:#64748b;margin-top:4px;margin-bottom:8px;">${details.join(' | ')}</div>`;

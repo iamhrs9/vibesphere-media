@@ -257,20 +257,19 @@
                 const servicesData = await servicesRes.json();
                 const packagesData = await packagesRes.json();
                 let smmRates = [];
+                const getSmmStartingPrice = (rate) => {
+                    if (!Array.isArray(rate?.variants) || !rate.variants.length) return 0;
+                    const prices = rate.variants
+                        .map((variant) => Number(variant?.price))
+                        .filter((price) => Number.isFinite(price) && price >= 0);
+                    return prices.length ? Math.min(...prices) : 0;
+                };
 
                 if (smmRatesRes && smmRatesRes.ok) {
                     try {
                         const smmData = await smmRatesRes.json();
                         if (smmData.success) {
                             smmRates = smmData.rates || [];
-                        function escapeHtml(value) {
-                            return String(value ?? '')
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#39;');
-                        }
                         }
                     } catch (e) {
                         console.error("Error parsing SMM rates:", e);
@@ -296,10 +295,10 @@
                     if (smmRates.length > 0) {
                         const smmPackages = smmRates.map(rate => ({
                             _id: `smm_${rate.serviceId}`,
-                            title: `${rate.platform} ${rate.serviceType}`,
-                            description: `Boost your ${rate.platform} presence instantly. Professional, fast delivery.`,
+                            title: [rate.platform, rate.category].filter(Boolean).join(' '),
+                            description: rate.description || `Boost your ${rate.platform} presence instantly. Professional, fast delivery.`,
                             geo: {
-                                price: rate.ratePer1000,
+                                price: getSmmStartingPrice(rate),
                                 currency: 'INR'
                             },
                             pricing: {
