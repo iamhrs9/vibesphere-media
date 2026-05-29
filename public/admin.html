@@ -1214,6 +1214,10 @@
                 onclick="navTo('smm-rates-section', this); fetchAdminSmmRates();">
                 <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;"><path d="M13 2L4 14h7l-1 8 10-13h-7l0-7z"></path></svg></span><span class="nav-label"> SMM Rates</span>
             </button>
+            <button class="sidebar-link" data-label="Coupons"
+                onclick="navTo('coupons-section', this); fetchCoupons?.();">
+                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a2 2 0 0 1 0 4v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a2 2 0 0 1 0-4V7z"></path><path d="M12 8v8"></path></svg></span><span class="nav-label"> Promo Codes</span>
+            </button>
             <button class="sidebar-link" data-label="Orders" onclick="navTo('orders', this);">
                 <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path></svg></span><span class="nav-label"> Orders</span>
             </button>
@@ -1710,6 +1714,7 @@
                         'document-approvals-section': 'Pending Document Approvals',
                         'staff-tickets-section': 'Staff Internal Tickets',
                         'smm-rates-section': 'SMM Rate Manager',
+                        'coupons-section': 'Coupon Manager',
                         'smm-orders-section': 'SMM Orders'
                     };
                     updateTopbarStatus(labels[tabName] || 'Admin Workspace');
@@ -1726,6 +1731,7 @@
                     if (tabName === 'resources-section') fetchAdminResources();
                     if (tabName === 'chat-section') fetchAdminChat();
                     if (tabName === 'smm-rates-section') fetchAdminSmmRates();
+                    if (tabName === 'coupons-section') fetchCoupons?.();
                 }
 
                 // Legacy alias — some inline calls may still use switchTab
@@ -2054,6 +2060,11 @@
              ========================================== -->
             <div id="smm-rates-section" class="section"></div>
 
+            <!-- ==========================================
+             🎟️ COUPONS SECTION
+             ========================================== -->
+            <div id="coupons-section" class="section"></div>
+
             <!-- ADMIN SECTION MODULES -->
             <script src="/admin/sections/team-chat-section.js"></script>
             <script src="/admin/sections/client-ops-sections.js"></script>
@@ -2063,6 +2074,7 @@
             <script src="/admin/sections/finance-section.js"></script>
             <script src="/admin/sections/document-approvals-section.js"></script>
             <script src="/admin/sections/smm-rates-section.js?v=20260529-4"></script>
+            <script src="/admin/sections/coupons-section.js?v=20260529-2"></script>
             <script>
                 window.mountAdminTeamChatSection?.();
                 window.mountAdminClientOpsSections?.();
@@ -2072,6 +2084,7 @@
                 window.mountAdminFinanceSection?.('finance-section');
                 window.mountAdminDocumentApprovalsSection?.();
                 window.mountAdminSmmRatesSection?.();
+                window.mountAdminCouponSection?.();
             </script>
             <!-- END ADMIN SECTION MODULES -->
 

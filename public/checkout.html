@@ -856,6 +856,7 @@
         let isCartCheckout = false;
         let isGuestCartCheckout = params.get('guest') === '1';
         let cartItems = [];
+        let checkoutOriginalTotal = 0;
         let checkoutBaseTotal = 0;
         let checkoutPayableTotal = 0;
         let appliedCoupon = null;
@@ -967,13 +968,36 @@
         }
 
         function setCheckoutTotal(baseAmount, payableAmount = baseAmount) {
-            checkoutBaseTotal = Number(baseAmount || 0);
+            checkoutOriginalTotal = Number(baseAmount || 0);
+            checkoutBaseTotal = checkoutOriginalTotal;
             checkoutPayableTotal = Number.isFinite(Number(payableAmount)) ? Number(payableAmount) : checkoutBaseTotal;
             price = formatCheckoutAmount(checkoutPayableTotal);
             const dispPrice = document.getElementById('dispPrice');
             if (dispPrice) {
                 dispPrice.innerText = price;
             }
+            window.checkoutPayableTotal = checkoutPayableTotal;
+            window.checkoutBaseTotal = checkoutBaseTotal;
+            syncCouponSummary();
+        }
+
+        function updateCheckoutFinalTotal(newFinalTotal) {
+            const numericFinalTotal = Math.max(0, Number(newFinalTotal || 0));
+            checkoutPayableTotal = Number.isFinite(numericFinalTotal) ? Number(numericFinalTotal.toFixed(2)) : 0;
+            price = formatCheckoutAmount(checkoutPayableTotal);
+
+            const dispPrice = document.getElementById('dispPrice');
+            if (dispPrice) {
+                dispPrice.innerText = price;
+            }
+
+            window.checkoutPayableTotal = checkoutPayableTotal;
+            window.price = price;
+        }
+
+        function clearAppliedCoupon() {
+            appliedCoupon = null;
+            updateCheckoutFinalTotal(checkoutOriginalTotal || checkoutBaseTotal || 0);
             syncCouponSummary();
         }
 
@@ -982,34 +1006,55 @@
             const button = document.getElementById('applyCouponBtn');
             const code = String(input?.value || '').trim();
 
+            console.log('1. Apply button clicked!');
+            console.log('2. Coupon code entered:', code);
+            console.log('3. Current checkout totals:', {
+                checkoutBaseTotal,
+                checkoutPayableTotal,
+                checkoutModule
+            });
+
             if (!code) {
+                console.warn('[coupon-debug] Missing coupon code.');
                 setCouponStatus('Please enter a promo code first.', 'error');
+                alert('Please enter a coupon code.');
                 return;
             }
 
             if (!Number.isFinite(checkoutBaseTotal) || checkoutBaseTotal <= 0) {
+                console.warn('[coupon-debug] checkoutBaseTotal is invalid:', checkoutBaseTotal);
                 setCouponStatus('Order total is not ready yet. Please wait a moment.', 'error');
+                alert('Order total is not ready yet. Please wait a moment.');
                 return;
             }
 
             if (button) button.disabled = true;
             setCouponStatus('Applying coupon...', '');
+            const payload = {
+                code,
+                cartTotal: checkoutBaseTotal,
+                module: checkoutModule
+            };
+            console.log('4. Sending payload to backend:', payload);
 
             try {
                 const res = await fetch('/api/billing/apply-coupon', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({
-                        code,
-                        cartTotal: checkoutBaseTotal,
-                        module: checkoutModule
-                    })
+                    body: JSON.stringify(payload)
                 });
 
+                console.log('5. Raw Response Status:', res.status, res.statusText);
+
                 const data = await res.json();
+                console.log('6. Parsed Response Data:', data);
                 if (!res.ok || !data.success) {
-                    throw new Error(data.error || 'Failed to apply coupon.');
+                    const message = data.error || 'Server returned an error.';
+                    console.warn('[coupon-debug] Backend returned error:', message);
+                    alert(message);
+                    setCouponStatus(message, 'error');
+                    return;
                 }
 
                 appliedCoupon = {
@@ -1021,14 +1066,33 @@
                     module: data.module || checkoutModule
                 };
 
-                checkoutPayableTotal = Number(data.finalTotal || checkoutBaseTotal);
-                setCheckoutTotal(checkoutBaseTotal, checkoutPayableTotal);
+                const discountAmount = Number(data.discountAmount || 0);
+                const originalBaseTotal = Number.isFinite(checkoutOriginalTotal) && checkoutOriginalTotal > 0
+                    ? checkoutOriginalTotal
+                    : checkoutBaseTotal;
+                let newFinalTotal = Number.isFinite(Number(data.finalTotal))
+                    ? Number(data.finalTotal)
+                    : Number(originalBaseTotal - discountAmount);
+                if (!Number.isFinite(newFinalTotal)) newFinalTotal = originalBaseTotal;
+                if (newFinalTotal < 0) newFinalTotal = 0;
+                newFinalTotal = Number(newFinalTotal.toFixed(2));
+
+                checkoutBaseTotal = originalBaseTotal;
+                updateCheckoutFinalTotal(newFinalTotal);
+                if (appliedCoupon) {
+                    appliedCoupon.discountAmount = discountAmount;
+                    appliedCoupon.finalTotal = newFinalTotal;
+                }
+                alert('Coupon applied successfully!');
                 setCouponStatus(`Promo ${appliedCoupon.code} applied. You saved ${formatCheckoutAmount(appliedCoupon.discountAmount)}.`, 'success');
                 await initCheckoutWallet(checkoutPayableTotal);
             } catch (error) {
                 appliedCoupon = null;
                 syncCouponSummary();
-                setCouponStatus(error.message || 'Unable to apply coupon right now.', 'error');
+                const message = error.message || 'Unable to apply coupon right now.';
+                console.error('FRONTEND CRASH during coupon apply:', error);
+                alert(message);
+                setCouponStatus(message, 'error');
             } finally {
                 if (button) button.disabled = false;
             }
@@ -1217,6 +1281,34 @@
 
         // Screen par dikhao ya Cart Fetch karo
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('[coupon-debug] DOMContentLoaded fired.');
+            const applyCouponBtn = document.getElementById('applyCouponBtn');
+            if (applyCouponBtn) {
+                console.log('[coupon-debug] Apply coupon button found. Attaching click listener.');
+                applyCouponBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        await applyCheckoutCoupon();
+                    } catch (error) {
+                        console.error('FRONTEND CRASH during coupon button click:', error);
+                        alert('A critical error occurred. Check browser console.');
+                    }
+                });
+            } else {
+                console.warn('[coupon-debug] Apply coupon button not found in DOM.');
+            }
+
+            const couponInput = document.getElementById('couponCodeInput');
+            if (couponInput) {
+                couponInput.addEventListener('input', () => {
+                    if (!String(couponInput.value || '').trim() && appliedCoupon) {
+                        console.log('[coupon-debug] Coupon input cleared; reverting total.');
+                        clearAppliedCoupon();
+                        setCouponStatus('Promo code cleared. Total restored.', '');
+                    }
+                });
+            }
+
             if (isSmmCheckout) {
                 setCheckoutSubmitState(true);
                 document.getElementById('dispPkg').innerText = "Loading SMM package...";
@@ -1448,13 +1540,45 @@
 
             // Amount Clean Karo (sirf numbers bacha ke rakho)
             const rawPrice = document.getElementById('dispPrice').innerText;
-            if (rawPrice === "0" || parseFloat(rawPrice.replace(/[^0-9.]/g, '')) === 0) {
+            const parsedRawPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
+            const isFreeCouponCheckout = Boolean(appliedCoupon && Number.isFinite(checkoutPayableTotal) && checkoutPayableTotal <= 0);
+            if ((rawPrice === "0" || parsedRawPrice === 0) && !isFreeCouponCheckout) {
                 alert("Invalid total amount. Please wait for cart to load.");
                 return;
             }
             const finalAmount = Number.isFinite(checkoutPayableTotal) && checkoutPayableTotal > 0
                 ? checkoutPayableTotal
                 : parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
+            const originalBaseAmount = Number.isFinite(checkoutBaseTotal) && checkoutBaseTotal > 0 ? checkoutBaseTotal : finalAmount;
+            const sharedOrderDetails = {
+                package: pkg,
+                price: price || rawPrice,
+                currency: currencyFromURL,
+                instaLink: insta,
+                customerName: name,
+                phone: phone,
+                email: email,
+                orderItems: isCartCheckout ? cartItems : [],
+                orderType: isSmmCheckout ? 'smm' : 'agency',
+                extraInput: extraInput,
+                extraInputType: extraInputType,
+                couponCode: appliedCoupon?.code || '',
+                couponDiscountAmount: appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0,
+                couponFinalTotal: appliedCoupon ? (checkoutPayableTotal || finalAmount) : 0,
+                couponModule: appliedCoupon ? checkoutModule : '',
+                baseAmount: originalBaseAmount
+            };
+
+            if (isSmmCheckout) {
+                sharedOrderDetails.isSmm = true;
+                sharedOrderDetails.quantity = smmQty;
+                sharedOrderDetails.targetLink = insta;
+                sharedOrderDetails.serviceId = smmServiceId;
+                sharedOrderDetails.variantId = smmVariantId;
+                sharedOrderDetails.isDripFeed = isDripFeed;
+                sharedOrderDetails.runs = dripRuns;
+                sharedOrderDetails.interval = dripInterval;
+            }
 
             // Button Update
             const btn = document.querySelector('.btn-pay');
@@ -1466,7 +1590,7 @@
 
             // WALLET CHECKOUT FLOW
             if (paymentMethod === 'wallet') {
-                if (finalAmount > userWalletBalance) {
+                if (!isFreeCouponCheckout && finalAmount > userWalletBalance) {
                     alert('Insufficient Wallet Balance. Please add money to your wallet.');
                     btn.disabled = false;
                     btn.innerText = "Pay Now & Place Order";
@@ -1474,7 +1598,7 @@
                     return;
                 }
 
-                if (!confirm(`Are you sure you want to pay ₹${finalAmount.toLocaleString('en-IN')} using your VibeSphere Wallet balance?`)) {
+                if (!isFreeCouponCheckout && !confirm(`Are you sure you want to pay ₹${finalAmount.toLocaleString('en-IN')} using your VibeSphere Wallet balance?`)) {
                     btn.disabled = false;
                     btn.innerText = "Pay Now & Place Order";
                     setPayButtonLoading(false);
@@ -1484,22 +1608,9 @@
                 try {
                     const walletPayload = {
                         amount: finalAmount,
+                        baseAmount: originalBaseAmount,
                         orderDetails: {
-                            package: pkg,
-                            price: price || rawPrice,
-                            currency: currencyFromURL,
-                            instaLink: insta,
-                            customerName: name,
-                            phone: phone,
-                            email: email,
-                            orderItems: isCartCheckout ? cartItems : [],
-                            orderType: isSmmCheckout ? 'smm' : 'agency',
-                            extraInput: extraInput,
-                            extraInputType: extraInputType,
-                            couponCode: appliedCoupon?.code || '',
-                            couponDiscountAmount: appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0,
-                            couponFinalTotal: appliedCoupon ? (checkoutPayableTotal || finalAmount) : 0,
-                            couponModule: appliedCoupon ? checkoutModule : ''
+                            ...sharedOrderDetails
                         }
                     };
 
@@ -1527,6 +1638,11 @@
                     });
 
                     const walletData = await walletRes.json();
+                    if (walletData.status === 'success_free') {
+                        alert('Order Placed Successfully using Coupon!');
+                        window.location.href = '/dashboard.html?tab=orders';
+                        return;
+                    }
                     if (walletData.success) {
                         if (isCartCheckout) {
                             if (isGuestCartCheckout) {
@@ -1562,8 +1678,12 @@
                 const createPayload = {
                     currency: currencyFromURL,
                     items: isCartCheckout ? cartItems : [],
+                    baseAmount: originalBaseAmount,
                     couponCode: appliedCoupon?.code || '',
-                    couponModule: checkoutModule
+                    couponModule: checkoutModule,
+                    orderDetails: {
+                        ...sharedOrderDetails
+                    }
                 };
 
                 if (isSmmCheckout) {
@@ -1571,6 +1691,7 @@
                     createPayload.quantity = smmQty;
                     createPayload.orderType = 'smm';
                     createPayload.variantId = smmVariantId;
+                    createPayload.serviceId = smmServiceId;
                     createPayload.isDripFeed = isDripFeed;
                     createPayload.runs = dripRuns;
                     createPayload.interval = dripInterval;
@@ -1591,6 +1712,11 @@
                 });
 
                 const orderData = await orderResponse.json();
+                if (orderData.status === 'success_free') {
+                    alert('Order Placed Successfully using Coupon!');
+                    window.location.href = '/dashboard.html?tab=orders';
+                    return;
+                }
                 if (!orderResponse.ok) throw new Error(orderData.error || "Server Error");
 
                 if (!orderData.razorpayKeyId) {
@@ -1614,22 +1740,8 @@
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_signature: response.razorpay_signature,
                             orderDetails: {
-                                package: pkg,
-                                price: price || rawPrice, // Display price (e.g. $19)
-                                currency: currencyFromURL,
-                                instaLink: insta,
-                                customerName: name,
-                                phone: phone,
-                                email: email,
-                                orderItems: isCartCheckout ? cartItems : [],
-                                orderType: isSmmCheckout ? 'smm' : 'agency',
-                                variantId: isSmmCheckout ? smmVariantId : undefined,
-                                extraInput: extraInput,
-                                extraInputType: extraInputType,
-                                couponCode: appliedCoupon?.code || '',
-                                couponDiscountAmount: appliedCoupon ? (appliedCoupon.discountAmount || 0) : 0,
-                                couponFinalTotal: appliedCoupon ? (checkoutPayableTotal || finalAmount) : 0,
-                                couponModule: appliedCoupon ? checkoutModule : ''
+                                ...sharedOrderDetails,
+                                variantId: isSmmCheckout ? smmVariantId : undefined
                             }
                         };
 

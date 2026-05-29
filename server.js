@@ -3489,8 +3489,10 @@ const orderSchema = new mongoose.Schema({
     instaLink: String,
     date: String,
     paymentStatus: { type: String, default: 'Pending' },
+    paymentMethod: { type: String, default: '' },
     workStatus: { type: String, default: 'Work Pending' },
     status: { type: String, default: 'Work Pending' },
+    finalAmount: { type: Number, default: 0 },
 
     // SMM specific fields
     orderType: { type: String, enum: ['agency', 'smm'], default: 'agency' },
@@ -3528,11 +3530,104 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Order = mongoose.model('Order', orderSchema);
 
+async function saveOrderDocument(orderData = {}) {
+    const order = new Order(orderData);
+    if (mongoose.connection.readyState === 1) {
+        await order.save();
+    }
+    return order;
+}
+
+async function createFreeCheckoutOrder({
+    userId = null,
+    orderDetails = {},
+    orderType = 'agency',
+    resolvedServiceId = '',
+    resolvedQuantity = 0,
+    resolvedTargetLink = '',
+    selectedVariantName = '',
+    selectedVariantId = null,
+    selectedCountry = '',
+    selectedQuality = '',
+    selectedSpeed = '',
+    selectedRefill = '',
+    selectedVariantBasePrice = 0,
+    selectedVariantDiscountPercent = 0,
+    selectedVariantDiscountAmount = 0,
+    selectedVariantEffectivePrice = 0,
+    isDripActive = false,
+    runsVal = 1,
+    intervalMins = 0,
+    qtyPerRun = 0,
+    remainingRunsVal = 0,
+    nextRunTimestamp = null,
+    resolvedOrderItems = [],
+    currency = 'INR',
+    couponPricing = null
+} = {}) {
+    const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
+    const normalizedCurrency = String(currency || orderDetails?.currency || 'INR').toUpperCase() === 'USD' ? 'USD' : 'INR';
+    const zeroPriceLabel = normalizedCurrency === 'USD' ? '$0.00' : '₹0.00';
+    const freePaymentId = `FREE-${Date.now()}`;
+
+    const newOrder = await saveOrderDocument({
+        orderId: generatedOrderId,
+        paymentId: freePaymentId,
+        paymentStatus: 'Paid',
+        paymentMethod: '100% Discount / Free',
+        workStatus: 'Work Pending',
+        status: 'Work Pending',
+        userId,
+        ...orderDetails,
+        price: zeroPriceLabel,
+        orderAmount: 0,
+        finalAmount: 0,
+        orderItems: resolvedOrderItems,
+        orderType,
+        serviceId: resolvedServiceId,
+        quantity: resolvedQuantity,
+        targetLink: resolvedTargetLink,
+        instaLink: resolvedTargetLink || orderDetails?.instaLink || '',
+        selectedVariantName,
+        selectedVariantId,
+        selectedCountry,
+        selectedQuality,
+        selectedSpeed,
+        selectedRefill,
+        selectedVariantBasePrice,
+        selectedVariantDiscountPercent,
+        selectedVariantDiscountAmount,
+        selectedVariantEffectivePrice,
+        isDripFeed: isDripActive,
+        runs: runsVal,
+        interval: intervalMins,
+        quantityPerRun: qtyPerRun,
+        remainingRuns: remainingRunsVal,
+        nextRunAt: nextRunTimestamp,
+        extraInput: orderDetails?.extraInput || '',
+        extraInputType: orderDetails?.extraInputType || 'none',
+        couponCode: couponPricing?.coupon?.code || orderDetails?.couponCode || '',
+        couponModule: couponPricing?.module || orderDetails?.couponModule || '',
+        couponDiscountAmount: couponPricing?.discountAmount || orderDetails?.couponDiscountAmount || 0,
+        couponFinalTotal: 0,
+        date: new Date().toLocaleString()
+    });
+
+    return newOrder;
+}
+
 const couponSchema = new mongoose.Schema({
     code: { type: String, required: true, unique: true, trim: true },
     discountType: { type: String, enum: ['percent', 'fixed'], default: 'percent' },
     discountValue: { type: Number, required: true, default: 0 },
+    maxDiscountAmount: { type: Number, default: 0 },
+    minOrderValue: { type: Number, default: 0 },
+    applicableModules: { type: [String], default: ['all'] },
+    usageLimit: { type: Number, default: 0 },
+    usageCount: { type: Number, default: 0 },
+    expiryDate: { type: Date, default: null },
     isGlobal: { type: Boolean, default: true },
+    isGlobalUser: { type: Boolean, default: true },
     allowedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     isActive: { type: Boolean, default: true },
     expiresAt: { type: Date, default: null }
@@ -3542,10 +3637,136 @@ couponSchema.pre('save', function (next) {
     if (this.code) {
         this.code = String(this.code).trim().toUpperCase();
     }
+    this.discountType = trimSmmText(this.discountType).toLowerCase() === 'fixed' ? 'fixed' : 'percent';
+    this.discountValue = normalizeCouponAmount(this.discountValue, 0);
+    this.maxDiscountAmount = normalizeCouponAmount(this.maxDiscountAmount, 0);
+    this.minOrderValue = normalizeCouponAmount(this.minOrderValue, 0);
+    this.usageLimit = normalizeCouponLimit(this.usageLimit, 0);
+    this.usageCount = normalizeCouponLimit(this.usageCount, 0);
+    this.applicableModules = normalizeCouponModules(this.applicableModules, { defaultToAll: true });
+    const expiryDate = normalizeCouponExpiryDate(this.expiryDate || this.expiresAt);
+    this.expiryDate = expiryDate;
+    this.expiresAt = expiryDate;
+    this.isGlobal = Array.isArray(this.applicableModules) && this.applicableModules.includes('all');
+    this.isGlobalUser = !Array.isArray(this.allowedUsers) || this.allowedUsers.length === 0;
     next();
 });
 
 const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
+
+function normalizeCouponAmount(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return fallback;
+    }
+    return Number(parsed.toFixed(2));
+}
+
+function normalizeCouponLimit(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return fallback;
+    }
+    return Math.floor(parsed);
+}
+
+function normalizeCouponModuleKey(value) {
+    const normalized = trimSmmText(value).toLowerCase().replace(/\s+/g, '_').replace(/-+/g, '_');
+    if (!normalized) return '';
+    if (['all', 'any', 'global'].includes(normalized)) return 'all';
+    if (['smm', 'social', 'social_media', 'socialmedia'].includes(normalized)) return 'smm';
+    if (['seo', 'search', 'search_engine_optimization', 'search_engine_optimisation'].includes(normalized)) return 'seo';
+    if (['web', 'web_design', 'webdesign', 'website', 'general', 'agency', 'cart'].includes(normalized)) return 'web_design';
+    return normalized;
+}
+
+function normalizeCouponModules(values = [], { defaultToAll = false } = {}) {
+    const rawValues = Array.isArray(values) ? values : (values ? [values] : []);
+    const normalized = [...new Set(rawValues.map((value) => normalizeCouponModuleKey(value)).filter(Boolean))];
+
+    if (normalized.includes('all')) {
+        return ['all'];
+    }
+
+    if (normalized.length > 0) {
+        return normalized;
+    }
+
+    return defaultToAll ? ['all'] : [];
+}
+
+function normalizeCouponExpiryDate(value) {
+    const rawValue = trimSmmText(value);
+    if (!rawValue) return null;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+        const [year, month, day] = rawValue.split('-').map(Number);
+        const date = new Date(year, month - 1, day, 23, 59, 59, 999);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    const date = new Date(rawValue);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function couponAppliesToModule(coupon = {}, moduleName = '') {
+    const applicableModules = normalizeCouponModules(coupon.applicableModules, { defaultToAll: false });
+    if (!Array.isArray(applicableModules) || applicableModules.length === 0) {
+        return true;
+    }
+
+    if (applicableModules.includes('all')) {
+        return true;
+    }
+
+    const requestedModule = normalizeCouponModuleKey(moduleName);
+    if (!requestedModule) {
+        return true;
+    }
+
+    return applicableModules.includes(requestedModule);
+}
+
+async function incrementCouponUsageByCode(code) {
+    const normalizedCode = normalizeCouponCode(code);
+    if (!normalizedCode) {
+        return;
+    }
+
+    await Coupon.updateOne(
+        { code: new RegExp(`^${escapeRegex(normalizedCode)}$`, 'i') },
+        { $inc: { usageCount: 1 } }
+    );
+}
+
+function formatCouponAdminResponse(coupon = {}) {
+    const expiryDate = normalizeCouponExpiryDate(coupon.expiryDate || coupon.expiresAt);
+    const applicableModules = normalizeCouponModules(coupon.applicableModules, {
+        defaultToAll: coupon.isGlobal !== false
+    });
+    const allowedUsers = Array.isArray(coupon.allowedUsers) ? coupon.allowedUsers : [];
+    const isGlobalUser = typeof coupon.isGlobalUser === 'boolean' ? coupon.isGlobalUser : allowedUsers.length === 0;
+
+    return {
+        _id: coupon._id,
+        code: coupon.code || '',
+        discountType: trimSmmText(coupon.discountType).toLowerCase() === 'fixed' ? 'fixed' : 'percent',
+        discountValue: normalizeCouponAmount(coupon.discountValue, 0),
+        maxDiscountAmount: normalizeCouponAmount(coupon.maxDiscountAmount, 0),
+        minOrderValue: normalizeCouponAmount(coupon.minOrderValue, 0),
+        applicableModules,
+        usageLimit: normalizeCouponLimit(coupon.usageLimit, 0),
+        usageCount: normalizeCouponLimit(coupon.usageCount, 0),
+        expiryDate: expiryDate ? expiryDate.toISOString() : null,
+        expiresAt: expiryDate ? expiryDate.toISOString() : null,
+        isGlobal: coupon.isGlobal !== false,
+        isGlobalUser,
+        allowedUsers,
+        isActive: coupon.isActive !== false,
+        createdAt: coupon.createdAt || null,
+        updatedAt: coupon.updatedAt || null
+    };
+}
 // --- Blog Schema (UPDATED WITH SEO) ---
 const blogSchema = new mongoose.Schema({
     slug: String,
@@ -5967,6 +6188,11 @@ function computeCouponDiscount(coupon = {}, cartTotal = 0) {
         discountAmount = safeDiscountValue;
     }
 
+    const maxDiscountAmount = normalizeCouponAmount(coupon.maxDiscountAmount, 0);
+    if (maxDiscountAmount > 0) {
+        discountAmount = Math.min(discountAmount, maxDiscountAmount);
+    }
+
     discountAmount = Number(Math.min(total, Math.max(0, discountAmount)).toFixed(2));
     const finalTotal = Number(Math.max(0, total - discountAmount).toFixed(2));
 
@@ -5978,7 +6204,7 @@ function computeCouponDiscount(coupon = {}, cartTotal = 0) {
 
 async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user }) {
     const normalizedCode = normalizeCouponCode(code);
-    const normalizedModule = trimSmmText(moduleName);
+    const normalizedModule = normalizeCouponModuleKey(moduleName);
     const normalizedTotal = normalizeCheckoutTotal(cartTotal);
 
     if (!normalizedCode) {
@@ -6008,7 +6234,7 @@ async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user 
     const coupon = await Coupon.findOne({ code: new RegExp(`^${escapeRegex(normalizedCode)}$`, 'i') }).lean();
     if (!coupon) {
         const error = new Error('Invalid coupon code.');
-        error.status = 404;
+        error.status = 400;
         throw error;
     }
 
@@ -6018,8 +6244,8 @@ async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user 
         throw error;
     }
 
-    if (coupon.expiresAt) {
-        const expiryDate = new Date(coupon.expiresAt);
+    const expiryDate = normalizeCouponExpiryDate(coupon.expiryDate || coupon.expiresAt);
+    if (expiryDate) {
         if (!Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now()) {
             const error = new Error('This coupon has expired.');
             error.status = 400;
@@ -6027,12 +6253,33 @@ async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user 
         }
     }
 
-    if (!coupon.isGlobal) {
+    const minOrderValue = normalizeCouponAmount(coupon.minOrderValue, 0);
+    if (minOrderValue > 0 && normalizedTotal < minOrderValue) {
+        const error = new Error(`Minimum order value for this coupon is ${minOrderValue.toFixed(2)}.`);
+        error.status = 400;
+        throw error;
+    }
+
+    const usageLimit = normalizeCouponLimit(coupon.usageLimit, 0);
+    const usageCount = normalizeCouponLimit(coupon.usageCount, 0);
+    if (usageLimit > 0 && usageCount >= usageLimit) {
+        const error = new Error('This coupon has reached its usage limit.');
+        error.status = 400;
+        throw error;
+    }
+
+    if (!couponAppliesToModule(coupon, normalizedModule)) {
+        const error = new Error('This coupon is not valid for the selected checkout module.');
+        error.status = 400;
+        throw error;
+    }
+
+    if (Array.isArray(coupon.allowedUsers) && coupon.allowedUsers.length > 0) {
         const userId = user?._id ? String(user._id) : '';
         const allowedUsers = Array.isArray(coupon.allowedUsers) ? coupon.allowedUsers.map((entry) => String(entry)) : [];
         if (!userId || !allowedUsers.includes(userId)) {
             const error = new Error('You are not eligible for this coupon.');
-            error.status = 403;
+            error.status = 400;
             throw error;
         }
     }
@@ -6047,8 +6294,14 @@ async function resolveCouponCheckoutPricing({ code, cartTotal, moduleName, user 
             code: coupon.code,
             discountType: coupon.discountType,
             discountValue: coupon.discountValue,
+            maxDiscountAmount: normalizeCouponAmount(coupon.maxDiscountAmount, 0),
+            minOrderValue,
+            applicableModules: normalizeCouponModules(coupon.applicableModules, { defaultToAll: coupon.isGlobal !== false }),
+            usageLimit,
+            usageCount,
             isGlobal: coupon.isGlobal,
-            expiresAt: coupon.expiresAt || null
+            expiryDate: expiryDate ? expiryDate.toISOString() : null,
+            expiresAt: expiryDate ? expiryDate.toISOString() : null
         }
     };
 }
@@ -7088,7 +7341,8 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
-        let { amount, currency, isSmm, serviceId, quantity, orderType, variantIndex, variantId, couponCode, couponModule } = req.body;
+        const orderDetails = req.body?.orderDetails && typeof req.body.orderDetails === 'object' ? req.body.orderDetails : {};
+        let { amount, baseAmount, currency, isSmm, serviceId, quantity, orderType, variantIndex, variantId, couponCode, couponModule } = req.body;
         const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
 
         if (!razorpayKeyId) {
@@ -7097,6 +7351,10 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
         let cleanCurrency = currency && currency.length === 3 ? currency : "INR";
         let finalPrice = 0;
+        let appliedCouponPricing = null;
+        const numericAmount = Number(amount);
+        const numericBaseAmount = Number(baseAmount);
+        const normalizedCouponCode = normalizeCouponCode(couponCode);
 
         if (isSmm || orderType === 'smm') {
             // Secure SMM pricing calculation
@@ -7133,36 +7391,90 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid SMM variant price.' });
             }
 
-            if (normalizeCouponCode(couponCode)) {
-                const couponPricing = await resolveCouponCheckoutPricing({
-                    code: couponCode,
+            if (normalizedCouponCode) {
+                appliedCouponPricing = await resolveCouponCheckoutPricing({
+                    code: normalizedCouponCode,
                     cartTotal: finalPrice,
                     moduleName: couponModule || 'smm',
                     user: req.user
                 });
-                finalPrice = couponPricing.finalTotal;
+                finalPrice = appliedCouponPricing.finalTotal;
             }
             cleanCurrency = "INR";
             console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${service.serviceId}`);
         } else {
             // Normal agency orders
-            if (amount == null) {
-                return res.status(400).json({ success: false, error: 'amount required' });
-            }
-            const cleanAmount = Number(amount.toString().replace(/[^\d.]/g, ''));
-            if (!Number.isFinite(cleanAmount) || cleanAmount <= 0) {
-                return res.status(400).json({ success: false, error: 'Invalid amount, must be a positive number' });
-            }
-            finalPrice = cleanAmount;
-            if (normalizeCouponCode(couponCode)) {
-                const couponPricing = await resolveCouponCheckoutPricing({
-                    code: couponCode,
-                    cartTotal: finalPrice,
+            if (normalizedCouponCode) {
+                const couponBaseAmount = Number.isFinite(numericBaseAmount) && numericBaseAmount > 0
+                    ? numericBaseAmount
+                    : Number.isFinite(numericAmount) ? numericAmount : 0;
+
+                if (!Number.isFinite(couponBaseAmount) || couponBaseAmount <= 0) {
+                    return res.status(400).json({ success: false, error: 'Original amount is required when applying a coupon.' });
+                }
+
+                appliedCouponPricing = await resolveCouponCheckoutPricing({
+                    code: normalizedCouponCode,
+                    cartTotal: couponBaseAmount,
                     moduleName: couponModule || orderType || 'general',
                     user: req.user
                 });
-                finalPrice = couponPricing.finalTotal;
+                finalPrice = appliedCouponPricing.finalTotal;
+            } else {
+                if (amount == null) {
+                    return res.status(400).json({ success: false, error: 'amount required' });
+                }
+                const cleanAmount = Number(String(amount).replace(/[^\d.]/g, ''));
+                if (!Number.isFinite(cleanAmount) || cleanAmount <= 0) {
+                    return res.status(400).json({ success: false, error: 'Invalid amount, must be a positive number' });
+                }
+                finalPrice = cleanAmount;
             }
+        }
+
+        const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : Array.isArray(req.body.items) ? req.body.items : [];
+
+        if (finalPrice <= 0 && appliedCouponPricing) {
+            const freeOrder = await createFreeCheckoutOrder({
+                userId: req.user?._id || null,
+                orderDetails,
+                orderType: isSmm || orderType === 'smm' ? 'smm' : 'agency',
+                resolvedServiceId: isSmm || orderType === 'smm' ? (serviceId || orderDetails?.serviceId || '') : '',
+                resolvedQuantity: isSmm || orderType === 'smm' ? Number(quantity || orderDetails?.quantity || 0) : 0,
+                resolvedTargetLink: orderDetails?.targetLink || orderDetails?.instaLink || '',
+                selectedVariantName: orderDetails?.selectedVariantName || '',
+                selectedVariantId: orderDetails?.selectedVariantId ?? null,
+                selectedCountry: orderDetails?.selectedCountry || '',
+                selectedQuality: orderDetails?.selectedQuality || '',
+                selectedSpeed: orderDetails?.selectedSpeed || '',
+                selectedRefill: orderDetails?.selectedRefill || '',
+                selectedVariantBasePrice: Number(orderDetails?.selectedVariantBasePrice || 0),
+                selectedVariantDiscountPercent: Number(orderDetails?.selectedVariantDiscountPercent || 0),
+                selectedVariantDiscountAmount: Number(orderDetails?.selectedVariantDiscountAmount || 0),
+                selectedVariantEffectivePrice: Number(orderDetails?.selectedVariantEffectivePrice || 0),
+                isDripActive: orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true' || req.body.isDripFeed === true || req.body.isDripFeed === 'true',
+                runsVal: Number(orderDetails?.runs || req.body.runs || 1),
+                intervalMins: Number(orderDetails?.interval || req.body.interval || 0) * 60,
+                qtyPerRun: Number(orderDetails?.quantityPerRun || 0),
+                remainingRunsVal: Number(orderDetails?.remainingRuns || 0),
+                nextRunTimestamp: orderDetails?.nextRunAt ? new Date(orderDetails.nextRunAt) : null,
+                resolvedOrderItems,
+                currency: cleanCurrency,
+                couponPricing: appliedCouponPricing
+            });
+
+            try {
+                await incrementCouponUsageByCode(appliedCouponPricing.coupon.code);
+            } catch (usageErr) {
+                console.error('Failed to increment coupon usage for free checkout:', usageErr);
+            }
+
+            return res.json({
+                status: 'success_free',
+                success: true,
+                message: 'Order placed for free!',
+                orderId: freeOrder._id
+            });
         }
 
         const options = {
@@ -7348,6 +7660,14 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         });
 
         try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) { }
+
+        if (req.user && normalizeCouponCode(orderDetails?.couponCode)) {
+            try {
+                await incrementCouponUsageByCode(orderDetails.couponCode);
+            } catch (usageErr) {
+                console.error('Failed to increment coupon usage after payment verification:', usageErr);
+            }
+        }
 
         // 🟢 MAGIC: Generate PDF in memory & Send Email
         try {
@@ -7620,10 +7940,13 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             return res.status(403).json({ success: false, error: 'Admins do not have a wallet.' });
         }
 
-        const { amount, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
+        const { amount, baseAmount, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
         const couponCode = orderDetails?.couponCode || req.body.couponCode || '';
         const couponModule = orderDetails?.couponModule || req.body.couponModule || (incomingOrderType === 'smm' || orderDetails?.orderType === 'smm' ? 'smm' : 'general');
+        const normalizedCouponCode = normalizeCouponCode(couponCode);
         let finalChargeAmount = Number(amount);
+        const numericBaseAmount = Number(baseAmount);
+        let appliedCouponPricing = null;
         let orderType = 'agency';
         let resolvedServiceId = '';
         let resolvedQuantity = 0;
@@ -7691,20 +8014,70 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found.' });
         }
 
-        if (normalizeCouponCode(couponCode)) {
-            const couponPricing = await resolveCouponCheckoutPricing({
-                code: couponCode,
-                cartTotal: finalChargeAmount,
+        if (normalizedCouponCode) {
+            const couponBaseAmount = Number.isFinite(numericBaseAmount) && numericBaseAmount > 0 ? numericBaseAmount : finalChargeAmount;
+            if (!Number.isFinite(couponBaseAmount) || couponBaseAmount <= 0) {
+                return res.status(400).json({ success: false, error: 'Original amount is required when applying a coupon.' });
+            }
+
+            appliedCouponPricing = await resolveCouponCheckoutPricing({
+                code: normalizedCouponCode,
+                cartTotal: couponBaseAmount,
                 moduleName: couponModule,
                 user
             });
-            finalChargeAmount = couponPricing.finalTotal;
+            finalChargeAmount = appliedCouponPricing.finalTotal;
             if (orderDetails && typeof orderDetails === 'object') {
-                orderDetails.couponCode = couponPricing.coupon.code;
-                orderDetails.couponDiscountAmount = couponPricing.discountAmount;
-                orderDetails.couponFinalTotal = couponPricing.finalTotal;
-                orderDetails.couponModule = couponPricing.module;
+                orderDetails.couponCode = appliedCouponPricing.coupon.code;
+                orderDetails.couponDiscountAmount = appliedCouponPricing.discountAmount;
+                orderDetails.couponFinalTotal = appliedCouponPricing.finalTotal;
+                orderDetails.couponModule = appliedCouponPricing.module;
             }
+        }
+
+        const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
+
+        if (finalChargeAmount <= 0 && appliedCouponPricing) {
+            const freeOrder = await createFreeCheckoutOrder({
+                userId: user._id,
+                orderDetails,
+                orderType,
+                resolvedServiceId,
+                resolvedQuantity,
+                resolvedTargetLink,
+                selectedVariantName,
+                selectedVariantId,
+                selectedCountry,
+                selectedQuality,
+                selectedSpeed,
+                selectedRefill,
+                selectedVariantBasePrice,
+                selectedVariantDiscountPercent,
+                selectedVariantDiscountAmount,
+                selectedVariantEffectivePrice,
+                isDripActive: false,
+                runsVal: 1,
+                intervalMins: 0,
+                qtyPerRun: 0,
+                remainingRunsVal: 0,
+                nextRunTimestamp: null,
+                resolvedOrderItems,
+                currency: orderDetails?.currency || req.body.currency || 'INR',
+                couponPricing: appliedCouponPricing
+            });
+
+            try {
+                await incrementCouponUsageByCode(appliedCouponPricing.coupon.code);
+            } catch (usageErr) {
+                console.error('Failed to increment coupon usage after free wallet checkout:', usageErr);
+            }
+
+            return res.json({
+                status: 'success_free',
+                success: true,
+                message: 'Order placed for free!',
+                orderId: freeOrder._id
+            });
         }
 
         // Check if wallet is Active
@@ -7723,8 +8096,6 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
 
         // Pre-generate Order ID for transaction linking
         const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
-
-        const resolvedOrderItems = Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : [];
 
         const incomingIsDripFeed = req.body.isDripFeed === true || req.body.isDripFeed === 'true' || orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true';
         const incomingRuns = Number(req.body.runs || orderDetails?.runs || 1);
@@ -7797,6 +8168,14 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             await newOrder.save();
         }
 
+        if (normalizeCouponCode(orderDetails?.couponCode)) {
+            try {
+                await incrementCouponUsageByCode(orderDetails.couponCode);
+            } catch (usageErr) {
+                console.error('Failed to increment coupon usage after wallet checkout:', usageErr);
+            }
+        }
+
         // Generate PDF and Send Invoice Email (Background process with callback)
         try {
             const doc = new PDFDocument({ margin: 0, size: 'A4' });
@@ -7832,6 +8211,14 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
 // POST /api/billing/apply-coupon
 app.post('/api/billing/apply-coupon', optionalAuth, async (req, res) => {
     try {
+        console.log('--- COUPON API HIT ---');
+        console.log('User ID:', req.user ? (req.user._id || req.user.role || 'UNKNOWN') : 'NO USER');
+        console.log('Payload Received:', req.body);
+
+        if (!req.user) {
+            return res.status(401).json({ error: 'Please login first to apply promo codes.' });
+        }
+
         const pricing = await resolveCouponCheckoutPricing({
             code: req.body?.code,
             cartTotal: req.body?.cartTotal,
@@ -7849,13 +8236,152 @@ app.post('/api/billing/apply-coupon', optionalAuth, async (req, res) => {
                 code: pricing.coupon.code,
                 discountType: pricing.coupon.discountType,
                 discountValue: pricing.coupon.discountValue,
+                maxDiscountAmount: pricing.coupon.maxDiscountAmount,
+                minOrderValue: pricing.coupon.minOrderValue,
+                applicableModules: pricing.coupon.applicableModules,
+                usageLimit: pricing.coupon.usageLimit,
+                usageCount: pricing.coupon.usageCount,
                 isGlobal: pricing.coupon.isGlobal,
+                expiryDate: pricing.coupon.expiryDate || null,
                 expiresAt: pricing.coupon.expiresAt || null
             }
         });
     } catch (e) {
         console.error('❌ Apply Coupon Error:', e);
         res.status(e.status || 500).json({ success: false, error: e.message || 'Failed to apply coupon.' });
+    }
+});
+
+app.get('/api/admin/coupons', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const coupons = await Coupon.find().sort({ createdAt: -1 }).lean();
+        res.json({
+            success: true,
+            coupons: coupons.map((coupon) => formatCouponAdminResponse(coupon))
+        });
+    } catch (e) {
+        console.error('Error in GET /api/admin/coupons:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to fetch coupons.' });
+    }
+});
+
+app.post('/api/admin/coupons', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const code = normalizeCouponCode(req.body?.code);
+        const discountType = trimSmmText(req.body?.discountType).toLowerCase() === 'fixed' ? 'fixed' : 'percent';
+        const discountValue = Number(req.body?.discountValue);
+        const maxDiscountAmount = normalizeCouponAmount(req.body?.maxDiscountAmount, 0);
+        const minOrderValue = normalizeCouponAmount(req.body?.minOrderValue, 0);
+        const usageLimit = normalizeCouponLimit(req.body?.usageLimit, 0);
+        const applicableModules = normalizeCouponModules(req.body?.applicableModules, { defaultToAll: true });
+        const expiryDate = normalizeCouponExpiryDate(req.body?.expiryDate);
+        const restrictedEmail = String(req.body?.restrictedEmail || '').trim().toLowerCase();
+        let isGlobalUser = true;
+        let allowedUsers = [];
+
+        if (!code) {
+            return res.status(400).json({ success: false, error: 'Coupon code is required.' });
+        }
+
+        if (!Number.isFinite(discountValue) || discountValue <= 0) {
+            return res.status(400).json({ success: false, error: 'Discount value must be a positive number.' });
+        }
+
+        if (discountType === 'percent' && discountValue > 100) {
+            return res.status(400).json({ success: false, error: 'Percent discounts cannot exceed 100.' });
+        }
+
+        const existing = await Coupon.findOne({ code: new RegExp(`^${escapeRegex(code)}$`, 'i') }).lean();
+        if (existing) {
+            return res.status(409).json({ success: false, error: 'A coupon with this code already exists.' });
+        }
+
+        if (restrictedEmail) {
+            const targetUser = await User.findOne({ email: new RegExp(`^${escapeRegex(restrictedEmail)}$`, 'i') }).select('_id email').lean();
+            if (!targetUser) {
+                return res.status(404).json({ success: false, error: 'User with this email not found in database.' });
+            }
+
+            isGlobalUser = false;
+            allowedUsers = [targetUser._id];
+        }
+
+        const coupon = await Coupon.create({
+            code,
+            discountType,
+            discountValue: Number(discountValue.toFixed(2)),
+            maxDiscountAmount,
+            minOrderValue,
+            applicableModules,
+            usageLimit,
+            usageCount: 0,
+            expiryDate,
+            expiresAt: expiryDate,
+            isGlobal: applicableModules.includes('all'),
+            isGlobalUser,
+            allowedUsers
+        });
+
+        res.json({
+            success: true,
+            coupon: formatCouponAdminResponse(coupon.toObject())
+        });
+    } catch (e) {
+        console.error('Error in POST /api/admin/coupons:', e);
+        if (e && e.code === 11000) {
+            return res.status(409).json({ success: false, error: 'A coupon with this code already exists.' });
+        }
+        res.status(500).json({ success: false, error: e.message || 'Failed to create coupon.' });
+    }
+});
+
+app.delete('/api/admin/coupons/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const deleted = await Coupon.findByIdAndDelete(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ success: false, error: 'Coupon not found.' });
+        }
+
+        res.json({ success: true, message: 'Coupon deleted successfully.' });
+    } catch (e) {
+        console.error('Error in DELETE /api/admin/coupons/:id:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to delete coupon.' });
+    }
+});
+
+app.put('/api/admin/coupons/:id/toggle', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const coupon = await Coupon.findById(req.params.id);
+        if (!coupon) {
+            return res.status(404).json({ success: false, error: 'Coupon not found.' });
+        }
+
+        coupon.isActive = !coupon.isActive;
+        await coupon.save();
+
+        res.json({
+            success: true,
+            coupon: formatCouponAdminResponse(coupon.toObject())
+        });
+    } catch (e) {
+        console.error('Error in PUT /api/admin/coupons/:id/toggle:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to update coupon status.' });
     }
 });
 

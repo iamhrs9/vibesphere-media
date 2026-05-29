@@ -1219,8 +1219,8 @@
                         <input type="number" min="0.01" step="0.01" class="smm-input" value="${escapeHtml(variant.price)}" placeholder="e.g. 150" oninput="window.updateSmmVariant(${index}, 'price', this.value)">
                     </div>
                     <div class="smm-field">
-                        <label>Discount % <span class="smm-muted">(Optional)</span></label>
-                        <input type="number" min="0" max="100" step="0.01" class="smm-input" value="${escapeHtml(variant.discountPercent)}" placeholder="e.g. 10" oninput="window.updateSmmVariant(${index}, 'discountPercent', this.value)">
+                        <label>Discount (%) <span class="smm-muted">(Optional)</span></label>
+                        <input type="number" min="0" max="100" step="0.01" class="smm-input variant-discount-input" value="${escapeHtml(variant.discountPercent)}" placeholder="e.g. 10" oninput="window.updateSmmVariant(${index}, 'discountPercent', this.value)">
                     </div>
                     <div class="smm-field">
                         <label>Min Quantity</label>
