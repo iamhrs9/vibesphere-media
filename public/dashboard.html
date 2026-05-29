@@ -1209,6 +1209,7 @@
                 bottom: 100px;
                 right: 24px;
                 width: 385px;
+                height: 550px;
                 max-height: calc(100vh - 130px);
                 background: #fff;
                 border-radius: 20px;
@@ -1262,6 +1263,25 @@
 
             /* ---- Home View ---- */
             #swHomeView { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+            #swTicketList { height: 400px; overflow-y: auto; }
+            #swTicketList::-webkit-scrollbar,
+            #swChatMessages::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+            #swTicketList::-webkit-scrollbar-track,
+            #swChatMessages::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #swTicketList::-webkit-scrollbar-thumb,
+            #swChatMessages::-webkit-scrollbar-thumb {
+                background: rgba(108, 99, 255, 0.3);
+                border-radius: 3px;
+            }
+            #swTicketList::-webkit-scrollbar-thumb:hover,
+            #swChatMessages::-webkit-scrollbar-thumb:hover {
+                background: rgba(108, 99, 255, 0.5);
+            }
             .sw-new-conv-btn {
                 margin: 16px 16px 8px;
                 background: linear-gradient(135deg,#6c63ff,#4f46e5);
@@ -1449,7 +1469,7 @@
                     <button id="swFilterResolved" onclick="swSetFilter('Resolved')" class="sw-filter-pill">Resolved</button>
                     <button id="swFilterClosed" onclick="swSetFilter('Closed')" class="sw-filter-pill">Closed</button>
                 </div>
-                <div id="swTicketList" style="flex:1;overflow-y:auto;padding-bottom:10px;"></div>
+                <div id="swTicketList" style="height:400px;overflow-y:auto;padding-bottom:10px;"></div>
             </div>
 
             <!-- CHAT VIEW: Conversational UI -->
@@ -2556,7 +2576,7 @@
             function swShowFallback() {
                 swSetOptions([
                     { icon:'💬', label:'Connect with Live Support Executive', action: () => swConnectLive() },
-                    { icon:'📧', label:'Leave an Offline Message',             action: () => swShowOfflineInput() }
+                    { icon:'📧', label:'Leave a Message',                     action: () => swShowOfflineInput() }
                 ]);
             }
 
@@ -2580,15 +2600,15 @@
             }
 
             function swShowOfflineInput() {
-                swBubble('user', user.name||'You', 'Leave an Offline Message', new Date());
+                swBubble('user', user.name||'You', 'Leave a Message', new Date());
                 swBotTyping();
                 setTimeout(() => {
                     swRemoveTyping();
                     swBubble('bot','🤖 VibeSphere Bot','Sure! Please describe your query and we will get back to you shortly.', new Date());
                     swShowFreeTextInput(async (text) => {
                         await swSubmitTicket(
-                            `Offline Query - ${user.name||user.email}`,
-                            text, 'Offline Query', 'Offline Support',
+                            `Support Ticket - ${user.name||user.email}`,
+                            text, 'Standard Query', 'Standard Support',
                             swCurrentVerifiedOrder?.orderId || 'N/A', ''
                         );
                     });
@@ -2640,7 +2660,7 @@
                                 window.swAgentSearchTimer = null;
                                 const spinner = document.getElementById('swAgentSearchSpinner');
                                 if (spinner) spinner.remove();
-                                swBubble('system', 'System', '⏱️ No agents are available right now. Routing you to offline support.', new Date());
+                                swBubble('system', 'System', '⏱️ No agents are available right now. Routing you to leave a message.', new Date());
                                 // Auto-route to offline message form
                                 setTimeout(() => swShowOfflineInput(), 800);
                             }

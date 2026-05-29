@@ -78,11 +78,30 @@ async function uploadToImgBB(base64Image) {
     throw new Error('ImgBB upload failed: ' + JSON.stringify(data));
 }
 
-// Cloudinary Upload Helper (For PDFs)
-async function uploadToCloudinary(fileBuffer, originalName) {
+// Cloudinary Upload Helper (For PDFs and Platform Logos)
+async function uploadToCloudinary(fileBuffer, originalName, mimeType) {
     return new Promise((resolve, reject) => {
+        const isImage = (mimeType && mimeType.startsWith('image/')) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(originalName);
+        
+        let options = {
+            folder: 'vibesphere-chat',
+            public_id: `${Date.now()}_${originalName.replace(/\.[^/.]+$/, "")}`
+        };
+
+        if (isImage) {
+            options.resource_type = 'image';
+            options.format = 'png';
+            options.allowed_formats = ['png', 'svg', 'webp'];
+            options.allowedFormats = ['png', 'svg', 'webp'];
+            options.transformation = [
+                { background: 'transparent' }
+            ];
+        } else {
+            options.resource_type = 'raw';
+        }
+
         const stream = cloudinary.uploader.upload_stream(
-            { resource_type: 'raw', folder: 'vibesphere-chat', public_id: `${Date.now()}_${originalName}` },
+            options,
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result.secure_url);
@@ -5255,20 +5274,26 @@ app.post('/api/chat/upload', upload.single('file'), async (req, res) => {
         let fileName = file.originalname;
 
         if (mimeType.startsWith('image/')) {
-            // 📸 Image → ImgBB
             fileType = 'image';
-            const base64Image = file.buffer.toString('base64');
-            fileUrl = await uploadToImgBB(base64Image);
-            console.log('✅ Image uploaded to ImgBB:', fileUrl);
+            if (req.query.cloudinary === 'true') {
+                // 📸 Image → Cloudinary (Preserve Transparency)
+                fileUrl = await uploadToCloudinary(file.buffer, fileName, mimeType);
+                console.log('✅ Image uploaded to Cloudinary:', fileUrl);
+            } else {
+                // 📸 Image → ImgBB
+                const base64Image = file.buffer.toString('base64');
+                fileUrl = await uploadToImgBB(base64Image);
+                console.log('✅ Image uploaded to ImgBB:', fileUrl);
+            }
         } else if (mimeType === 'application/pdf') {
             // 📄 PDF → Cloudinary
             fileType = 'pdf';
-            fileUrl = await uploadToCloudinary(file.buffer, fileName);
+            fileUrl = await uploadToCloudinary(file.buffer, fileName, mimeType);
             console.log('✅ PDF uploaded to Cloudinary:', fileUrl);
         } else if (mimeType.startsWith('audio/')) {
             // 🎤 Audio (Voice Notes) → Cloudinary
             fileType = 'audio';
-            fileUrl = await uploadToCloudinary(file.buffer, fileName);
+            fileUrl = await uploadToCloudinary(file.buffer, fileName, mimeType);
             console.log('✅ Audio uploaded to Cloudinary:', fileUrl);
         } else {
             return res.status(400).json({ success: false, message: 'Only images, PDFs and audio files are allowed!' });
@@ -5536,6 +5561,15 @@ const cartSchema = new mongoose.Schema({
 const Cart = mongoose.model('Cart', cartSchema);
 
 // ==========================================
+// 🚀 SMM PLATFORM SCHEMA & MODEL
+// ==========================================
+const smmPlatformSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    logoUrl: { type: String, required: true }
+}, { timestamps: true });
+const SmmPlatform = mongoose.model('SmmPlatform', smmPlatformSchema);
+
+// ==========================================
 // 🚀 SMM SERVICE SCHEMA & MODEL
 // ==========================================
 const smmServiceSchema = new mongoose.Schema({
@@ -5611,6 +5645,114 @@ async function initSmmServices() {
     }
 }
 initSmmServices();
+
+async function initSmmPlatforms() {
+    try {
+        const count = await SmmPlatform.countDocuments();
+        if (count === 0) {
+            const defaults = [
+                { name: "Instagram", logoUrl: "https://img.icons8.com/color/96/instagram-new.png" },
+                { name: "YouTube", logoUrl: "https://img.icons8.com/color/96/youtube-play.png" },
+                { name: "Facebook", logoUrl: "https://img.icons8.com/color/96/facebook-new.png" },
+                { name: "Twitter", logoUrl: "https://img.icons8.com/color/96/twitter--v1.png" },
+                { name: "TikTok", logoUrl: "https://img.icons8.com/color/96/tiktok.png" },
+                { name: "Telegram", logoUrl: "https://img.icons8.com/color/96/telegram-app.png" }
+            ];
+            await SmmPlatform.insertMany(defaults);
+            console.log("🚀 Default SMM platforms initialized successfully.");
+        }
+    } catch (e) {
+        console.error("⚠️ Failed to initialize default SMM platforms:", e);
+    }
+}
+initSmmPlatforms();
+
+// ==========================================
+// 🚀 SMM PLATFORM API ENDPOINTS
+// ==========================================
+
+// GET all SMM platforms
+app.get('/api/platforms', async (req, res) => {
+    try {
+        const platforms = await SmmPlatform.find().sort({ name: 1 });
+        res.json({ success: true, platforms });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// POST a new SMM platform (Admin authenticated)
+app.post('/api/platforms', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { name, logoUrl } = req.body;
+        if (!name || !logoUrl) {
+            return res.status(400).json({ success: false, error: 'Name and logoUrl are required.' });
+        }
+        
+        const existing = await SmmPlatform.findOne({ name: new RegExp(`^${name}$`, 'i') });
+        if (existing) {
+            return res.status(400).json({ success: false, error: 'Platform name already exists.' });
+        }
+        
+        const newPlatform = new SmmPlatform({ name, logoUrl });
+        await newPlatform.save();
+        res.json({ success: true, platform: newPlatform });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// PUT (update) SMM platform (Admin authenticated)
+app.put('/api/platforms/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { id } = req.params;
+        const { name, logoUrl } = req.body;
+        
+        const platform = await SmmPlatform.findById(id);
+        if (!platform) {
+            return res.status(404).json({ success: false, error: 'Platform not found.' });
+        }
+        
+        if (name) {
+            const dupe = await SmmPlatform.findOne({ _id: { $ne: id }, name: new RegExp(`^${name}$`, 'i') });
+            if (dupe) {
+                return res.status(400).json({ success: false, error: 'Another platform with this name already exists.' });
+            }
+            platform.name = name;
+        }
+        if (logoUrl) {
+            platform.logoUrl = logoUrl;
+        }
+        
+        await platform.save();
+        res.json({ success: true, platform });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// DELETE SMM platform (Admin authenticated)
+app.delete('/api/platforms/:id', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { id } = req.params;
+        const result = await SmmPlatform.findByIdAndDelete(id);
+        if (!result) {
+            return res.status(404).json({ success: false, error: 'Platform not found.' });
+        }
+        res.json({ success: true, message: 'Platform deleted successfully.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 // ==========================================
 // 🚀 SMM RATE API ENDPOINTS
@@ -8264,14 +8406,20 @@ app.post('/api/client/create-ticket', async (req, res) => {
     try {
         const { email, name, subject, issue, orderId, category, subcategory, actionRequired, status, chatActive, isLiveChat, offlineQuery } = req.body;
         if (!subject || !issue) return res.status(400).json({ success: false, message: 'Subject and issue are required' });
+        
+        let finalSubject = subject;
+        if (typeof finalSubject === 'string' && finalSubject.startsWith('Offline Query')) {
+            finalSubject = finalSubject.replace('Offline Query', 'Support Ticket');
+        }
+
         const ticket = new Ticket({
             clientEmail: email,
             clientName: name,
-            subject,
+            subject: finalSubject,
             issue,
             orderId: orderId || '',
-            category: category || '',
-            subcategory: subcategory || '',
+            category: category === 'Offline Support' ? 'Standard Support' : (category || ''),
+            subcategory: subcategory === 'Offline Query' ? 'Standard Query' : (subcategory || ''),
             actionRequired: actionRequired || '',
             status: status || 'Open',
             chatActive: chatActive || false,
@@ -8701,7 +8849,7 @@ app.post('/api/admin/add-resource', checkAuth, upload.single('file'), async (req
 
         // If PDF uploaded, upload to Cloudinary
         if (req.file && type === 'pdf') {
-            resourceContent = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+            resourceContent = await uploadToCloudinary(req.file.buffer, req.file.originalname, req.file.mimetype);
         }
 
         const resource = new Resource({ title, type: type || 'link', content: resourceContent });

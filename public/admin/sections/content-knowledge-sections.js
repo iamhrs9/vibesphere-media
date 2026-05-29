@@ -683,7 +683,7 @@ function adminOpenChatModal(ticket) {
             <!-- Ticket context strip -->
             <div id="adminChatContextStrip" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:10px 20px;font-size:12px;color:#475569;display:flex;gap:8px;flex-wrap:wrap;"></div>
             <!-- Messages -->
-            <div id="adminChatHistory" style="flex:1;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:4px;min-height:260px;max-height:380px;"></div>
+            <div id="adminChatHistory" style="height:calc(100vh - 300px);min-height:380px;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:4px;"></div>
             <!-- Input -->
             <div id="adminChatInputRow" style="border-top:1px solid #f1f5f9;padding:12px 14px;display:flex;gap:8px;align-items:center;background:#fff;">
                 <input type="text" id="adminChatInput" placeholder="Type a reply to the client..."

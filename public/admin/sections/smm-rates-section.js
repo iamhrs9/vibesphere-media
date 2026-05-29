@@ -17,7 +17,7 @@
                         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:16px;">
                             <div>
                                 <label style="display:block;margin-bottom:6px;font-size:0.8rem;font-weight:600;color:#475569">Platform *</label>
-                                <select id="smmPlatform" style="width:100%;padding:11px 14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#1e293b;font-weight:600;outline:none;transition:0.2s;">
+                                <select id="smmPlatform" onchange="handlePlatformDropdownChange(this)" style="width:100%;padding:11px 14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#1e293b;font-weight:600;outline:none;transition:0.2s;">
                                     <option value="Instagram">Instagram</option>
                                     <option value="YouTube">YouTube</option>
                                     <option value="Facebook">Facebook</option>
@@ -96,6 +96,72 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Premium Modal Overlay for Adding Dynamic SMM Platform -->
+                <div id="addPlatformModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center;">
+                    <div style="background:#ffffff; border-radius:20px; width:100%; max-width:480px; padding:32px; box-shadow:0 20px 40px rgba(0,0,0,0.15); border:1px solid rgba(148,163,184,0.12); position:relative; margin: 20px; animation: modalFadeIn 0.3s ease;">
+                        <h3 style="margin-top:0; margin-bottom:8px; font-size:1.3rem; color:#1e293b; font-weight:800; display:flex; align-items:center; gap:8px;">➕ Add New SMM Platform</h3>
+                        <p style="margin:0 0 20px 0; color:#64748b; font-size:0.85rem;">Create a custom platform by entering its name and uploading its logo.</p>
+                        
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block; margin-bottom:6px; font-size:0.8rem; font-weight:700; color:#475569;">Platform Name *</label>
+                            <input type="text" id="newPlatformName" placeholder="e.g. Spotify, LinkedIn" style="width:100%; padding:11px 14px; border:1px solid #cbd5e1; border-radius:10px; color:#1e293b; font-weight:600; outline:none; transition:0.2s;">
+                        </div>
+                        
+                        <div style="margin-bottom:24px;">
+                            <label style="display:block; margin-bottom:6px; font-size:0.8rem; font-weight:700; color:#475569;">Platform Logo *</label>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div id="newPlatformLogoPreview" style="width:48px; height:48px; border-radius:10px; background:#f1f5f9; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:1.2rem; color:#64748b;">
+                                    🌐
+                                </div>
+                                <div style="flex-grow:1;">
+                                    <input type="file" id="newPlatformLogoFile" accept="image/*" style="display:none;" onchange="handleNewPlatformLogoUpload(event)">
+                                    <button type="button" onclick="document.getElementById('newPlatformLogoFile').click()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.8rem; transition:0.2s;">📁 Choose Image</button>
+                                    <span id="newPlatformUploadStatus" style="font-size:0.75rem; color:#64748b; margin-left:8px; display:inline-block; vertical-align:middle;"></span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="newPlatformLogoUrl">
+                        </div>
+                        
+                        <div style="display:flex; justify-content:flex-end; gap:12px;">
+                            <button type="button" onclick="closeAddPlatformModal()" style="background:#f1f5f9; color:#475569; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem;">Cancel</button>
+                            <button type="button" id="submitNewPlatformBtn" onclick="submitNewPlatform()" style="background:#6c63ff; color:#fff; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center; gap:8px;">Add Platform</button>
+                        </div>
+                    </div>
+
+                    <!-- Premium Modal Overlay for Managing Platforms -->
+                    <div id="managePlatformsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9998; align-items:center; justify-content:center;">
+                        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:600px; padding:32px; box-shadow:0 20px 40px rgba(0,0,0,0.15); border:1px solid rgba(148,163,184,0.12); position:relative; margin: 20px; display:flex; flex-direction:column; max-height:85vh; animation: modalFadeIn 0.3s ease;">
+                            <h3 style="margin-top:0; margin-bottom:8px; font-size:1.3rem; color:#1e293b; font-weight:800; display:flex; align-items:center; gap:8px;">⚙️ Manage SMM Platforms</h3>
+                            <p style="margin:0 0 20px 0; color:#64748b; font-size:0.85rem;">View, edit, or delete the platform branding parameters in the system database.</p>
+                            
+                            <div style="overflow-y:auto; flex-grow:1; margin-bottom:20px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; padding:8px;">
+                                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+                                    <thead>
+                                        <tr style="border-bottom:2px solid #e2e8f0; color:#475569; font-weight:700;">
+                                            <th style="padding:10px 14px; width:64px;">Logo</th>
+                                            <th style="padding:10px 14px;">Platform Name</th>
+                                            <th style="padding:10px 14px; text-align:right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="managePlatformsTableBody">
+                                        <!-- Dynamically loaded rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="display:flex; justify-content:flex-end;">
+                                <button type="button" onclick="closeManagePlatformsModal()" style="background:#f1f5f9; color:#475569; border:none; padding:10px 20px; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.85rem;">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                @keyframes modalFadeIn {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                </style>
             </div>
         `
     };
@@ -121,6 +187,7 @@
     window.mountAdminSmmRatesSection = function () {
         mountSections(["smm-rates-section"]);
         if (typeof renderSmmVariants === 'function') renderSmmVariants();
+        window.populateSmmPlatforms();
     };
 
     window.currentSmmVariants = [];
@@ -179,6 +246,300 @@
             </div>
         `).join('');
     };
+
+    let previousPlatformValue = 'Instagram';
+    let editingPlatformId = null;
+
+    window.populateSmmPlatforms = async function (selectedVal) {
+        const selectEl = document.getElementById('smmPlatform');
+        if (!selectEl) return;
+
+        const currentVal = selectedVal || selectEl.value || previousPlatformValue || 'Instagram';
+
+        let platforms = [];
+        try {
+            const res = await fetch('/api/platforms');
+            const data = await res.json();
+            if (data.success && data.platforms) {
+                platforms = data.platforms;
+            }
+        } catch (e) {
+            console.error('Failed to load platforms from API, falling back to local storage cache.', e);
+        }
+
+        // Standard default list fallback if API failed or returned empty
+        if (platforms.length === 0) {
+            const defaultPlatforms = ["Instagram", "YouTube", "Facebook", "Twitter", "TikTok", "Telegram"];
+            platforms = defaultPlatforms.map(p => ({
+                name: p,
+                logoUrl: p === "Instagram" ? "https://img.icons8.com/color/96/instagram-new.png" :
+                         p === "YouTube" ? "https://img.icons8.com/color/96/youtube-play.png" :
+                         p === "Facebook" ? "https://img.icons8.com/color/96/facebook-new.png" :
+                         p === "Twitter" ? "https://img.icons8.com/color/96/twitter--v1.png" :
+                         p === "TikTok" ? "https://img.icons8.com/color/96/tiktok.png" :
+                         "https://img.icons8.com/color/96/telegram-app.png"
+            }));
+        }
+
+        // Map options
+        let optionsHtml = platforms.map(plat => {
+            return `<option value="${escapeHtml(plat.name)}">${escapeHtml(plat.name)}</option>`;
+        }).join('');
+
+        // Add special options at the bottom
+        optionsHtml += `<option value="manage_platforms" style="font-weight:700;color:#e11d48;">⚙️ Manage Platforms...</option>`;
+        optionsHtml += `<option value="add_new" class="add-new-opt" style="font-weight:700;color:#6c63ff;">➕ Add New Platform...</option>`;
+
+        selectEl.innerHTML = optionsHtml;
+
+        // Set value
+        const platformNames = platforms.map(p => p.name);
+        if (platformNames.includes(currentVal)) {
+            selectEl.value = currentVal;
+            previousPlatformValue = currentVal;
+        } else {
+            selectEl.value = platformNames[0] || 'Instagram';
+            previousPlatformValue = selectEl.value;
+        }
+    };
+
+    window.handlePlatformDropdownChange = function (select) {
+        if (select.value === 'manage_platforms') {
+            window.openManagePlatformsModal();
+            select.value = previousPlatformValue || 'Instagram';
+        } else if (select.value === 'add_new') {
+            window.openAddPlatformModal();
+            select.value = previousPlatformValue || 'Instagram';
+        } else {
+            previousPlatformValue = select.value;
+        }
+    };
+
+    window.openAddPlatformModal = function (editId, name, logoUrl) {
+        const modal = document.getElementById('addPlatformModal');
+        if (!modal) return;
+        
+        editingPlatformId = editId || null;
+        
+        const titleEl = modal.querySelector('h3');
+        const submitBtn = document.getElementById('submitNewPlatformBtn');
+        const nameInput = document.getElementById('newPlatformName');
+        const previewEl = document.getElementById('newPlatformLogoPreview');
+        const urlInput = document.getElementById('newPlatformLogoUrl');
+        const statusEl = document.getElementById('newPlatformUploadStatus');
+        
+        if (editingPlatformId) {
+            titleEl.textContent = '✏️ Edit SMM Platform';
+            submitBtn.textContent = 'Save Changes';
+            nameInput.value = name || '';
+            urlInput.value = logoUrl || '';
+            previewEl.innerHTML = logoUrl ? `<img src="${logoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : '🌐';
+            statusEl.textContent = '';
+        } else {
+            titleEl.textContent = '➕ Add New SMM Platform';
+            submitBtn.textContent = 'Add Platform';
+            nameInput.value = '';
+            urlInput.value = '';
+            previewEl.innerHTML = '🌐';
+            statusEl.textContent = '';
+        }
+        
+        modal.style.display = 'flex';
+    };
+
+    window.closeAddPlatformModal = function () {
+        const modal = document.getElementById('addPlatformModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        editingPlatformId = null;
+    };
+
+    window.handleNewPlatformLogoUpload = async function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('⚠️ Image size must be less than 5MB!');
+            return;
+        }
+        
+        const statusEl = document.getElementById('newPlatformUploadStatus');
+        const previewEl = document.getElementById('newPlatformLogoPreview');
+        const urlInput = document.getElementById('newPlatformLogoUrl');
+        
+        statusEl.textContent = '⏳ Uploading...';
+        statusEl.style.color = '#4f46e5';
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const res = await fetch('/api/chat/upload?cloudinary=true', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            const data = await res.json();
+            if (data.success && data.fileUrl) {
+                urlInput.value = data.fileUrl;
+                previewEl.innerHTML = `<img src="${data.fileUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+                statusEl.textContent = '✅ Uploaded!';
+                statusEl.style.color = '#10b981';
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
+        } catch (err) {
+            console.error('Platform logo upload failed:', err);
+            statusEl.textContent = '❌ Upload failed';
+            statusEl.style.color = '#ef4444';
+            alert('⚠️ Upload failed: ' + err.message);
+        }
+    };
+
+    window.submitNewPlatform = async function () {
+        const nameInput = document.getElementById('newPlatformName');
+        const logoUrlInput = document.getElementById('newPlatformLogoUrl');
+        
+        const name = nameInput.value.trim();
+        let logoUrl = logoUrlInput.value.trim();
+        
+        if (!name) {
+            alert('⚠️ Please enter a Platform Name.');
+            return;
+        }
+        
+        if (!logoUrl) {
+            logoUrl = '/assets/images/default-platform.png';
+        }
+        
+        try {
+            const url = editingPlatformId ? `/api/platforms/${editingPlatformId}` : '/api/platforms';
+            const method = editingPlatformId ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, logoUrl }),
+                credentials: 'include'
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                alert(editingPlatformId ? '✅ Platform updated successfully!' : '✅ Platform added successfully!');
+                
+                // Keep frontend localStorage custom_platform_logos map synchronized for SMM calculator page fallback
+                const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
+                storedLogos[name.toLowerCase()] = logoUrl;
+                localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
+                
+                // Re-populate and auto-select
+                await window.populateSmmPlatforms(name);
+                
+                // Close forms
+                window.closeAddPlatformModal();
+                
+                // If manage modal is active, reload its table
+                const manageModal = document.getElementById('managePlatformsModal');
+                if (manageModal && manageModal.style.display === 'flex') {
+                    window.renderManagePlatformsList();
+                }
+            } else {
+                alert('⚠️ Error: ' + (data.error || 'Failed to save platform'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('⚠️ Server Error while saving platform.');
+        }
+    };
+
+    window.openManagePlatformsModal = function () {
+        const modal = document.getElementById('managePlatformsModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        window.renderManagePlatformsList();
+    };
+
+    window.closeManagePlatformsModal = function () {
+        const modal = document.getElementById('managePlatformsModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    window.renderManagePlatformsList = async function () {
+        const tbody = document.getElementById('managePlatformsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#64748b;">Loading platforms...</td></tr>';
+        
+        try {
+            const res = await fetch('/api/platforms');
+            const data = await res.json();
+            if (!data.success || !data.platforms || !data.platforms.length) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#64748b;">No platforms found. Add one above.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.platforms.map(p => {
+                const logo = p.logoUrl || '/assets/images/default-platform.png';
+                return `
+                    <tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:10px 14px; width:64px;">
+                            <img src="${escapeHtml(logo)}" style="width:36px; height:36px; object-fit:contain; border-radius:6px; border:1px solid #e2e8f0; display:block;" onerror="this.onerror=null; this.src='/assets/images/default-platform.png';">
+                        </td>
+                        <td style="padding:10px 14px; font-weight:600; color:#1e293b;">
+                            ${escapeHtml(p.name)}
+                        </td>
+                        <td style="padding:10px 14px; text-align:right;">
+                            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                <button type="button" onclick="window.editPlatform('${p._id}', '${escapeHtml(p.name)}', '${escapeHtml(p.logoUrl)}')" style="background:#4f46e5; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">✏️ Edit</button>
+                                <button type="button" onclick="window.deletePlatform('${p._id}', '${escapeHtml(p.name)}')" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">🗑️ Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:16px;color:#ef4444;">Failed to load SMM platforms.</td></tr>';
+        }
+    };
+
+    window.editPlatform = function (id, name, logoUrl) {
+        window.openAddPlatformModal(id, name, logoUrl);
+    };
+
+    window.deletePlatform = async function (id, name) {
+        if (!confirm(`⚠️ Are you sure you want to delete platform "${name}"?\nThis will remove the platform logo and branding entry. Service rates belonging to this platform will remain in the database.`)) {
+            return;
+        }
+        
+        try {
+            const res = await fetch(`/api/platforms/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('✅ Platform deleted successfully!');
+                
+                // Keep custom_platform_logos map clean
+                const storedLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
+                delete storedLogos[name.toLowerCase()];
+                localStorage.setItem('custom_platform_logos', JSON.stringify(storedLogos));
+                
+                // Repopulate select and manage modal lists
+                await window.populateSmmPlatforms();
+                window.renderManagePlatformsList();
+            } else {
+                alert('⚠️ Error: ' + (data.error || 'Failed to delete platform'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('⚠️ Server Error while deleting platform.');
+        }
+    };
 })();
 
 async function fetchAdminSmmRates() {
@@ -190,8 +551,12 @@ async function fetchAdminSmmRates() {
         const data = await res.json();
         if (!data.success || !data.rates || !data.rates.length) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b;">No SMM rates defined. Add one above.</td></tr>';
+            window.allSmmRates = [];
+            window.populateSmmPlatforms();
             return;
         }
+        window.allSmmRates = data.rates;
+        window.populateSmmPlatforms();
         tbody.innerHTML = data.rates.map((rate) => {
             let priceDisplayHtml = '';
             if (rate.pricingVariants?.length > 0) {

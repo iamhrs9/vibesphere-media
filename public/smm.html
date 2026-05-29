@@ -343,6 +343,89 @@
             color: #64748b;
             line-height: 1.5;
         }
+
+        /* --- FLOATING LOGO DROPDOWN --- */
+        .smm-category-wrapper {
+            position: relative;
+            margin-top: 45px;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .smm-platform-logo-container {
+            position: absolute;
+            top: -25px;
+            left: -15px;
+            width: 55px;
+            height: 55px;
+            background: none;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+            transform: rotate(-15deg);
+            transition: transform 0.2s ease;
+            filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.15));
+        }
+
+        .smm-platform-logo-container:hover {
+            transform: scale(1.08) rotate(-10deg);
+        }
+
+        .smm-platform-logo-container img,
+        img.floating-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: opacity 0.15s ease-in-out;
+            text-indent: -10000px;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .smm-platform-logo-container img:not([src]),
+        .smm-platform-logo-container img[src=""],
+        .smm-platform-logo-container img[src*="broken"] {
+            visibility: hidden;
+            opacity: 0;
+            background: none;
+            border: none;
+            box-shadow: none;
+        }
+
+        .smm-platform-dropdown {
+            width: 100%;
+            padding: 16px 20px 16px 60px;
+            min-height: 60px;
+            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
+            background-color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='%2364748b'%3E%3Cpath d='M12 15l-5-5h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 18px center;
+        }
+
+        .smm-platform-dropdown:focus {
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+        }
     </style>
 </head>
 
@@ -433,8 +516,13 @@
 
             <!-- Right Calculator -->
             <div>
-                <div class="platform-card-grid">
-                    <div style="text-align: center; width: 100%; color: #64748b; font-size: 0.9rem; padding: 20px;">Loading platforms...</div>
+                <div class="smm-category-wrapper">
+                    <div class="smm-platform-logo-container">
+                        <img id="smmPlatformLogo" class="floating-logo" src="https://img.icons8.com/color/96/instagram-new.png" alt="Platform Logo" onerror="this.onerror=null; this.src='/assets/images/default-platform.png';">
+                    </div>
+                    <select id="smmPlatformSelect" class="smm-platform-dropdown" onchange="selectPlatform(this.value)">
+                        <option value="">Loading platforms...</option>
+                    </select>
                 </div>
 
                 <div class="calc-card">
@@ -558,6 +646,15 @@
         let smmRates = [];
         let selectedPlatform = "Instagram";
 
+        function escapeHtml(unsafe) {
+            return (unsafe || '').toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         document.addEventListener("DOMContentLoaded", async () => {
             // Load live rates
             await loadSmmRates();
@@ -567,25 +664,6 @@
             document.getElementById("quantity").addEventListener("input", calculatePrice);
             document.getElementById("quantity").addEventListener("keyup", calculatePrice);
             document.getElementById("quantity").addEventListener("change", calculatePrice);
-
-            // AUTO-SELECT SERVICE FROM URL QUERY PARAM
-            const urlParams = new URLSearchParams(window.location.search);
-            const serviceParam = urlParams.get('service') || urlParams.get('serviceId');
-            if (serviceParam && smmRates.length) {
-                const targetService = smmRates.find(r => String(r.serviceId) === String(serviceParam));
-                if (targetService) {
-                    selectedPlatform = targetService.platform;
-                    
-                    populatePlatforms();
-                    populateServiceTypes();
-
-                    const serviceSelect = document.getElementById("serviceType");
-                    if (serviceSelect) {
-                        serviceSelect.value = targetService.serviceId;
-                        handleServiceSelectionChange();
-                    }
-                }
-            }
         });
 
         async function loadSmmRates() {
@@ -595,7 +673,6 @@
                 if (data.success) {
                     smmRates = data.rates;
                     populatePlatforms();
-                    populateServiceTypes();
                 } else {
                     document.getElementById("rateHint").innerText = "Failed to load rates.";
                 }
@@ -604,48 +681,118 @@
             }
         }
 
-        function populatePlatforms() {
-            const grid = document.querySelector(".platform-card-grid");
-            if (!grid || !smmRates.length) return;
-
-            // Get unique platforms case-insensitively
-            const uniquePlatforms = [];
+        function getFallbackPlatforms() {
+            const uniquePlatformNames = [];
             smmRates.forEach(r => {
-                if (r.platform && !uniquePlatforms.some(p => p.toLowerCase() === r.platform.toLowerCase())) {
-                    uniquePlatforms.push(r.platform);
+                if (r.platform && !uniquePlatformNames.some(p => p.toLowerCase() === r.platform.toLowerCase())) {
+                    uniquePlatformNames.push(r.platform);
                 }
             });
-
-            if (!uniquePlatforms.some(p => p.toLowerCase() === selectedPlatform.toLowerCase())) {
-                selectedPlatform = uniquePlatforms[0] || "Instagram";
-            }
-
-            const platformIcons = {
-                "instagram": "ri-instagram-fill",
-                "youtube": "ri-youtube-fill",
-                "facebook": "ri-facebook-box-fill",
-                "twitter": "ri-twitter-fill",
-                "tiktok": "ri-tiktok-fill",
-                "telegram": "ri-telegram-fill"
+            
+            const localLogos = JSON.parse(localStorage.getItem('custom_platform_logos') || '{}');
+            const defaultPlatformLogos = {
+                "instagram": "https://img.icons8.com/color/96/instagram-new.png",
+                "youtube": "https://img.icons8.com/color/96/youtube-play.png",
+                "facebook": "https://img.icons8.com/color/96/facebook-new.png",
+                "twitter": "https://img.icons8.com/color/96/twitter--v1.png",
+                "tiktok": "https://img.icons8.com/color/96/tiktok.png",
+                "telegram": "https://img.icons8.com/color/96/telegram-app.png",
+                ...localLogos
             };
-
-            grid.innerHTML = uniquePlatforms.map(p => {
-                const icon = platformIcons[p.toLowerCase()] || "ri-rocket-line";
-                const isActive = p.toLowerCase() === selectedPlatform.toLowerCase() ? "active" : "";
-                return `
-                    <div class="platform-card ${isActive}" data-platform="${p}" onclick="selectPlatform('${p}', this)">
-                        <i class="${icon}"></i>
-                        <h3>${p}</h3>
-                    </div>
-                `;
-            }).join("");
+            
+            return uniquePlatformNames.map(name => ({
+                name: name,
+                logoUrl: defaultPlatformLogos[name.toLowerCase()] || "/assets/images/default-platform.png"
+            }));
         }
 
-        window.selectPlatform = function(plat, element) {
-            const cards = document.querySelectorAll(".platform-card");
-            cards.forEach(c => c.classList.remove("active"));
-            element.classList.add("active");
+        function populatePlatforms() {
+            const selectEl = document.getElementById("smmPlatformSelect");
+            if (!selectEl) return;
+
+            fetch('/api/platforms')
+                .then(res => res.json())
+                .then(data => {
+                    let dbPlatforms = [];
+                    if (data.success && data.platforms && data.platforms.length) {
+                        dbPlatforms = data.platforms;
+                    }
+                    
+                    if (dbPlatforms.length === 0) {
+                        dbPlatforms = getFallbackPlatforms();
+                    }
+
+                    // Overwrite the loading platforms option element
+                    const platformNames = dbPlatforms.map(p => p.name);
+                    
+                    // Auto-select platform and service from URL query param if present
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const serviceParam = urlParams.get('service') || urlParams.get('serviceId');
+                    let targetService = null;
+                    if (serviceParam && smmRates.length) {
+                        targetService = smmRates.find(r => String(r.serviceId) === String(serviceParam));
+                        if (targetService) {
+                            selectedPlatform = targetService.platform;
+                        }
+                    }
+
+                    if (!platformNames.some(p => p.toLowerCase() === selectedPlatform.toLowerCase())) {
+                        selectedPlatform = platformNames[0] || "Instagram";
+                    }
+
+                    // Total DOM Clearance Before Append
+                    selectEl.innerHTML = '';
+
+                    selectEl.innerHTML = dbPlatforms.map(p => {
+                        const logo = p.logoUrl || "/assets/images/default-platform.png";
+                        return `<option value="${escapeHtml(p.name)}" data-logo="${escapeHtml(logo)}" ${p.name.toLowerCase() === selectedPlatform.toLowerCase() ? 'selected' : ''}>${escapeHtml(p.name)} Services</option>`;
+                    }).join("");
+
+                    // Force selectedIndex to 0 and set selection state if there's no URL param override
+                    if (!targetService && selectEl.options.length > 0) {
+                        selectEl.selectedIndex = 0;
+                        selectedPlatform = selectEl.value;
+                    }
+
+                    // Automatically trigger the logo update function so the first platform's logo appears immediately after loading
+                    updateFloatingLogo();
+                    populateServiceTypes();
+
+                    // If we had a target service from query parameters, auto-select it now
+                    if (targetService) {
+                        const serviceSelect = document.getElementById("serviceType");
+                        if (serviceSelect) {
+                            serviceSelect.value = targetService.serviceId;
+                            handleServiceSelectionChange();
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to fetch platforms from backend API.", err);
+                    selectEl.innerHTML = `<option value="">Error loading platforms</option>`;
+                });
+        }
+
+        function updateFloatingLogo() {
+            const selectEl = document.getElementById("smmPlatformSelect");
+            const logoImg = document.getElementById("smmPlatformLogo");
+            if (!selectEl || !logoImg) return;
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            if (selectedOption) {
+                const logoUrl = selectedOption.getAttribute('data-logo');
+                if (logoImg && logoUrl) {
+                    logoImg.style.opacity = '0';
+                    setTimeout(() => {
+                        logoImg.src = logoUrl;
+                        logoImg.style.opacity = '1';
+                    }, 150);
+                }
+            }
+        }
+
+        window.selectPlatform = function(plat) {
             selectedPlatform = plat;
+            updateFloatingLogo();
             populateServiceTypes();
         };
 
