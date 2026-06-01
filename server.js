@@ -7477,6 +7477,10 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             });
         }
 
+        if (finalPrice > 0 && finalPrice < 1) {
+            return res.status(400).json({ success: false, error: "Razorpay requires a minimum transaction amount of ₹1.00. Please increase your cart value." });
+        }
+
         const options = {
             amount: Math.round(finalPrice * 100), // Convert to paise
             currency: cleanCurrency,

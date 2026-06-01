@@ -729,11 +729,12 @@
                             <h4 style="margin: 0 0 12px 0; color: #1e293b; font-weight: 700; font-size: 0.95rem;">Select Payment Method</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <!-- Option 1: Razorpay -->
-                                <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(108, 99, 255, 0.15); border-radius: 8px; padding: 12px; cursor: pointer; transition: 0.2s;" class="pay-option">
+                                <label style="display: flex; flex-direction: column; justify-content: center; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(108, 99, 255, 0.15); border-radius: 8px; padding: 12px; cursor: pointer; transition: 0.2s;" class="pay-option">
                                     <span style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; color: #1e293b;">
-                                        <input type="radio" name="payment_method" value="razorpay" checked style="accent-color: #6c63ff; width: 18px; height: 18px; cursor: pointer;">
+                                        <input type="radio" id="payment-razorpay" name="payment_method" value="razorpay" checked style="accent-color: #6c63ff; width: 18px; height: 18px; cursor: pointer;">
                                         <span>Razorpay (UPI, Card, NetBanking)</span>
                                     </span>
+                                    <span id="razorpayMinWarning" style="display: none; font-size: 0.75rem; color: #ef4444; margin-left: 26px; margin-top: 4px; font-weight: 600;">Minimum ₹1.00 required to use Razorpay.</span>
                                 </label>
                                 
                                 <!-- Option 2: Wallet -->
@@ -824,6 +825,7 @@
     <footer class="checkout-footer" aria-label="Checkout footer">
         <div class="checkout-footer__links">
             <a class="checkout-footer__link" href="/contact">Contact Us</a>
+            <a class="checkout-footer__link" href="privacy-policy.html">Privacy Policy</a>
             <a class="checkout-footer__link" href="/terms">Terms &amp; Conditions</a>
             <a class="checkout-footer__link" href="/refund">Refund Policy</a>
         </div>
@@ -967,6 +969,36 @@
             }
         }
 
+        function toggleRazorpayState(finalTotal) {
+            const razorpayRadio = document.getElementById('payment-razorpay');
+            const razorpayWarning = document.getElementById('razorpayMinWarning');
+            if (!razorpayRadio || !razorpayWarning) return;
+            
+            const razorpayContainer = razorpayRadio.closest('label');
+            if (finalTotal > 0 && finalTotal < 1) {
+                razorpayRadio.disabled = true;
+                razorpayWarning.style.display = 'block';
+                if (razorpayContainer) {
+                    razorpayContainer.style.opacity = '0.5';
+                    razorpayContainer.style.cursor = 'not-allowed';
+                }
+                if (razorpayRadio.checked) {
+                    razorpayRadio.checked = false;
+                    const walletRadio = document.querySelector('input[value="wallet"]');
+                    if (walletRadio && !walletRadio.disabled) {
+                        walletRadio.checked = true;
+                    }
+                }
+            } else {
+                razorpayRadio.disabled = false;
+                razorpayWarning.style.display = 'none';
+                if (razorpayContainer) {
+                    razorpayContainer.style.opacity = '1';
+                    razorpayContainer.style.cursor = 'pointer';
+                }
+            }
+        }
+
         function setCheckoutTotal(baseAmount, payableAmount = baseAmount) {
             checkoutOriginalTotal = Number(baseAmount || 0);
             checkoutBaseTotal = checkoutOriginalTotal;
@@ -979,6 +1011,7 @@
             window.checkoutPayableTotal = checkoutPayableTotal;
             window.checkoutBaseTotal = checkoutBaseTotal;
             syncCouponSummary();
+            toggleRazorpayState(checkoutPayableTotal);
         }
 
         function updateCheckoutFinalTotal(newFinalTotal) {
@@ -993,6 +1026,7 @@
 
             window.checkoutPayableTotal = checkoutPayableTotal;
             window.price = price;
+            toggleRazorpayState(checkoutPayableTotal);
         }
 
         function clearAppliedCoupon() {
@@ -1674,6 +1708,14 @@
             }
 
             // RAZORPAY GATEWAY CHECKOUT FLOW
+            if (finalAmount > 0 && finalAmount < 1) {
+                alert("Minimum payment amount is ₹1.00. Please increase your order quantity.");
+                btn.disabled = false;
+                btn.innerText = "Pay Now & Place Order";
+                setPayButtonLoading(false);
+                return;
+            }
+
             try {
                 const createPayload = {
                     currency: currencyFromURL,
