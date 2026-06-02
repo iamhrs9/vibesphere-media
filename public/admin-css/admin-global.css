@@ -407,3 +407,10 @@ tr:hover {
     from { opacity: 0; transform: translateY(-8px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ==========================================
+   💳 PAYMENT GATEWAYS SECTION CSS
+   ========================================== */
+.pg-toggle-checkbox:checked { right: 0; border-color: #6366F1; }
+.pg-toggle-checkbox:checked + .pg-toggle-label { background-color: #6366F1; }
+.pg-toggle-checkbox:checked + .pg-toggle-label:after { transform: translateX(100%); border-color: white; }

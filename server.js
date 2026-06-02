@@ -4382,6 +4382,78 @@ const settingsSchema = new mongoose.Schema({
     isChatBlocked: { type: Boolean, default: false }
 });
 const AppSettings = mongoose.model('AppSettings', settingsSchema);
+
+// Global Site Settings (announcement banner)
+const siteSettingsSchema = new mongoose.Schema({
+    normalBannerText: { type: String, default: '' },
+    isNormalActive: { type: Boolean, default: false },
+    smmBannerText: { type: String, default: '' },
+    isSmmActive: { type: Boolean, default: false }
+}, { timestamps: true });
+const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);
+
+function normalizeBannerText(value) {
+    return String(value ?? '');
+}
+
+function normalizeBannerBoolean(value) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return ['true', '1', 'yes', 'on'].includes(normalized);
+    }
+    return false;
+}
+
+function formatBannerSettings(settings) {
+    return {
+        normalBannerText: normalizeBannerText(settings?.normalBannerText),
+        isNormalActive: Boolean(settings?.isNormalActive),
+        smmBannerText: normalizeBannerText(settings?.smmBannerText),
+        isSmmActive: Boolean(settings?.isSmmActive)
+    };
+}
+
+async function getOrCreateSiteSettings() {
+    return SiteSettings.findOneAndUpdate(
+        {},
+        {
+            $setOnInsert: {
+                normalBannerText: '',
+                isNormalActive: false,
+                smmBannerText: '',
+                isSmmActive: false
+            }
+        },
+        {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true
+        }
+    );
+}
+
+async function saveSiteSettingsBanner(payload = {}) {
+    const nextValues = {
+        normalBannerText: normalizeBannerText(payload.normalBannerText),
+        isNormalActive: normalizeBannerBoolean(payload.isNormalActive),
+        smmBannerText: normalizeBannerText(payload.smmBannerText),
+        isSmmActive: normalizeBannerBoolean(payload.isSmmActive)
+    };
+
+    const settings = await SiteSettings.findOneAndUpdate(
+        {},
+        { $set: nextValues },
+        {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true
+        }
+    );
+
+    return settings;
+}
 // 3. Notice Board Schema
 const noticeSchema = new mongoose.Schema({
     title: String,
@@ -5441,6 +5513,38 @@ app.get('/api/chat/settings', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
+// 1b. Get Announcement Banner Settings
+app.get('/api/site-settings/banners', async (req, res) => {
+    try {
+        const settings = await getOrCreateSiteSettings();
+        res.json({ success: true, banners: formatBannerSettings(settings) });
+    } catch (e) {
+        console.error('Error in GET /api/site-settings/banners:', e);
+        res.status(500).json({ success: false, error: 'Failed to load banner settings.' });
+    }
+});
+
+async function updateBannerSettingsHandler(req, res) {
+    try {
+        if (req.user?.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+
+        const settings = await saveSiteSettingsBanner(req.body || {});
+        res.json({
+            success: true,
+            message: 'Banner settings saved successfully.',
+            banners: formatBannerSettings(settings)
+        });
+    } catch (e) {
+        console.error('Error in banner settings update:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to save banner settings.' });
+    }
+}
+
+app.post('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
+app.put('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
+
 // 2. Fetch Chat History (Pichle 100 messages)
 app.get('/api/chat/history', async (req, res) => {
     try {
@@ -5820,6 +5924,49 @@ const smmPlatformSchema = new mongoose.Schema({
     logoUrl: { type: String, required: true }
 }, { timestamps: true });
 const SmmPlatform = mongoose.model('SmmPlatform', smmPlatformSchema);
+
+// ==========================================
+// 💳 PAYMENT GATEWAY SCHEMA & MODEL
+// ==========================================
+const paymentGatewaySchema = new mongoose.Schema({
+    gatewayId: { type: String, required: true, unique: true },
+    isActive: { type: Boolean, default: false },
+    apiKey: { type: String, required: true },
+    apiSecret: { type: String, required: true },
+    minOrder: { type: Number, default: 0 },
+    maxOrder: { type: Number, default: 0 }
+}, { timestamps: true });
+const PaymentGateway = mongoose.models.PaymentGateway || mongoose.model('PaymentGateway', paymentGatewaySchema);
+
+function encryptGatewaySecret(text) {
+    if (!text) return text;
+    const algorithm = 'aes-256-cbc';
+    const key = crypto.createHash('sha256').update(process.env.JWT_SECRET || 'fallback_secret').digest();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return `${iv.toString('hex')}:${encrypted}`;
+}
+
+function decryptGatewaySecret(text) {
+    if (!text) return text;
+    try {
+        const parts = text.split(':');
+        if (parts.length !== 2) return text;
+        const iv = Buffer.from(parts[0], 'hex');
+        const encryptedText = Buffer.from(parts[1], 'hex');
+        const algorithm = 'aes-256-cbc';
+        const key = crypto.createHash('sha256').update(process.env.JWT_SECRET || 'fallback_secret').digest();
+        const decipher = crypto.createDecipheriv(algorithm, key, iv);
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (err) {
+        console.error('Decryption failed', err);
+        return text;
+    }
+}
 
 // ==========================================
 // 🚀 SMM SERVICE SCHEMA & MODEL
@@ -7355,6 +7502,13 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         const numericAmount = Number(amount);
         const numericBaseAmount = Number(baseAmount);
         const normalizedCouponCode = normalizeCouponCode(couponCode);
+        
+        let globalVariant = null;
+
+        // Progressive Detail Collection Extraction
+        const customerName = req.body.customerName || req.body.name || (req.body.orderDetails && req.body.orderDetails.customerName) || (req.user && req.user.name) || "Guest";
+        const customerEmail = req.body.email || (req.body.orderDetails && req.body.orderDetails.email) || (req.user && req.user.email) || "guest@vibesphere.in";
+        const customerPhone = req.body.phone || (req.body.orderDetails && req.body.orderDetails.phone) || (req.user && req.user.mobile) || "9999999999";
 
         if (isSmm || orderType === 'smm') {
             // Secure SMM pricing calculation
@@ -7374,6 +7528,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
             let service = serviceDoc;
             let selectedVariant = targetVariant;
+            globalVariant = targetVariant;
 
             const { minQty, maxQty } = getSmmVariantQuantityBounds(selectedVariant);
             if (parsedQuantity < minQty || parsedQuantity > maxQty) {
@@ -7473,22 +7628,218 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 status: 'success_free',
                 success: true,
                 message: 'Order placed for free!',
-                orderId: freeOrder._id
+                orderId: freeOrder.orderId
             });
         }
 
-        if (finalPrice > 0 && finalPrice < 1) {
-            return res.status(400).json({ success: false, error: "Razorpay requires a minimum transaction amount of ₹1.00. Please increase your cart value." });
+        // 🚀 SMART ROUTING DECISION ENGINE
+        const activeGateways = await PaymentGateway.find({ isActive: true }).lean();
+        const selectedGateway = activeGateways.find(g => finalPrice >= g.minOrder && finalPrice <= g.maxOrder);
+        
+        if (!selectedGateway) {
+            return res.status(400).json({ success: false, message: 'No payment gateway available for this amount.' });
         }
 
-        const options = {
-            amount: Math.round(finalPrice * 100), // Convert to paise
-            currency: cleanCurrency,
-            receipt: "rcpt_" + Date.now()
-        };
+        const providerId = selectedGateway.gatewayId.toLowerCase();
 
-        const order = await razorpay.orders.create(options);
-        res.json({ ...order, razorpayKeyId });
+        switch (providerId) {
+            case 'razorpay': {
+                if (finalPrice > 0 && finalPrice < 1) {
+                    return res.status(400).json({ success: false, error: "Razorpay requires a minimum transaction amount of ₹1.00. Please increase your cart value." });
+                }
+
+                const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
+                if (!selectedGateway.apiKey || !decryptedSecret) {
+                     return res.status(500).json({ success: false, error: 'Razorpay configuration corrupted.' });
+                }
+
+                const Razorpay = require('razorpay');
+                const dynamicRazorpay = new Razorpay({
+                    key_id: selectedGateway.apiKey,
+                    key_secret: decryptedSecret
+                });
+
+                const options = {
+                    amount: Math.round(finalPrice * 100), // Convert to paise
+                    currency: cleanCurrency,
+                    receipt: "rcpt_" + Date.now()
+                };
+
+                const razorpayOrder = await dynamicRazorpay.orders.create(options);
+                
+                return res.json({ 
+                    success: true, 
+                    provider: 'razorpay', 
+                    orderData: razorpayOrder, 
+                    apiKey: selectedGateway.apiKey, 
+                    internalOrderId: options.receipt,
+                    customerName, customerEmail, customerPhone
+                });
+            }
+
+            case 'paytm': {
+                // TEMPORARY DEBUGGING: Comment out DB decryption
+                // const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
+                // const cleanSecret = decryptedSecret.trim();
+
+                // HARDCODE TEST KEY HERE
+                const cleanSecret = "TGp4%EMY8aKSitLO"; 
+
+                if (!selectedGateway.apiKey) {
+                    return res.status(500).json({ success: false, error: 'Paytm config corrupted.' });
+                }
+
+                const paytmAmount = String(Number(finalPrice).toFixed(2));
+                const cleanMid = selectedGateway.apiKey.trim();
+                const internalOrderId = "ORDER_" + Date.now();
+                const paytmchecksum = require('paytmchecksum');
+
+                const paytmParams = {};
+                paytmParams.body = {
+                    "requestType": "Payment",
+                    "mid": cleanMid,
+                    "websiteName": "WEBSTAGING",
+                    "industryTypeId": "Retail", // ADDED FROM DASHBOARD
+                    "orderId": internalOrderId,
+                    "callbackUrl": "http://localhost:3000/api/verify-payment",
+                    "txnAmount": {
+                        "value": paytmAmount,
+                        "currency": "INR"
+                    },
+                    "userInfo": {
+                        "custId": "CUST_" + Date.now() // Enforced simple string for testing
+                    }
+                };
+
+                // Generate Checksum strictly on the stringified body
+                const checksum = await paytmchecksum.generateSignature(JSON.stringify(paytmParams.body), cleanSecret);
+
+                paytmParams.head = {
+                    "signature": checksum
+                };
+
+                const post_data = JSON.stringify(paytmParams);
+
+                // --- DEBUG LOGS ---
+                console.log("----- PAYTM DEBUG -----");
+                console.log("MID:", cleanMid);
+                console.log("POST DATA:", post_data);
+                console.log("-----------------------");
+
+                // USING AXIOS TO AVOID 'fetch is not a function' IN OLDER NODE VERSIONS
+                const axios = require('axios');
+                const paytmRes = await axios.post(`https://securegw-stage.paytm.in/theia/api/v1/initiateTransaction?mid=${cleanMid}&orderId=${internalOrderId}`, post_data, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const paytmData = paytmRes.data;
+                console.log("PAYTM API RESPONSE:", paytmData);
+
+                if (paytmData.body.resultInfo.resultStatus !== 'S') {
+                    console.error("Paytm Init Error:", paytmData);
+                    return res.status(400).json({ success: false, error: 'Paytm gateway rejected the request.' });
+                }
+
+                return res.json({ 
+                    success: true, 
+                    provider: 'paytm', 
+                    transactionData: { 
+                        txnToken: paytmData.body.txnToken, 
+                        orderId: internalOrderId, 
+                        amount: paytmAmount 
+                    }, 
+                    apiKey: cleanMid, 
+                    internalOrderId: internalOrderId
+                });
+            }
+
+            case 'payu': {
+                const decryptedSalt = decryptGatewaySecret(selectedGateway.apiSecret);
+                if (!selectedGateway.apiKey || !decryptedSalt) {
+                    return res.status(500).json({ success: false, error: 'PayU configuration corrupted.' });
+                }
+
+                const payuKey = selectedGateway.apiKey.trim();
+                const payuSalt = decryptedSalt.trim();
+                const txnid = "txnid_" + Date.now();
+                const payuAmount = String(Number(finalPrice).toFixed(2));
+                const productinfo = "VibeSphere Services";
+                const firstname = customerName;
+                const email = customerEmail;
+                const phone = customerPhone;
+                const surl = "http://localhost:3000/api/verify-payment";
+                const furl = "http://localhost:3000/api/verify-payment";
+
+                let resolvedTargetLink = req.body.targetLink || (orderDetails && orderDetails.targetLink) || (orderDetails && orderDetails.instaLink) || '';
+                if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                    resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+                }
+
+                const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
+                const pendingOrder = new Order({
+                    orderId: generatedOrderId,
+                    paymentId: txnid,
+                    paymentStatus: 'Pending',
+                    workStatus: 'Work Pending',
+                    status: 'Pending',
+                    userId: req.user?._id || null,
+                    ...(orderDetails && typeof orderDetails === 'object' ? orderDetails : {}),
+                    customerName,
+                    email,
+                    phone,
+                    orderAmount: finalPrice,
+                    orderItems: Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : (Array.isArray(req.body.items) ? req.body.items : []),
+                    orderType: (isSmm || orderType === 'smm') ? 'smm' : 'agency',
+                    serviceId: (isSmm || orderType === 'smm') ? (serviceId || orderDetails?.serviceId || '') : '',
+                    quantity: (isSmm || orderType === 'smm') ? Number(quantity || orderDetails?.quantity || 0) : 0,
+                    targetLink: resolvedTargetLink,
+                    instaLink: resolvedTargetLink,
+                    selectedVariantName: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedCountry: globalVariant && globalVariant.country ? globalVariant.country.trim() : '',
+                    selectedQuality: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedSpeed: globalVariant && globalVariant.speed ? globalVariant.speed.trim() : '',
+                    selectedRefill: globalVariant && globalVariant.refill ? globalVariant.refill.trim() : '',
+                    isDripFeed: orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true',
+                    runs: Number(orderDetails?.runs || 1),
+                    interval: Number(orderDetails?.interval || 0) * 60,
+                    extraInput: req.body.extraInput || orderDetails?.extraInput || '',
+                    extraInputType: req.body.extraInputType || orderDetails?.extraInputType || 'none',
+                    date: new Date().toLocaleString()
+                });
+
+                if (mongoose.connection.readyState === 1) {
+                    await pendingOrder.save().catch(e => console.error("PayU Pending Order Save Error:", e));
+                }
+
+                // PayU Hash Formula: key|txnid|amount|productinfo|firstname|email|||||||||||salt
+                const hashString = `${payuKey}|${txnid}|${payuAmount}|${productinfo}|${firstname}|${email}|||||||||||${payuSalt}`;
+                const hash = crypto.createHash('sha512').update(hashString).digest('hex');
+
+                return res.json({ 
+                    success: true, 
+                    provider: 'payu', 
+                    transactionData: { 
+                        key: payuKey,
+                        txnid: txnid,
+                        amount: payuAmount,
+                        productinfo: productinfo,
+                        firstname: firstname,
+                        email: email,
+                        surl: surl,
+                        furl: furl,
+                        hash: hash
+                    }, 
+                    apiKey: payuKey, 
+                    internalOrderId: txnid
+                });
+            }
+
+            default: {
+                return res.status(400).json({ success: false, message: 'Unsupported payment provider selected.' });
+            }
+        }
     } catch (error) {
         console.error("❌ Payment Error:", error);
         res.status(error.status || 500).json({ success: false, error: error.message || 'Payment Error' });
@@ -7496,12 +7847,121 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 });
 
 app.post('/api/verify-payment', optionalAuth, async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(body.toString()).digest('hex');
+    let { provider, internalOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
+    
+    let activeProvider = req.body.provider || req.query.provider;
+    if (!activeProvider && req.body.mihpayid && req.body.txnid) {
+        activeProvider = 'payu';
+    }
+    activeProvider = (activeProvider || 'razorpay').toLowerCase();
 
-    if (expectedSignature === razorpay_signature) {
+    if (activeProvider === 'payu' && !internalOrderId) {
+        internalOrderId = req.body.txnid;
+    }
+    
+    console.log("--- VERIFY PAYMENT DEBUG ---");
+    console.log("Provider detected:", activeProvider);
+    console.log("Request Body:", req.body);
+    console.log("----------------------------");
+
+    let isSignatureValid = false;
+
+    switch (activeProvider) {
+        case 'razorpay': {
+            const razorpayConfig = await PaymentGateway.findOne({ gatewayId: 'razorpay' });
+            if (!razorpayConfig) {
+                return res.status(400).json({ success: false, error: 'Razorpay configuration not found.' });
+            }
+            
+            const decryptedSecret = decryptGatewaySecret(razorpayConfig.apiSecret);
+            if (!decryptedSecret) {
+                return res.status(500).json({ success: false, error: 'Razorpay configuration is corrupted.' });
+            }
+
+            const body = razorpay_order_id + "|" + razorpay_payment_id;
+            const expectedSignature = crypto.createHmac('sha256', decryptedSecret)
+                .update(body.toString()).digest('hex');
+
+            if (expectedSignature === razorpay_signature) {
+                isSignatureValid = true;
+            }
+            break;
+        }
+
+        case 'paytm': {
+            const paytmConfig = await PaymentGateway.findOne({ gatewayId: 'paytm' });
+            if (!paytmConfig) {
+                return res.status(400).json({ success: false, error: 'Paytm configuration not found.' });
+            }
+            
+            const decryptedSecret = decryptGatewaySecret(paytmConfig.apiSecret);
+            if (!decryptedSecret) {
+                return res.status(500).json({ success: false, error: 'Paytm configuration is corrupted.' });
+            }
+            
+            const paytmResponse = req.body.paytmResponse || {};
+            const checksumHash = paytmResponse.CHECKSUMHASH;
+            
+            if (!checksumHash) {
+                return res.status(400).json({ success: false, error: 'Missing Paytm checksum.' });
+            }
+            
+            delete paytmResponse.CHECKSUMHASH;
+            
+            const PaytmChecksum = require('paytmchecksum');
+            const isValid = PaytmChecksum.verifySignature(paytmResponse, decryptedSecret, checksumHash);
+            
+            if (isValid && paytmResponse.STATUS === 'TXN_SUCCESS') {
+                isSignatureValid = true;
+            } else {
+                return res.status(400).json({ success: false, error: 'Invalid Paytm Signature or Failed Transaction.' });
+            }
+            break;
+        }
+
+        case 'payu': {
+            const payuConfig = await PaymentGateway.findOne({ gatewayId: 'payu' });
+            if (!payuConfig) {
+                return res.status(400).send('PayU configuration not found.');
+            }
+            
+            const decryptedSalt = decryptGatewaySecret(payuConfig.apiSecret);
+            if (!decryptedSalt) {
+                return res.status(500).send('PayU configuration is corrupted.');
+            }
+            
+            const { status, txnid, amount, productinfo, firstname, email, hash, key } = req.body;
+            
+            // Reverse Hash Formula: salt|status|||||||||||email|firstname|productinfo|amount|txnid|key
+            const reverseHashString = `${decryptedSalt}|${status}|||||||||||${email}|${firstname}|${productinfo}|${amount}|${txnid}|${key}`;
+            const generatedHash = crypto.createHash('sha512').update(reverseHashString).digest('hex');
+            
+            console.log("PayU Received Hash:", hash);
+            console.log("PayU Generated Reverse Hash:", generatedHash);
+
+            if (generatedHash === hash && status === 'success') {
+                const existingOrder = await Order.findOne({ paymentId: txnid });
+                if (existingOrder) {
+                    existingOrder.status = 'Paid';
+                    existingOrder.paymentStatus = 'Paid';
+                    existingOrder.paymentId = req.body.mihpayid;
+                    await existingOrder.save();
+                    
+                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+                } else {
+                    return res.status(404).send('Pending order not found for this transaction.');
+                }
+            } else {
+                return res.status(400).send('Invalid PayU Signature or Failed Transaction.');
+            }
+        }
+
+        default: {
+            return res.status(400).json({ success: false, error: 'Unknown payment provider.' });
+        }
+    }
+
+    if (isSignatureValid) {
         let normalizedOrderAmount = 0;
         let orderType = 'agency';
         let resolvedServiceId = '';
@@ -7693,6 +8153,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                 transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
 
                 // IMPORTANT: res.json MUST be here so it waits for PDF generating
+                if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId));
                 res.json({ success: true, orderId: newOrder.orderId });
             });
 
@@ -7701,6 +8162,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
         } catch (emailErr) {
             console.log("Failed to process email", emailErr);
+            if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId));
             res.json({ success: true, orderId: newOrder.orderId }); // Fallback response if PDF generation completely fails
         }
     } else {
@@ -8080,7 +8542,7 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
                 status: 'success_free',
                 success: true,
                 message: 'Order placed for free!',
-                orderId: freeOrder._id
+                orderId: freeOrder.orderId
             });
         }
 
@@ -8253,6 +8715,66 @@ app.post('/api/billing/apply-coupon', optionalAuth, async (req, res) => {
     } catch (e) {
         console.error('❌ Apply Coupon Error:', e);
         res.status(e.status || 500).json({ success: false, error: e.message || 'Failed to apply coupon.' });
+    }
+});
+
+// ==========================================
+// 💳 PAYMENT GATEWAY ADMIN ROUTES
+// ==========================================
+app.get('/api/admin/gateways', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const gateways = await PaymentGateway.find().lean();
+        
+        // Mask the apiSecret before sending to frontend
+        const maskedGateways = gateways.map(gw => ({
+            ...gw,
+            apiSecret: gw.apiSecret ? 'sk_live_********' : ''
+        }));
+
+        res.json({ success: true, gateways: maskedGateways });
+    } catch (error) {
+        console.error('Error fetching gateways:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch gateways' });
+    }
+});
+
+app.post('/api/admin/gateways', checkAuth, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        
+        const { gatewayId, isActive, apiKey, apiSecret, minOrder, maxOrder } = req.body;
+        
+        if (!gatewayId) return res.status(400).json({ success: false, error: 'gatewayId is required' });
+
+        const existingGateway = await PaymentGateway.findOne({ gatewayId });
+        
+        let encryptedSecret = existingGateway ? existingGateway.apiSecret : '';
+        // If a new secret was provided and it's not the masked placeholder, encrypt it
+        if (apiSecret && apiSecret !== 'sk_live_********') {
+            encryptedSecret = encryptGatewaySecret(apiSecret);
+        }
+
+        const updated = await PaymentGateway.findOneAndUpdate(
+            { gatewayId },
+            {
+                isActive: !!isActive,
+                apiKey,
+                apiSecret: encryptedSecret,
+                minOrder: Number(minOrder) || 0,
+                maxOrder: Number(maxOrder) || 0
+            },
+            { new: true, upsert: true }
+        ).lean();
+
+        res.json({ success: true, gateway: { ...updated, apiSecret: 'sk_live_********' } });
+    } catch (error) {
+        console.error('Error saving gateway:', error);
+        res.status(500).json({ success: false, error: 'Failed to save gateway' });
     }
 });
 

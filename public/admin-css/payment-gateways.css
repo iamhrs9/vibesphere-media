@@ -1,0 +1,55 @@
+/* ==========================================
+   💳 PAYMENT GATEWAYS SECTION CSS
+   ========================================== */
+
+/* Modern iOS-Style Toggle Switch */
+#payment-gateways-section .pg-toggle-checkbox {
+    /* Hide the default appearance and override Tailwind border colors */
+    border-color: #E5E5EA !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    top: 2px;
+    left: 2px;
+    width: 20px !important;
+    height: 20px !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), border-color 0.3s;
+}
+
+#payment-gateways-section .pg-toggle-label {
+    /* Inactive State (Gray) */
+    background-color: #E5E5EA !important;
+    height: 24px !important;
+    width: 44px !important;
+    border-radius: 9999px !important;
+    transition: background-color 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Active State (Green) */
+#payment-gateways-section .pg-toggle-checkbox:checked {
+    transform: translateX(20px) !important;
+    border-color: #ffffff !important;
+    /* Ensure the thumb stays white */
+}
+
+#payment-gateways-section .pg-toggle-checkbox:checked + .pg-toggle-label {
+    background-color: #34C759 !important; /* iOS Green */
+}
+
+/* Modal Transitions */
+#pg-config-modal {
+    transition: opacity 0.3s ease;
+}
+
+#pg-config-modal > div {
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Hover effects for the grid cards */
+#payment-gateways-section .group {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#payment-gateways-section .group:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}

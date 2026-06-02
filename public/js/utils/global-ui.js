@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // 0. Initialize Auth (recover session if needed)
     await VibeAuth.init();
+    TopBanner.init();
 
     // 1. Mobile Menu Toggle
     const hamburger = document.getElementById('hamburger-menu');
@@ -50,6 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 const GUEST_CART_KEY = 'vibeGuestCart';
 const LEGACY_GUEST_CART_KEY = 'vibeCart';
+const TOP_BANNER_STYLE_ID = 'vibe-top-banner-styles';
+const TOP_BANNER_ROOT_ID = 'vibe-top-banner-root';
+
+let topBannerSettingsPromise = null;
 
 function readGuestCart() {
     try {
@@ -79,6 +84,183 @@ function writeGuestCart(items) {
     localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
     localStorage.removeItem(LEGACY_GUEST_CART_KEY);
 }
+
+function splitBannerLines(value) {
+    return String(value ?? '')
+        .split(/\r?\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+}
+
+function buildBannerTickerText(value) {
+    const lines = splitBannerLines(value);
+    const content = lines.length ? lines : [String(value ?? '').trim()].filter(Boolean);
+    const separator = ' \u00A0\u00A0•\u00A0\u00A0 ';
+    const joined = content.join(separator).trim();
+    if (!joined) return '';
+
+    if (joined.length < 80) {
+        return Array.from({ length: 4 }, () => joined).join(separator);
+    }
+
+    return joined;
+}
+
+function escapeTopBannerHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function ensureTopBannerStyles() {
+    if (document.getElementById(TOP_BANNER_STYLE_ID)) return;
+
+    const style = document.createElement('style');
+    style.id = TOP_BANNER_STYLE_ID;
+    style.textContent = `
+        #${TOP_BANNER_ROOT_ID} {
+            width: 100%;
+            position: relative;
+            z-index: 1100;
+            isolation: isolate;
+        }
+
+        #${TOP_BANNER_ROOT_ID} .vs-top-banner-shell {
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            min-height: 32px;
+            padding: 0.375rem 0;
+            background: linear-gradient(90deg, #6d28d9 0%, #4f46e5 45%, #2563eb 100%);
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.18);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track {
+            display: flex;
+            align-items: center;
+            width: max-content;
+            white-space: nowrap;
+            flex-shrink: 0;
+            will-change: transform;
+            animation: marquee-scroll 15s linear infinite;
+        }
+
+        #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding-right: 2rem;
+            flex-shrink: 0;
+        }
+
+        #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track i {
+            font-size: 0.92rem;
+            flex-shrink: 0;
+        }
+
+        #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track span span {
+            color: #fff;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 1px rgba(15, 23, 42, 0.12);
+        }
+
+        #${TOP_BANNER_ROOT_ID} .animate-marquee {
+            animation: marquee-scroll 15s linear infinite;
+        }
+
+        @keyframes marquee-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        @media (max-width: 640px) {
+            #${TOP_BANNER_ROOT_ID} .vs-top-banner-shell {
+                min-height: 30px;
+                padding: 0.25rem 0;
+            }
+
+            #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track > span {
+                padding-right: 1.5rem;
+            }
+
+            #${TOP_BANNER_ROOT_ID} .vs-top-banner-marquee-track span span {
+                font-size: 0.72rem;
+                gap: 0.45rem;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function buildTopBannerMarkup(text) {
+    const prefix = '<i class="ri-megaphone-line" aria-hidden="true"></i>';
+    const tickerText = buildBannerTickerText(text);
+    const safeText = escapeTopBannerHtml(tickerText || String(text ?? '').trim()) || '\u00A0';
+
+    return `
+        <div class="vs-top-banner-shell overflow-hidden whitespace-nowrap bg-gradient-to-r from-purple-600 to-blue-600 py-1.5 text-white text-sm">
+            <div class="flex w-max animate-marquee" aria-label="${escapeTopBannerHtml(String(text ?? '').replace(/\r?\n+/g, ' • '))}">
+                <span class="pr-8">${prefix}<span>${safeText}</span></span>
+                <span class="pr-8" aria-hidden="true">${prefix}<span>${safeText}</span></span>
+            </div>
+        </div>
+    `;
+}
+
+const TopBanner = {
+    async init() {
+        if (!document.body || document.getElementById(TOP_BANNER_ROOT_ID)) return;
+
+        ensureTopBannerStyles();
+
+        try {
+            if (!topBannerSettingsPromise) {
+                topBannerSettingsPromise = fetch('/api/site-settings/banners', { credentials: 'include' })
+                    .then(async (res) => {
+                        if (!res.ok) throw new Error('Failed to load banner settings.');
+                        return res.json();
+                    })
+                    .catch((error) => {
+                        console.error('Top banner settings fetch failed:', error);
+                        return null;
+                    });
+            }
+
+            const response = await topBannerSettingsPromise;
+            const settings = response?.banners;
+            if (!settings) return;
+
+            const isSmmPage = window.location.pathname.toLowerCase().includes('/smm');
+            const bannerText = isSmmPage ? settings.smmBannerText : settings.normalBannerText;
+            const isActive = isSmmPage ? settings.isSmmActive : settings.isNormalActive;
+
+            if (!isActive || !bannerText) return;
+
+            const root = document.createElement('div');
+            root.id = TOP_BANNER_ROOT_ID;
+            root.setAttribute('role', 'region');
+            root.setAttribute('aria-label', 'Announcement banner');
+
+            root.innerHTML = `
+                ${buildTopBannerMarkup(bannerText)}
+            `;
+
+            document.body.prepend(root);
+        } catch (error) {
+            console.error('Top banner init failed:', error);
+        }
+    }
+};
 
 const VibeGuestCart = {
     key: GUEST_CART_KEY,
@@ -572,3 +754,4 @@ const VibeUI = {
 
 window.VibeUI = VibeUI;
 window.VibeGuestCart = VibeGuestCart;
+window.TopBanner = TopBanner;
