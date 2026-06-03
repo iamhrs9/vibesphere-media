@@ -19,7 +19,8 @@
     <link rel="stylesheet" href="/admin-css/banner-management-section.css">
     <link rel="stylesheet" href="/admin-css/payment-gateways.css">
 
-    <script src="https://cdn.tiny.cloud/1/1w8pckp2kybf64f8g1fr4374ima09gr8xgr0ru01fecpzd0i/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.tiny.cloud/1/1w8pckp2kybf64f8g1fr4374ima09gr8xgr0ru01fecpzd0i/tinymce/6/tinymce.min.js"
+        referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -31,7 +32,6 @@
     </script>
 
     <style>
-
         /* ==========================================
            🔒 LOGIN SCREEN
            ========================================== */
@@ -507,11 +507,8 @@
                 padding: 25px;
             }
         }
-
     </style>
     <style>
-
-
         #login-screen {
             background: linear-gradient(135deg, #0f172a, #1d4ed8 58%, #38bdf8);
         }
@@ -562,38 +559,6 @@
             align-items: center;
             gap: 14px;
             margin-left: auto;
-        }
-
-        .topbar-search {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: min(420px, 42vw);
-            background: rgba(248, 250, 252, 0.95);
-            border: 1px solid rgba(203, 213, 225, 0.95);
-            border-radius: 999px;
-            padding: 0 14px;
-            height: 46px;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-        }
-
-        .topbar-search i {
-            color: var(--muted-soft);
-            font-size: 1rem;
-        }
-
-        .topbar-search input {
-            border: none;
-            background: transparent;
-            width: 100%;
-            min-height: auto;
-            font-size: 0.92rem;
-            outline: none;
-            color: var(--text);
-        }
-
-        .topbar-search input::placeholder {
-            color: var(--muted-soft);
         }
 
         .topbar-meta {
@@ -807,9 +772,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .topbar-search {
-                min-width: 250px;
-            }
         }
 
         @media (max-width: 768px) {
@@ -824,9 +786,6 @@
                 flex-wrap: wrap;
             }
 
-            .topbar-search {
-                min-width: 100%;
-            }
 
             .dashboard {
                 padding: 18px 16px 36px;
@@ -1101,6 +1060,7 @@
 
 
         @media (max-width: 1200px) {
+
             .blog-shell,
             .finance-grid,
             .chat-shell {
@@ -1117,6 +1077,7 @@
         }
 
         @media (max-width: 768px) {
+
             .finance-metrics,
             .resource-form-grid {
                 grid-template-columns: 1fr;
@@ -1144,7 +1105,6 @@
                 width: 100%;
             }
         }
-
     </style>
 </head>
 
@@ -1154,7 +1114,7 @@
         <div class="login-box">
             <h2>Admin Login 🔒</h2>
             <form onsubmit="event.preventDefault(); adminLogin();">
-                <input type="text" name="username" value="admin" style="display:none;" autocomplete="username">
+                <input type="email" id="adminEmail" placeholder="Enter Admin Email" autocomplete="email" style="margin-bottom: 12px; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff;">
                 <input type="password" id="adminPass" placeholder="Enter Admin Password"
                     autocomplete="current-password">
                 <button type="submit">Access Dashboard</button>
@@ -1174,7 +1134,8 @@
             <div style="display:flex;align-items:center;gap:10px;">
                 <div
                     style="width:38px;height:38px;background:linear-gradient(135deg,#1d4ed8,#38bdf8);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"
+                        style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
                         <path d="M13 2L4 14h7l-1 8 10-13h-7l0-7z"></path>
                     </svg>
                 </div>
@@ -1189,119 +1150,232 @@
             <div class="sidebar-group-label">Overview</div>
             <button class="sidebar-link active" data-label="Dashboard"
                 onclick="navTo('dashboard-section', this); fetchDashboardSummary();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="nav-label"> Dashboard</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M3 10.5L12 3l9 7.5"></path>
+                        <path d="M5 9.5V21h14V9.5"></path>
+                        <path d="M9 21v-6h6v6"></path>
+                    </svg></span><span class="nav-label"> Dashboard</span>
+            </button>
+
+            <div class="sidebar-group-label">System</div>
+            <button class="sidebar-link" data-label="Admin Management"
+                onclick="navTo('admin-management-section', this);">
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg></span><span class="nav-label"> Admin Management</span>
             </button>
 
             <div class="sidebar-group-label">People Ops</div>
             <button class="sidebar-link" data-label="Staff Mgmt"
                 onclick="navTo('staff-section', this); fetchStaffData();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span><span class="nav-label"> Staff Management</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg></span><span class="nav-label"> Staff Management</span>
             </button>
             <button class="sidebar-link" data-label="Attendance"
                 onclick="navTo('attendance-section', this); fetchAdminAttendance();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg></span><span class="nav-label"> Attendance & Shifts</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 7v5l3 3"></path>
+                    </svg></span><span class="nav-label"> Attendance & Shifts</span>
             </button>
             <button class="sidebar-link" data-label="Task Bounties"
                 onclick="navTo('staff-section', this); switchStaffView?.('panel-bounties'); fetchAdminBountyTasks?.(true); updateTopbarStatus?.('Task Bounties');">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg></span><span class="nav-label"> Task Bounties</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M8 6h13"></path>
+                        <path d="M8 12h13"></path>
+                        <path d="M8 18h13"></path>
+                        <path d="M3 6h.01"></path>
+                        <path d="M3 12h.01"></path>
+                        <path d="M3 18h.01"></path>
+                    </svg></span><span class="nav-label"> Task Bounties</span>
             </button>
             <button class="sidebar-link" data-label="Doc Approvals"
                 onclick="navTo('document-approvals-section', this); fetchDocumentApprovals();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span><span class="nav-label"> Document Approvals</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg></span><span class="nav-label"> Document Approvals</span>
             </button>
 
             <div class="sidebar-group-label">Commerce</div>
             <button class="sidebar-link" data-label="Packages"
                 onclick="navTo('packages-section', this); fetchAdminPackages();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="M3.3 7l8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg></span><span class="nav-label"> Packages</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path
+                            d="M21 8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z">
+                        </path>
+                        <path d="M3.3 7l8.7 5 8.7-5"></path>
+                        <path d="M12 22V12"></path>
+                    </svg></span><span class="nav-label"> Packages</span>
             </button>
             <button class="sidebar-link" data-label="Services"
                 onclick="navTo('services-section', this); fetchAdminServices();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 13v.01"></path><path d="M9 17v.01"></path></svg></span><span class="nav-label"> Services</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M3 21h18"></path>
+                        <path d="M5 21V7l8-4v18"></path>
+                        <path d="M19 21V11l-6-4"></path>
+                        <path d="M9 9v.01"></path>
+                        <path d="M9 13v.01"></path>
+                        <path d="M9 17v.01"></path>
+                    </svg></span><span class="nav-label"> Services</span>
             </button>
             <button class="sidebar-link" data-label="SMM Rates"
                 onclick="navTo('smm-rates-section', this); fetchAdminSmmRates();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;"><path d="M13 2L4 14h7l-1 8 10-13h-7l0-7z"></path></svg></span><span class="nav-label"> SMM Rates</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"
+                        style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;">
+                        <path d="M13 2L4 14h7l-1 8 10-13h-7l0-7z"></path>
+                    </svg></span><span class="nav-label"> SMM Rates</span>
             </button>
             <button class="sidebar-link" data-label="Coupons"
                 onclick="navTo('coupons-section', this); fetchCoupons?.();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a2 2 0 0 1 0 4v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a2 2 0 0 1 0-4V7z"></path><path d="M12 8v8"></path></svg></span><span class="nav-label"> Promo Codes</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path
+                            d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v2a2 2 0 0 1 0 4v2a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-2a2 2 0 0 1 0-4V7z">
+                        </path>
+                        <path d="M12 8v8"></path>
+                    </svg></span><span class="nav-label"> Promo Codes</span>
             </button>
             <button class="sidebar-link" data-label="Orders" onclick="navTo('orders', this);">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path></svg></span><span class="nav-label"> Orders</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path>
+                    </svg></span><span class="nav-label"> Orders</span>
             </button>
-            <button class="sidebar-link" data-label="SMM Orders" onclick="navTo('smm-orders-section', this); fetchSmmOrders();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path><path d="M12 2v6M9 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></span><span class="nav-label"> SMM Orders</span>
+            <button class="sidebar-link" data-label="SMM Orders"
+                onclick="navTo('smm-orders-section', this); fetchSmmOrders();">
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.5 3H5l2.6 12.39a2 2 0 0 0 2 1.61h8.9a2 2 0 0 0 2-1.64L22 7H6"></path>
+                        <path d="M12 2v6M9 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                    </svg></span><span class="nav-label"> SMM Orders</span>
             </button>
 
             <div class="sidebar-group-label">Client Ops</div>
             <button class="sidebar-link" data-label="Clients" onclick="navTo('clients-section', this); fetchClients();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6"></path><path d="M23 11h-6"></path></svg></span><span class="nav-label"> Clients</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <path d="M20 8v6"></path>
+                        <path d="M23 11h-6"></path>
+                    </svg></span><span class="nav-label"> Clients</span>
             </button>
             <button class="sidebar-link" data-label="Team Chat"
                 onclick="navTo('chat-section', this); fetchAdminChat();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span><span class="nav-label"> Team Chat</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg></span><span class="nav-label"> Team Chat</span>
             </button>
             <button class="sidebar-link" data-label="Helpdesk"
                 onclick="navTo('helpdesk-section', this); fetchAdminTickets();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 13a9 9 0 0 1 18 0"></path><path d="M21 13v5a2 2 0 0 1-2 2h-1"></path><path d="M3 13v5a2 2 0 0 0 2 2h1"></path><path d="M8 20h8"></path><rect x="2" y="12" width="4" height="8" rx="2"></rect><rect x="18" y="12" width="4" height="8" rx="2"></rect></svg></span><span class="nav-label"> Helpdesk</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M3 13a9 9 0 0 1 18 0"></path>
+                        <path d="M21 13v5a2 2 0 0 1-2 2h-1"></path>
+                        <path d="M3 13v5a2 2 0 0 0 2 2h1"></path>
+                        <path d="M8 20h8"></path>
+                        <rect x="2" y="12" width="4" height="8" rx="2"></rect>
+                        <rect x="18" y="12" width="4" height="8" rx="2"></rect>
+                    </svg></span><span class="nav-label"> Helpdesk</span>
             </button>
             <button class="sidebar-link" data-label="Staff Tickets"
                 onclick="navTo('staff-tickets-section', this); fetchStaffTickets();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M15 5v2"></path><path d="M15 11v2"></path><path d="M15 17v2"></path><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path></svg></span><span class="nav-label"> Staff Tickets</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M15 5v2"></path>
+                        <path d="M15 11v2"></path>
+                        <path d="M15 17v2"></path>
+                        <path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path>
+                    </svg></span><span class="nav-label"> Staff Tickets</span>
             </button>
             <button class="sidebar-link" data-label="Meetings"
                 onclick="navTo('meetings-section', this); fetchMeetings();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"></rect><path d="M16 10l5-3v10l-5-3"></path></svg></span><span class="nav-label"> Meetings</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <rect x="3" y="5" width="13" height="14" rx="2"></rect>
+                        <path d="M16 10l5-3v10l-5-3"></path>
+                    </svg></span><span class="nav-label"> Meetings</span>
             </button>
 
             <div class="sidebar-group-label">Site Control</div>
             <button class="sidebar-link" data-label="Banner Management"
                 onclick="navTo('banner-management-section', this); fetchBannerSettings();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h13"></path><path d="M18 15l2 2-2 2"></path></svg></span><span class="nav-label"> Banner Management</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M4 7h16M4 12h10M4 17h13"></path>
+                        <path d="M18 15l2 2-2 2"></path>
+                    </svg></span><span class="nav-label"> Banner Management</span>
             </button>
 
             <div class="sidebar-group-label">Content &amp; Knowledge</div>
             <button class="sidebar-link" data-label="General Reviews" onclick="navTo('reviews', this);">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01Z"></path></svg></span><span class="nav-label"> General Reviews</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01Z">
+                        </path>
+                    </svg></span><span class="nav-label"> General Reviews</span>
             </button>
             <button class="sidebar-link" data-label="Pkg Reviews"
                 onclick="navTo('review-moderation', this); fetchPendingReviews();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg></span><span class="nav-label"> Pkg Review Moderation</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg></span><span class="nav-label"> Pkg Review Moderation</span>
             </button>
             <button class="sidebar-link" data-label="Write Blog" onclick="navTo('blogs', this);">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></span><span class="nav-label"> Write Blog</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                    </svg></span><span class="nav-label"> Write Blog</span>
             </button>
             <button class="sidebar-link" data-label="Resources"
                 onclick="navTo('resources-section', this); fetchAdminResources();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg></span><span class="nav-label"> Resources</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path>
+                    </svg></span><span class="nav-label"> Resources</span>
             </button>
             <div class="sidebar-group-label">Operations</div>
             <button class="sidebar-link" data-label="Careers" onclick="navTo('jobs-section', this); fetchAdminJobs();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v16"></path></svg></span><span class="nav-label"> Careers</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v16"></path>
+                    </svg></span><span class="nav-label"> Careers</span>
             </button>
             <button class="sidebar-link" data-label="Deliver Project"
                 onclick="navTo('handover-doc', this); fetchHandovers();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M8 9h2"></path></svg></span><span class="nav-label"> Deliver Project</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <path d="M14 2v6h6"></path>
+                        <path d="M8 13h8"></path>
+                        <path d="M8 17h8"></path>
+                        <path d="M8 9h2"></path>
+                    </svg></span><span class="nav-label"> Deliver Project</span>
             </button>
 
             <div class="sidebar-group-label">Financials</div>
             <button class="sidebar-link" data-label="Finance"
                 onclick="navTo('finance-section', this); fetchFinanceData();">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"></path></svg></span><span class="nav-label"> Finance</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M12 1v22"></path>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg></span><span class="nav-label"> Finance</span>
             </button>
             <button class="sidebar-link" data-label="Payment Gateways"
                 onclick="navTo('payment-gateways-section', this);">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12zm-9-8h8v2h-8zm0 4h8v2h-8zM4 14h6v2H4z"/></svg></span><span class="nav-label"> Payment Gateways</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path
+                            d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12zm-9-8h8v2h-8zm0 4h8v2h-8zM4 14h6v2H4z" />
+                    </svg></span><span class="nav-label"> Payment Gateways</span>
             </button>
         </nav>
 
         <div class="sidebar-footer">
             <div class="sidebar-profile">
-                <div class="sidebar-avatar">AD</div>
-                <div class="sidebar-profile-copy">
-                    <strong>Admin Control</strong>
-                    <span>Corporate workspace owner</span>
+                <div class="sidebar-avatar" id="sidebar-admin-avatar">AD</div>
+                <div class="sidebar-profile-copy" style="overflow: hidden;">
+                    <strong id="sidebar-admin-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Admin Control</strong>
+                    <span id="sidebar-admin-role" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Corporate workspace owner</span>
                 </div>
             </div>
             <button class="sidebar-logout" onclick="logout()">
@@ -1322,46 +1396,49 @@
                 <span class="topbar-title">Executive Workspace for <strong>VibeSphere Admin</strong></span>
             </div>
             <div class="topbar-right">
-                <div class="topbar-search">
-                    <i class="ri-search-line"></i>
-                    <input id="adminGlobalSearch" type="text" placeholder="Global employee search by name, email or employee ID">
-                </div>
                 <div class="topbar-meta">
                     <span class="eyebrow">Live Status</span>
                     <span id="topbarStatusText" class="value">Dashboard Ready</span>
                 </div>
-
-                <button onclick="logout()" class="logout-btn">
-                    <i class="ri-logout-box-r-line"></i> Logout
-                </button>
             </div>
         </div>
 
         <div class="dashboard" id="dashboard">
 
+            <div id="admin-management-section" class="section"></div>
+
             <div id="dashboard-section" class="section active">
                 <div class="dashboard-hero">
                     <div>
                         <span class="hero-badge"><i class="ri-focus-3-line"></i> Premium Operations Console</span>
-                        <h1 class="section-title" style="margin-top:16px;">A faster, cleaner command center for staff operations and approvals.</h1>
-                        <p class="section-subtitle">Track the team, resolve pending approvals, and jump into attendance or staff management without loading the entire admin system at once.</p>
+                        <h1 class="section-title" style="margin-top:16px;">A faster, cleaner command center for staff
+                            operations and approvals.</h1>
+                        <p class="section-subtitle">Track the team, resolve pending approvals, and jump into attendance
+                            or staff management without loading the entire admin system at once.</p>
                         <div class="hero-actions">
-                            <button class="btn-publish" onclick="navTo('staff-section', document.querySelector('[data-label=&quot;Staff Mgmt&quot;]')); switchStaffView('panel-access', document.querySelector('#staff-section .workspace-action-btn[data-staff-action=&quot;panel-access&quot;]')); fetchStaffData();">Open Staff Management</button>
-                            <button class="btn-publish btn-soft" onclick="navTo('document-approvals-section', document.querySelector('[data-label=&quot;Doc Approvals&quot;]')); fetchDocumentApprovals();">Review Document Queue</button>
+                            <button class="btn-publish"
+                                onclick="navTo('staff-section', document.querySelector('[data-label=&quot;Staff Mgmt&quot;]')); switchStaffView('panel-access', document.querySelector('#staff-section .workspace-action-btn[data-staff-action=&quot;panel-access&quot;]')); fetchStaffData();">Open
+                                Staff Management</button>
+                            <button class="btn-publish btn-soft"
+                                onclick="navTo('document-approvals-section', document.querySelector('[data-label=&quot;Doc Approvals&quot;]')); fetchDocumentApprovals();">Review
+                                Document Queue</button>
                         </div>
                     </div>
                     <div class="shortcut-grid">
                         <div class="shortcut-card">
                             <h4>People Operations</h4>
-                            <p>Search staff globally, monitor live status, and manage access with server-side pagination.</p>
+                            <p>Search staff globally, monitor live status, and manage access with server-side
+                                pagination.</p>
                         </div>
                         <div class="shortcut-card">
                             <h4>Attendance Oversight</h4>
-                            <p>Filter attendance logs by month and status, then review shifts without pulling the full history.</p>
+                            <p>Filter attendance logs by month and status, then review shifts without pulling the full
+                                history.</p>
                         </div>
                         <div class="shortcut-card">
                             <h4>Approval Workflow</h4>
-                            <p>Preview draft documents, then approve or deny with faster action controls and cleaner tables.</p>
+                            <p>Preview draft documents, then approve or deny with faster action controls and cleaner
+                                tables.</p>
                         </div>
                     </div>
                 </div>
@@ -1369,22 +1446,30 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Total Staff</div>
-                        <div id="dashboardStatTotalStaff" class="stat-value"><div class="skeleton-line" style="height:32px;"></div></div>
+                        <div id="dashboardStatTotalStaff" class="stat-value">
+                            <div class="skeleton-line" style="height:32px;"></div>
+                        </div>
                         <div class="stat-meta">All active staff profiles in the system</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Present Today</div>
-                        <div id="dashboardStatPresentToday" class="stat-value"><div class="skeleton-line" style="height:32px;"></div></div>
+                        <div id="dashboardStatPresentToday" class="stat-value">
+                            <div class="skeleton-line" style="height:32px;"></div>
+                        </div>
                         <div class="stat-meta">Live attendance check-ins for today</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Pending Approvals</div>
-                        <div id="dashboardStatPendingApprovals" class="stat-value"><div class="skeleton-line" style="height:32px;"></div></div>
+                        <div id="dashboardStatPendingApprovals" class="stat-value">
+                            <div class="skeleton-line" style="height:32px;"></div>
+                        </div>
                         <div class="stat-meta">Documents waiting for admin action</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Online Right Now</div>
-                        <div id="dashboardStatOnlineNow" class="stat-value"><div class="skeleton-line" style="height:32px;"></div></div>
+                        <div id="dashboardStatOnlineNow" class="stat-value">
+                            <div class="skeleton-line" style="height:32px;"></div>
+                        </div>
                         <div class="stat-meta">Staff currently marked online</div>
                     </div>
                 </div>
@@ -1475,11 +1560,16 @@
             <script src="/socket.io/socket.io.js"></script>
             <script>
                 const API_URL = '/api';
+
+                // ==========================================
+                // 🚀 IN-MEMORY SWR CACHE (session-only, never persisted)
+                // ==========================================
+                window.adminDataCache = {};
+
                 let allBlogs = [];
                 let globalPerformanceData = {};
                 const adminUiState = {
                     activeSection: 'dashboard-section',
-                    globalSearch: '',
                     staffView: 'list',
                     staffRecords: [],
                     selectedStaff: null,
@@ -1558,12 +1648,34 @@
 
 
                 function renderLoadingRows(colspan, rows = 5) {
-                    return Array.from({ length: rows }).map(() => `
-                        <tr>
-                            <td colspan="${colspan}" style="padding:18px;">
-                                <div class="skeleton-line" style="height:14px;"></div>
-                            </td>
-                        </tr>
+                    // Rich skeleton: one shimmer cell per column
+                    const cells = Array.from({ length: colspan }).map((_, i) =>
+                        `<td style="padding:14px 18px;">
+                            <div class="skeleton-line" style="height:${i === 0 ? '20px' : '14px'};width:${i === 0 ? '70%' : '55%'};border-radius:8px;"></div>
+                        </td>`
+                    ).join('');
+                    return Array.from({ length: rows }).map(() => `<tr>${cells}</tr>`).join('');
+                }
+
+                function renderSkeletonCards(count = 4) {
+                    return Array.from({ length: count }).map(() => `
+                        <article class="staff-profile-card" style="pointer-events:none;">
+                            <div class="staff-profile-top">
+                                <div style="display:flex;gap:12px;align-items:center;">
+                                    <div class="skeleton-line" style="width:48px;height:48px;border-radius:50%;flex-shrink:0;"></div>
+                                    <div style="flex:1;">
+                                        <div class="skeleton-line" style="height:14px;width:60%;margin-bottom:8px;"></div>
+                                        <div class="skeleton-line" style="height:11px;width:40%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin:14px 0;">
+                                <div class="skeleton-line" style="height:28px;width:80px;border-radius:999px;"></div>
+                            </div>
+                            <div class="staff-profile-stats">
+                                ${Array.from({length:4}).map(()=>`<div class="mini-stat"><div class="skeleton-line" style="height:10px;width:50%;margin-bottom:6px;"></div><div class="skeleton-line" style="height:13px;width:70%;"></div></div>`).join('')}
+                            </div>
+                        </article>
                     `).join('');
                 }
 
@@ -1598,7 +1710,7 @@
                     if (order.createdAt) return order.createdAt;
                     if (order.date) return order.date;
                     if (order._id && typeof order._id === 'string' && order._id.length === 24) {
-                        try { return new Date(parseInt(order._id.substring(0, 8), 16) * 1000).toISOString(); } catch(e) {}
+                        try { return new Date(parseInt(order._id.substring(0, 8), 16) * 1000).toISOString(); } catch (e) { }
                     }
                     return null;
                 }
@@ -1729,7 +1841,11 @@
                     closeSidebarOnMobile();
                     document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
                     document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
-                    document.getElementById(tabName).classList.add('active');
+                    const targetSection = document.getElementById(tabName);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                        targetSection.classList.remove('hidden');
+                    }
                     if (element) element.classList.add('active');
                     adminUiState.activeSection = tabName;
                     const labels = {
@@ -1746,6 +1862,13 @@
                     updateTopbarStatus(labels[tabName] || 'Admin Workspace');
 
                     if (tabName === 'dashboard-section') fetchDashboardSummary();
+                    if (tabName === 'admin-management-section') {
+                        if (typeof window.initAdminManagementSection === 'function') {
+                            window.initAdminManagementSection();
+                        } else if (typeof window.fetchAdminsList === 'function') {
+                            window.fetchAdminsList();
+                        }
+                    }
                     if (tabName === 'reviews') fetchReviews();
                     if (tabName === 'orders') fetchOrders();
                     if (tabName === 'smm-orders-section') fetchSmmOrders();
@@ -1779,25 +1902,60 @@
                 });
 
                 async function adminLogin() {
+                    const email = document.getElementById('adminEmail').value;
                     const password = document.getElementById('adminPass').value;
                     try {
                         const res = await fetch(`${API_URL}/login`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ password }),
+                            body: JSON.stringify({ email, password }),
                             credentials: 'include'
                         });
                         const data = await res.json();
                         if (data.success) {
-                            // Instead of location.reload(), just hide login and load data
+                            // Fetch session info
+                            const meRes = await fetch('/api/admin/me', { credentials: 'include' });
+                            const meData = await meRes.json();
+                            if (meData.success && meData.user) {
+                                window.adminSession = meData.user;
+                                const perms = window.adminSession.permissions || {};
+                                applySidebarPermissions(window.adminSession);
+                                updateAdminProfileUI(window.adminSession);
+                            }
+
+                            localStorage.setItem('adminToken', 'true');
                             document.getElementById('login-screen').style.display = 'none';
                             document.getElementById('main-wrap').style.display = 'flex';
                             navTo('dashboard-section', document.querySelector('.sidebar-link[data-label="Dashboard"]'));
                             loadData();
                         } else {
-                            document.getElementById('errorMsg').innerText = "Wrong Password! ❌";
+                            document.getElementById('errorMsg').innerText = data.message || "Invalid Credentials! ❌";
                         }
                     } catch (e) { alert("Login Error"); }
+                }
+
+                function applySidebarPermissions(session) {
+                    if (!session) return;
+                    if (session.role === 'SuperAdmin' || session.role === 'Admin') return;
+                    
+                    const perms = session.permissions || {};
+                    const hideLabels = [];
+                    
+                    hideLabels.push('Admin Management'); // Never show to SubAdmin
+
+                    if (!perms.staff) hideLabels.push('Staff Mgmt', 'Attendance', 'Task Bounties', 'Doc Approvals');
+                    if (!perms.finance) hideLabels.push('Finance', 'Payment Gateways');
+                    if (!perms.orders) hideLabels.push('Orders', 'SMM Orders');
+                    if (!perms.commerce) hideLabels.push('Packages', 'Services', 'Coupons');
+                    if (!perms.smm) hideLabels.push('SMM Rates');
+                    if (!perms.content) hideLabels.push('Write Blog', 'Resources', 'General Reviews', 'Pkg Reviews', 'Banner Management', 'Careers', 'Deliver Project');
+                    if (!perms.clients) hideLabels.push('Clients', 'Meetings');
+                    if (!perms.helpdesk) hideLabels.push('Helpdesk', 'Staff Tickets');
+
+                    hideLabels.forEach(label => {
+                        const btn = document.querySelector(`.sidebar-link[data-label="${label}"]`);
+                        if (btn) btn.style.display = 'none';
+                    });
                 }
 
                 async function logout() {
@@ -1829,31 +1987,9 @@
 
                 function loadData() {
                     seedAdminAttendanceFilters();
-                    syncSearchMirrors();
                     fetchDashboardSummary();
                     populateStaffAssignDropdown();
                 }
-
-                const runGlobalAdminSearch = debounce(() => {
-                    const input = document.getElementById('adminGlobalSearch');
-                    adminUiState.globalSearch = (input?.value || '').trim();
-                    adminUiState.staffPage = 1;
-                    adminUiState.attendancePage = 1;
-                    syncSearchMirrors();
-
-                    if (adminUiState.activeSection === 'attendance-section') {
-                        fetchAdminAttendance();
-                        return;
-                    }
-
-                    if (adminUiState.activeSection !== 'staff-section') {
-                        navTo('staff-section', document.querySelector('.sidebar-link[data-label="Staff Mgmt"]'));
-                        window.switchStaffView('panel-access', document.querySelector('.workspace-action-btn[data-staff-action="panel-access"]'));
-                    }
-                    fetchStaffData();
-                }, 320);
-
-                document.getElementById('adminGlobalSearch')?.addEventListener('input', runGlobalAdminSearch);
 
                 function docStatusBadge(status) {
                     if (status === 'Approved') {
@@ -1873,38 +2009,56 @@
                     return `${names[Number(month) - 1] || 'Month'} ${year}`;
                 }
 
-	                function adminDocumentLabel(docType) {
-	                    return docType === 'AttendanceReport' ? 'Attendance Report' : 'Payslip';
-	                }
+                function adminDocumentLabel(docType) {
+                    return docType === 'AttendanceReport' ? 'Attendance Report' : 'Payslip';
+                }
 
-	                function openDocumentPreview(documentType, recordId) {
-	                    if (!documentType || !recordId) {
-	                        alert('Preview details are missing for this request.');
-	                        return;
-	                    }
-	                    const previewUrl = `/api/admin/preview-document/${encodeURIComponent(documentType)}/${encodeURIComponent(recordId)}`;
-	                    window.open(previewUrl, '_blank', 'noopener');
-	                }
+                function openDocumentPreview(documentType, recordId) {
+                    if (!documentType || !recordId) {
+                        alert('Preview details are missing for this request.');
+                        return;
+                    }
+                    const previewUrl = `/api/admin/preview-document/${encodeURIComponent(documentType)}/${encodeURIComponent(recordId)}`;
+                    window.open(previewUrl, '_blank', 'noopener');
+                }
 
-	                function setApprovalActionButtonState(btn, loading, label) {
-	                    if (!btn) return;
-	                    if (loading) {
-	                        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
-	                        btn.disabled = true;
-	                        btn.style.opacity = '0.7';
-	                        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
-	                        return;
-	                    }
-	                    btn.disabled = false;
-	                    btn.style.opacity = '';
-	                    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
-	                    delete btn.dataset.originalHtml;
-	                }
+                function setApprovalActionButtonState(btn, loading, label) {
+                    if (!btn) return;
+                    if (loading) {
+                        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+                        btn.disabled = true;
+                        btn.style.opacity = '0.7';
+                        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+                        return;
+                    }
+                    btn.disabled = false;
+                    btn.style.opacity = '';
+                    btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+                    delete btn.dataset.originalHtml;
+                }
 
 
                 // ==========================================
                 // 👥 4. STAFF & LEADS MANAGEMENT
                 // ==========================================
+                function updateAdminProfileUI(session) {
+                    if (!session) return;
+                    const name = session.name || 'Admin';
+                    const initials = name.substring(0, 2).toUpperCase();
+                    
+                    const avatarEl = document.getElementById('sidebar-admin-avatar');
+                    const nameEl = document.getElementById('sidebar-admin-name');
+                    const roleEl = document.getElementById('sidebar-admin-role');
+                    
+                    if (avatarEl) avatarEl.innerText = initials;
+                    if (nameEl) nameEl.innerText = name;
+                    
+                    const roleText = session.role || 'Admin';
+                    const emailText = session.email || '';
+                    if (roleEl) roleEl.innerText = emailText ? `${roleText} • ${emailText}` : roleText;
+                    if (roleEl) roleEl.title = emailText ? `${roleText} • ${emailText}` : roleText;
+                }
+
                 async function fetchDashboardSummary() {
                     try {
                         updateTopbarStatus('Refreshing dashboard summary');
@@ -2032,12 +2186,18 @@
                             return;
                         }
                         const data = await res.json();
-                        if (data.success && data.user && data.user.role === 'Admin') {
+                        if (data.success && data.user && ['Admin', 'SuperAdmin', 'SubAdmin'].includes(data.user.role)) {
+                            window.adminSession = data.user;
+                            applySidebarPermissions(window.adminSession);
+                            updateAdminProfileUI(window.adminSession);
+                            
+                            localStorage.setItem('adminToken', 'true');
                             document.getElementById('login-screen').style.display = 'none';
                             document.getElementById('main-wrap').style.display = 'flex';
                             navTo('dashboard-section', document.querySelector('.sidebar-link[data-label="Dashboard"]'));
                             loadData();
                         } else {
+                            localStorage.removeItem('adminToken');
                             document.getElementById('login-screen').style.display = 'flex';
                             document.getElementById('main-wrap').style.display = 'none';
                         }
@@ -2093,6 +2253,7 @@
             <div id="coupons-section" class="section"></div>
 
             <!-- ADMIN SECTION MODULES -->
+            <script src="/admin/sections/admin-management-section.js"></script>
             <script src="/admin/sections/team-chat-section.js"></script>
             <script src="/admin/sections/client-ops-sections.js"></script>
             <script src="/admin/sections/content-knowledge-sections.js"></script>

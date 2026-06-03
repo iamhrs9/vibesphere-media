@@ -82,7 +82,7 @@ async function uploadToImgBB(base64Image) {
 async function uploadToCloudinary(fileBuffer, originalName, mimeType) {
     return new Promise((resolve, reject) => {
         const isImage = (mimeType && mimeType.startsWith('image/')) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(originalName);
-        
+
         let options = {
             folder: 'vibesphere-chat',
             public_id: `${Date.now()}_${originalName.replace(/\.[^/.]+$/, "")}`
@@ -300,8 +300,14 @@ async function checkAuth(req, res, next) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // If the token belongs to an Admin, pass through immediately (they don't exist in the User DB)
-        if (decoded.role === 'Admin') {
-            req.user = { role: 'Admin' };
+        if (['Admin', 'SuperAdmin', 'SubAdmin'].includes(decoded.role)) {
+            req.user = { 
+                role: decoded.role,
+                adminId: decoded.adminId,
+                name: decoded.name,
+                email: decoded.email,
+                permissions: decoded.permissions || {}
+            };
             return next();
         }
 
@@ -319,13 +325,58 @@ async function checkAuth(req, res, next) {
 }
 
 async function checkAdmin(req, res, next) {
-    if (!req.user || req.user.role !== 'Admin') {
+    if (!req.user || !['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Access Denied: Admins only.' });
     }
     next();
 }
 
+async function checkSuperAdmin(req, res, next) {
+    // Treat legacy 'Admin' as 'SuperAdmin' until tokens expire
+    if (!req.user || !['Admin', 'SuperAdmin'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Access Denied: Super Admin only.' });
+    }
+    next();
+}
+
+function requirePermission(perm) {
+    return (req, res, next) => {
+        if (!req.user) return res.status(403).json({ success: false, message: 'Access Denied.' });
+        if (req.user.role === 'SuperAdmin' || req.user.role === 'Admin') return next();
+        if (req.user.role === 'SubAdmin' && req.user.permissions && req.user.permissions[perm]) return next();
+        return res.status(403).json({ success: false, message: `Access Denied: Requires '${perm}' permission.` });
+    };
+}
+
 app.use('/api/admin/*', checkAuth, checkAdmin);
+
+// ==========================================
+// 🛡️ API-LEVEL RBAC PERMISSION GATES
+// ==========================================
+app.use('/api/admin/staff*', requirePermission('staff'));
+app.use('/api/admin/leaves*', requirePermission('staff'));
+app.use('/api/admin/attendance*', requirePermission('staff'));
+app.use('/api/admin/payout-requests*', requirePermission('staff'));
+app.use('/api/admin/document-approvals*', requirePermission('staff'));
+app.use('/api/admin/bounty-tasks*', requirePermission('staff'));
+app.use('/api/admin/notices*', requirePermission('staff'));
+app.use('/api/admin/finance*', requirePermission('finance'));
+app.use('/api/admin/gateways*', requirePermission('finance'));
+app.use('/api/admin/expenses*', requirePermission('finance'));
+app.use('/api/admin/orders*', requirePermission('orders'));
+app.use('/api/admin/packages*', requirePermission('commerce'));
+app.use('/api/admin/services*', requirePermission('commerce'));
+app.use('/api/admin/coupons*', requirePermission('commerce'));
+app.use('/api/admin/smm*', requirePermission('smm'));
+app.use('/api/admin/refills*', requirePermission('smm'));
+app.use('/api/admin/reviews*', requirePermission('content'));
+app.use('/api/admin/blogs*', requirePermission('content'));
+app.use('/api/admin/resources*', requirePermission('content'));
+app.use('/api/admin/handovers*', requirePermission('content'));
+app.use('/api/admin/clients*', requirePermission('clients'));
+app.use('/api/admin/tickets*', requirePermission('helpdesk'));
+app.use('/api/admin/staff-tickets*', requirePermission('helpdesk'));
+app.use('/api/admin/meetings*', requirePermission('clients'));
 
 async function optionalAuth(req, _res, next) {
     const token = req.cookies?.token;
@@ -337,8 +388,13 @@ async function optionalAuth(req, _res, next) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Keep admin payload lightweight for optional context use.
-        if (decoded.role === 'Admin') {
-            req.user = { role: 'Admin', email: decoded.email || null };
+        if (['Admin', 'SuperAdmin', 'SubAdmin'].includes(decoded.role)) {
+            req.user = { 
+                role: decoded.role,
+                adminId: decoded.adminId,
+                name: decoded.name,
+                permissions: decoded.permissions || {}
+            };
             return next();
         }
 
@@ -2458,7 +2514,7 @@ function buildAgencyInvoice(doc, order) {
 
     for (const item of itemsToRender) {
         const descHeight = doc.heightOfString(item.name, { width: 250 });
-        
+
         doc.text(item.name, 60, currentY, { width: 250, align: 'left' });
         doc.text(String(item.quantity), 330, currentY);
 
@@ -2674,11 +2730,11 @@ function buildSmmInvoice(doc, order) {
 
     // --- 6. TERMS & CONDITIONS (SMM Specific Shaded Box) ---
     const termsY = totalY + 90;
-    
+
     // Draw shaded box background
     doc.rect(50, termsY, 490, 115).fill('#fffbeb'); // Shaded warm amber/light yellow background
     doc.rect(50, termsY, 490, 115).strokeColor('#fef3c7').lineWidth(1).stroke(); // Subtle border
-    
+
     doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(10)
         .text('Important SMM Terms & Conditions:', 60, termsY + 10);
 
@@ -2770,9 +2826,31 @@ const mongoURI = process.env.MONGO_URI;
 
 if (mongoURI) {
     mongoose.connect(mongoURI)
-        .then(() => {
+        .then(async () => {
             console.log("✅ MongoDB Connected Successfully!");
             startDripFeedWorker();
+            
+            // ==========================================
+            // 🚀 SUPER ADMIN AUTO-SEEDER
+            // ==========================================
+            try {
+                if (typeof AdminUser !== 'undefined') {
+                    const adminCount = await AdminUser.countDocuments();
+                    if (adminCount === 0 && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+                        const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+                        await AdminUser.create({
+                            name: 'Super Admin',
+                            email: process.env.ADMIN_EMAIL.toLowerCase(),
+                            password: hashedPassword,
+                            role: 'SuperAdmin',
+                            permissions: { staff: true, finance: true, orders: true, smm: true, content: true, clients: true, commerce: true, helpdesk: true }
+                        });
+                        console.log("✅ First SuperAdmin seeded successfully:", process.env.ADMIN_EMAIL);
+                    }
+                }
+            } catch (err) {
+                console.error("❌ Admin Seeder Error:", err.message);
+            }
         })
         .catch(err => console.error("❌ DB Connection Error:", err.message));
 } else {
@@ -2831,6 +2909,29 @@ userSchema.pre('save', function (next) {
 });
 
 const User = mongoose.model('User', userSchema);
+
+// ==========================================
+// 🛡️ ADMIN USER SCHEMA (RBAC)
+// ==========================================
+const adminUserSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['SuperAdmin', 'SubAdmin'], default: 'SubAdmin' },
+    permissions: {
+        staff:    { type: Boolean, default: false },
+        finance:  { type: Boolean, default: false },
+        orders:   { type: Boolean, default: false },
+        smm:      { type: Boolean, default: false },
+        content:  { type: Boolean, default: false },
+        clients:  { type: Boolean, default: false },
+        commerce: { type: Boolean, default: false },
+        helpdesk: { type: Boolean, default: false },
+    },
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
+});
+const AdminUser = mongoose.model('AdminUser', adminUserSchema);
 // ==========================================
 // 💸 PAYOUT REQUEST SCHEMA (UPDATED)
 // ==========================================
@@ -4069,7 +4170,7 @@ const ticketSchema = new mongoose.Schema({
 });
 
 // Auto-generate a unique ticket number before first save
-ticketSchema.pre('save', function(next) {
+ticketSchema.pre('save', function (next) {
     if (!this.ticketNumber) {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let suffix = '';
@@ -4886,7 +4987,7 @@ app.post('/api/staff/download-id-card', async (req, res) => {
         const pdfBuffer = await renderHtmlToPdfBuffer(htmlContent);
 
         const safeCardType = String(cardType || 'Card').charAt(0).toUpperCase() + String(cardType || 'Card').slice(1);
-        
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=VibeSphere_${safeCardType}_ID.pdf`);
         res.setHeader('Content-Length', pdfBuffer.length);
@@ -4947,7 +5048,7 @@ app.post('/api/staff/request-document-approval', async (req, res) => {
 
 app.post('/api/admin/approve-document', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5003,7 +5104,7 @@ app.post('/api/admin/approve-document', checkAuth, async (req, res) => {
 
 app.post('/api/admin/deny-document', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5077,7 +5178,7 @@ app.get('/api/staff/my-document-approvals', async (req, res) => {
 
 app.get('/api/admin/document-approvals', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5114,7 +5215,7 @@ app.get('/api/admin/document-approvals', checkAuth, async (req, res) => {
 
 app.get('/api/admin/preview-document/:docType/:recordId', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5163,7 +5264,7 @@ app.get('/api/admin/preview-document/:docType/:recordId', checkAuth, async (req,
 
 app.get('/api/admin/staff/:staffId/download-attendance-report', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5185,7 +5286,7 @@ app.get('/api/admin/staff/:staffId/download-attendance-report', checkAuth, async
 
 app.get('/api/admin/staff/:staffId/download-payslip', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -5526,7 +5627,7 @@ app.get('/api/site-settings/banners', async (req, res) => {
 
 async function updateBannerSettingsHandler(req, res) {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -6534,19 +6635,19 @@ app.get('/api/platforms', async (req, res) => {
 // POST a new SMM platform (Admin authenticated)
 app.post('/api/platforms', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const { name, logoUrl } = req.body;
         if (!name || !logoUrl) {
             return res.status(400).json({ success: false, error: 'Name and logoUrl are required.' });
         }
-        
+
         const existing = await SmmPlatform.findOne({ name: new RegExp(`^${escapeRegex(name)}$`, 'i') });
         if (existing) {
             return res.status(400).json({ success: false, error: 'Platform name already exists.' });
         }
-        
+
         const newPlatform = new SmmPlatform({ name, logoUrl });
         await newPlatform.save();
         res.json({ success: true, platform: newPlatform });
@@ -6558,17 +6659,17 @@ app.post('/api/platforms', checkAuth, async (req, res) => {
 // PUT (update) SMM platform (Admin authenticated)
 app.put('/api/platforms/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const { id } = req.params;
         const { name, logoUrl } = req.body;
-        
+
         const platform = await SmmPlatform.findById(id);
         if (!platform) {
             return res.status(404).json({ success: false, error: 'Platform not found.' });
         }
-        
+
         if (name) {
             const dupe = await SmmPlatform.findOne({ _id: { $ne: id }, name: new RegExp(`^${escapeRegex(name)}$`, 'i') });
             if (dupe) {
@@ -6579,7 +6680,7 @@ app.put('/api/platforms/:id', checkAuth, async (req, res) => {
         if (logoUrl) {
             platform.logoUrl = logoUrl;
         }
-        
+
         await platform.save();
         res.json({ success: true, platform });
     } catch (e) {
@@ -6590,7 +6691,7 @@ app.put('/api/platforms/:id', checkAuth, async (req, res) => {
 // DELETE SMM platform (Admin authenticated)
 app.delete('/api/platforms/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const { id } = req.params;
@@ -6610,7 +6711,7 @@ app.delete('/api/platforms/:id', checkAuth, async (req, res) => {
 
 app.get('/api/admin/smm/options', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -6689,7 +6790,7 @@ app.get('/api/checkout/service-details', async (req, res) => {
 // POST/UPSERT SMM rate (Admin authenticated)
 app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         console.log("Incoming Variants Payload:", JSON.stringify(req.body.variants, null, 2));
@@ -6834,7 +6935,7 @@ app.post('/api/admin/smm/rates', checkAuth, async (req, res) => {
 // DELETE SMM rate (Admin authenticated)
 app.delete('/api/admin/smm/rates/:serviceId', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const { serviceId } = req.params;
@@ -7502,7 +7603,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         const numericAmount = Number(amount);
         const numericBaseAmount = Number(baseAmount);
         const normalizedCouponCode = normalizeCouponCode(couponCode);
-        
+
         let globalVariant = null;
 
         // Progressive Detail Collection Extraction
@@ -7635,7 +7736,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         // 🚀 SMART ROUTING DECISION ENGINE
         const activeGateways = await PaymentGateway.find({ isActive: true }).lean();
         const selectedGateway = activeGateways.find(g => finalPrice >= g.minOrder && finalPrice <= g.maxOrder);
-        
+
         if (!selectedGateway) {
             return res.status(400).json({ success: false, message: 'No payment gateway available for this amount.' });
         }
@@ -7650,7 +7751,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
                 const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
                 if (!selectedGateway.apiKey || !decryptedSecret) {
-                     return res.status(500).json({ success: false, error: 'Razorpay configuration corrupted.' });
+                    return res.status(500).json({ success: false, error: 'Razorpay configuration corrupted.' });
                 }
 
                 const Razorpay = require('razorpay');
@@ -7666,12 +7767,12 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 };
 
                 const razorpayOrder = await dynamicRazorpay.orders.create(options);
-                
-                return res.json({ 
-                    success: true, 
-                    provider: 'razorpay', 
-                    orderData: razorpayOrder, 
-                    apiKey: selectedGateway.apiKey, 
+
+                return res.json({
+                    success: true,
+                    provider: 'razorpay',
+                    orderData: razorpayOrder,
+                    apiKey: selectedGateway.apiKey,
                     internalOrderId: options.receipt,
                     customerName, customerEmail, customerPhone
                 });
@@ -7683,7 +7784,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 // const cleanSecret = decryptedSecret.trim();
 
                 // HARDCODE TEST KEY HERE
-                const cleanSecret = "TGp4%EMY8aKSitLO"; 
+                const cleanSecret = "TGp4%EMY8aKSitLO";
 
                 if (!selectedGateway.apiKey) {
                     return res.status(500).json({ success: false, error: 'Paytm config corrupted.' });
@@ -7742,15 +7843,15 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     return res.status(400).json({ success: false, error: 'Paytm gateway rejected the request.' });
                 }
 
-                return res.json({ 
-                    success: true, 
-                    provider: 'paytm', 
-                    transactionData: { 
-                        txnToken: paytmData.body.txnToken, 
-                        orderId: internalOrderId, 
-                        amount: paytmAmount 
-                    }, 
-                    apiKey: cleanMid, 
+                return res.json({
+                    success: true,
+                    provider: 'paytm',
+                    transactionData: {
+                        txnToken: paytmData.body.txnToken,
+                        orderId: internalOrderId,
+                        amount: paytmAmount
+                    },
+                    apiKey: cleanMid,
                     internalOrderId: internalOrderId
                 });
             }
@@ -7817,10 +7918,10 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 const hashString = `${payuKey}|${txnid}|${payuAmount}|${productinfo}|${firstname}|${email}|||||||||||${payuSalt}`;
                 const hash = crypto.createHash('sha512').update(hashString).digest('hex');
 
-                return res.json({ 
-                    success: true, 
-                    provider: 'payu', 
-                    transactionData: { 
+                return res.json({
+                    success: true,
+                    provider: 'payu',
+                    transactionData: {
                         key: payuKey,
                         txnid: txnid,
                         amount: payuAmount,
@@ -7830,8 +7931,8 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                         surl: surl,
                         furl: furl,
                         hash: hash
-                    }, 
-                    apiKey: payuKey, 
+                    },
+                    apiKey: payuKey,
                     internalOrderId: txnid
                 });
             }
@@ -7848,7 +7949,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
 app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     let { provider, internalOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
-    
+
     let activeProvider = req.body.provider || req.query.provider;
     if (!activeProvider && req.body.mihpayid && req.body.txnid) {
         activeProvider = 'payu';
@@ -7858,7 +7959,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     if (activeProvider === 'payu' && !internalOrderId) {
         internalOrderId = req.body.txnid;
     }
-    
+
     console.log("--- VERIFY PAYMENT DEBUG ---");
     console.log("Provider detected:", activeProvider);
     console.log("Request Body:", req.body);
@@ -7872,7 +7973,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             if (!razorpayConfig) {
                 return res.status(400).json({ success: false, error: 'Razorpay configuration not found.' });
             }
-            
+
             const decryptedSecret = decryptGatewaySecret(razorpayConfig.apiSecret);
             if (!decryptedSecret) {
                 return res.status(500).json({ success: false, error: 'Razorpay configuration is corrupted.' });
@@ -7893,24 +7994,24 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             if (!paytmConfig) {
                 return res.status(400).json({ success: false, error: 'Paytm configuration not found.' });
             }
-            
+
             const decryptedSecret = decryptGatewaySecret(paytmConfig.apiSecret);
             if (!decryptedSecret) {
                 return res.status(500).json({ success: false, error: 'Paytm configuration is corrupted.' });
             }
-            
+
             const paytmResponse = req.body.paytmResponse || {};
             const checksumHash = paytmResponse.CHECKSUMHASH;
-            
+
             if (!checksumHash) {
                 return res.status(400).json({ success: false, error: 'Missing Paytm checksum.' });
             }
-            
+
             delete paytmResponse.CHECKSUMHASH;
-            
+
             const PaytmChecksum = require('paytmchecksum');
             const isValid = PaytmChecksum.verifySignature(paytmResponse, decryptedSecret, checksumHash);
-            
+
             if (isValid && paytmResponse.STATUS === 'TXN_SUCCESS') {
                 isSignatureValid = true;
             } else {
@@ -7924,18 +8025,18 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             if (!payuConfig) {
                 return res.status(400).send('PayU configuration not found.');
             }
-            
+
             const decryptedSalt = decryptGatewaySecret(payuConfig.apiSecret);
             if (!decryptedSalt) {
                 return res.status(500).send('PayU configuration is corrupted.');
             }
-            
+
             const { status, txnid, amount, productinfo, firstname, email, hash, key } = req.body;
-            
+
             // Reverse Hash Formula: salt|status|||||||||||email|firstname|productinfo|amount|txnid|key
             const reverseHashString = `${decryptedSalt}|${status}|||||||||||${email}|${firstname}|${productinfo}|${amount}|${txnid}|${key}`;
             const generatedHash = crypto.createHash('sha512').update(reverseHashString).digest('hex');
-            
+
             console.log("PayU Received Hash:", hash);
             console.log("PayU Generated Reverse Hash:", generatedHash);
 
@@ -7946,7 +8047,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                     existingOrder.paymentStatus = 'Paid';
                     existingOrder.paymentId = req.body.mihpayid;
                     await existingOrder.save();
-                    
+
                     return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
                 } else {
                     return res.status(404).send('Pending order not found for this transaction.');
@@ -8008,7 +8109,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                 selectedQuality = selectedVariantName;
                 selectedSpeed = trimSmmText(targetVariant.speed);
                 selectedRefill = trimSmmText(targetVariant.refill);
-                
+
                 const pricing = getSmmVariantPricing(targetVariant);
                 selectedVariantBasePrice = pricing.basePrice;
                 selectedVariantDiscountPercent = pricing.discountPercent;
@@ -8171,21 +8272,49 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 });
 
 // Admin Auth
-app.post('/api/login', loginLimiter, (req, res) => {
-    const { password } = req.body;
-    if (password === CURRENT_ADMIN_PASSWORD) {
+app.post('/api/login', loginLimiter, async (req, res) => {
+    const { email, password } = req.body;
+    
+    // Legacy fallback for transition / seeding
+    if (!email && password === CURRENT_ADMIN_PASSWORD) {
         const token = jwt.sign({ role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '2h' });
-
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'Strict',
             maxAge: 2 * 60 * 60 * 1000 // 2 hours
         });
+        return res.json({ success: true });
+    }
+
+    try {
+        if (!email || !password) return res.json({ success: false, message: 'Email and password required' });
+        
+        const adminUser = await AdminUser.findOne({ email: email.toLowerCase(), isActive: true });
+        if (!adminUser) return res.json({ success: false, message: 'Invalid credentials' });
+
+        const isMatch = await bcrypt.compare(password, adminUser.password);
+        if (!isMatch) return res.json({ success: false, message: 'Invalid credentials' });
+
+        const token = jwt.sign({ 
+            role: adminUser.role,
+            adminId: adminUser._id,
+            name: adminUser.name,
+            email: adminUser.email,
+            permissions: adminUser.permissions
+        }, process.env.JWT_SECRET, { expiresIn: '12h' });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 12 * 60 * 60 * 1000 // 12 hours
+        });
 
         res.json({ success: true });
-    } else {
-        res.json({ success: false });
+    } catch (err) {
+        console.error("Admin login error:", err);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -8227,13 +8356,108 @@ app.get('/api/admin/me', (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role === 'Admin') {
-            res.json({ success: true, user: { role: 'Admin' } });
+        if (['Admin', 'SuperAdmin', 'SubAdmin'].includes(decoded.role)) {
+            res.json({ success: true, user: { 
+                role: decoded.role,
+                adminId: decoded.adminId,
+                name: decoded.name,
+                email: decoded.email,
+                permissions: decoded.permissions || {} 
+            } });
         } else {
             res.status(401).json({ success: false, message: "Role mismatch." });
         }
     } catch (err) {
         res.status(401).json({ success: false, message: "Token invalid or expired." });
+    }
+});
+
+// ==========================================
+// 🛡️ ADMIN MANAGEMENT APIs (SuperAdmin Only)
+// ==========================================
+
+app.get('/api/admin/admins', checkAuth, checkSuperAdmin, async (req, res) => {
+    try {
+        const admins = await AdminUser.find().select('-password').sort({ createdAt: -1 }).lean();
+        res.json({ success: true, admins });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/admin/admins', checkAuth, checkSuperAdmin, async (req, res) => {
+    try {
+        const { name, email, password, role, permissions } = req.body;
+        if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Missing required fields' });
+        
+        const existing = await AdminUser.findOne({ email: email.toLowerCase() });
+        if (existing) return res.status(400).json({ success: false, message: 'Email already exists' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newAdmin = new AdminUser({
+            name,
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            role: role || 'SubAdmin',
+            permissions: permissions || {}
+        });
+        
+        await newAdmin.save();
+        res.json({ success: true, message: 'Admin created successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.put('/api/admin/admins/:id', checkAuth, checkSuperAdmin, async (req, res) => {
+    try {
+        const { name, email, password, role, permissions, isActive } = req.body;
+        const adminToUpdate = await AdminUser.findById(req.params.id);
+        if (!adminToUpdate) return res.status(404).json({ success: false, message: 'Admin not found' });
+        
+        if (email && email.toLowerCase() !== adminToUpdate.email) {
+            const existing = await AdminUser.findOne({ email: email.toLowerCase() });
+            if (existing) return res.status(400).json({ success: false, message: 'Email already in use' });
+            adminToUpdate.email = email.toLowerCase();
+        }
+        
+        if (name) adminToUpdate.name = name;
+        if (role) adminToUpdate.role = role;
+        if (permissions) adminToUpdate.permissions = permissions;
+        if (isActive !== undefined) adminToUpdate.isActive = isActive;
+        if (password) adminToUpdate.password = await bcrypt.hash(password, 10);
+        
+        // Prevent disabling last SuperAdmin
+        if (isActive === false && adminToUpdate.role === 'SuperAdmin') {
+            const activeSupers = await AdminUser.countDocuments({ role: 'SuperAdmin', isActive: true });
+            if (activeSupers <= 1) return res.status(400).json({ success: false, message: 'Cannot disable the last SuperAdmin' });
+        }
+        
+        await adminToUpdate.save();
+        res.json({ success: true, message: 'Admin updated successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.delete('/api/admin/admins/:id', checkAuth, checkSuperAdmin, async (req, res) => {
+    try {
+        if (req.params.id === req.user.adminId) {
+            return res.status(403).json({ success: false, message: 'Self-deletion is strictly prohibited.' });
+        }
+        
+        const adminToDelete = await AdminUser.findById(req.params.id);
+        if (!adminToDelete) return res.status(404).json({ success: false, message: 'Admin not found' });
+        
+        if (adminToDelete.role === 'SuperAdmin') {
+            const activeSupers = await AdminUser.countDocuments({ role: 'SuperAdmin' });
+            if (activeSupers <= 1) return res.status(400).json({ success: false, message: 'Cannot delete the last SuperAdmin' });
+        }
+        
+        await AdminUser.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Admin deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -8437,7 +8661,7 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             }
 
             const requestedVariantId = orderDetails?.variantId != null ? orderDetails.variantId : req.body.variantId;
-            
+
             const incomingVariantId = Number(requestedVariantId);
             if (!incomingVariantId) return res.status(400).json({ success: false, error: "Variant ID is missing" });
 
@@ -8454,13 +8678,13 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
             selectedQuality = selectedVariantName;
             selectedSpeed = trimSmmText(targetVariant.speed);
             selectedRefill = trimSmmText(targetVariant.refill);
-            
+
             const pricing = getSmmVariantPricing(targetVariant);
             selectedVariantBasePrice = pricing.basePrice;
             selectedVariantDiscountPercent = pricing.discountPercent;
             selectedVariantDiscountAmount = pricing.discountAmount;
             selectedVariantEffectivePrice = pricing.effectivePrice;
-            
+
             let calculatedPrice = (targetVariant.price / 1000) * resolvedQuantity;
             if (targetVariant.discountPercent && targetVariant.discountPercent > 0) {
                 calculatedPrice = calculatedPrice * (1 - (targetVariant.discountPercent / 100));
@@ -8723,11 +8947,11 @@ app.post('/api/billing/apply-coupon', optionalAuth, async (req, res) => {
 // ==========================================
 app.get('/api/admin/gateways', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
         const gateways = await PaymentGateway.find().lean();
-        
+
         // Mask the apiSecret before sending to frontend
         const maskedGateways = gateways.map(gw => ({
             ...gw,
@@ -8743,16 +8967,16 @@ app.get('/api/admin/gateways', checkAuth, async (req, res) => {
 
 app.post('/api/admin/gateways', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
-        
+
         const { gatewayId, isActive, apiKey, apiSecret, minOrder, maxOrder } = req.body;
-        
+
         if (!gatewayId) return res.status(400).json({ success: false, error: 'gatewayId is required' });
 
         const existingGateway = await PaymentGateway.findOne({ gatewayId });
-        
+
         let encryptedSecret = existingGateway ? existingGateway.apiSecret : '';
         // If a new secret was provided and it's not the masked placeholder, encrypt it
         if (apiSecret && apiSecret !== 'sk_live_********') {
@@ -8780,7 +9004,7 @@ app.post('/api/admin/gateways', checkAuth, async (req, res) => {
 
 app.get('/api/admin/coupons', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -8797,7 +9021,7 @@ app.get('/api/admin/coupons', checkAuth, async (req, res) => {
 
 app.post('/api/admin/coupons', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -8871,7 +9095,7 @@ app.post('/api/admin/coupons', checkAuth, async (req, res) => {
 
 app.delete('/api/admin/coupons/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -8889,7 +9113,7 @@ app.delete('/api/admin/coupons/:id', checkAuth, async (req, res) => {
 
 app.put('/api/admin/coupons/:id/toggle', checkAuth, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
@@ -9211,7 +9435,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/admin/dashboard-summary', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -9242,7 +9466,7 @@ app.get('/api/admin/dashboard-summary', checkAuth, async (req, res) => {
 
 app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -9261,26 +9485,27 @@ app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
 
         const projection = 'name email role empId isOnline isMuted monthlyTarget joiningDate profilePhoto';
 
-        const approvedLeaves = await Leave.find({ status: 'Approved' })
-            .select('staffEmail dateFrom dateTo')
-            .lean();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
+
+        // ⚡ Optimized: only fetch leaves where today falls within the approved window
+        const approvedLeaves = await Leave.find({
+            status: 'Approved',
+            dateFrom: { $lte: todayEnd },
+            dateTo: { $gte: today }
+        })
+            .select('staffEmail dateFrom dateTo')
+            .lean();
 
         const leaveByEmail = new Map();
         approvedLeaves.forEach((leave) => {
-            const from = leave.dateFrom ? new Date(leave.dateFrom) : null;
-            const to = leave.dateTo ? new Date(leave.dateTo) : null;
-            if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return;
-            from.setHours(0, 0, 0, 0);
-            to.setHours(0, 0, 0, 0);
-            if (today >= from && today <= to) {
-                leaveByEmail.set(leave.staffEmail, {
-                    isOnLeave: true,
-                    dateFrom: leave.dateFrom,
-                    dateTo: leave.dateTo
-                });
-            }
+            leaveByEmail.set(leave.staffEmail, {
+                isOnLeave: true,
+                dateFrom: leave.dateFrom,
+                dateTo: leave.dateTo
+            });
         });
 
         const enrichStaff = (staffList) => staffList.map((staff) => {
@@ -9326,7 +9551,7 @@ app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
 
 app.get('/api/admin/staff-list', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -9513,7 +9738,7 @@ async function buildFinanceDashboardPayload({ year, month }) {
 
 app.get('/api/admin/finance-overview', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
         const payload = await buildFinanceDashboardPayload({ year: req.query.year, month: req.query.month });
@@ -9569,7 +9794,7 @@ app.get('/api/finance/stats', checkAuth, checkAdmin, async (req, res) => {
 
 app.get('/api/admin/attendance-log', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -9830,7 +10055,7 @@ People & Culture`,
 
 app.patch('/api/admin/staff/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10049,7 +10274,7 @@ app.delete('/api/admin/delete-task/:id', checkAuth, async (req, res) => {
 
 app.post('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10091,7 +10316,7 @@ app.post('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
 
 app.get('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10109,7 +10334,7 @@ app.get('/api/admin/bounty-tasks', checkAuth, async (req, res) => {
 
 app.patch('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10157,7 +10382,7 @@ app.patch('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
 
 app.patch('/api/admin/bounty-tasks/:id/revision', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10193,7 +10418,7 @@ app.patch('/api/admin/bounty-tasks/:id/revision', checkAuth, async (req, res) =>
 
 app.patch('/api/admin/bounty-tasks/:id/approve', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10235,7 +10460,7 @@ app.patch('/api/admin/bounty-tasks/:id/approve', checkAuth, async (req, res) => 
 
 app.delete('/api/admin/bounty-tasks/:id', checkAuth, async (req, res) => {
     try {
-        if (req.user?.role !== 'Admin') {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
             return res.status(403).json({ success: false, message: 'Admin access required.' });
         }
 
@@ -10263,7 +10488,7 @@ app.post('/api/client/create-ticket', async (req, res) => {
     try {
         const { email, name, subject, issue, orderId, category, subcategory, actionRequired, status, chatActive, isLiveChat, offlineQuery } = req.body;
         if (!subject || !issue) return res.status(400).json({ success: false, message: 'Subject and issue are required' });
-        
+
         let finalSubject = subject;
         if (typeof finalSubject === 'string' && finalSubject.startsWith('Offline Query')) {
             finalSubject = finalSubject.replace('Offline Query', 'Support Ticket');
@@ -11523,7 +11748,7 @@ app.post('/api/admin/clients/:id/wallet/adjust', checkAuth, async (req, res) => 
 app.patch('/api/admin/clients/:id/wallet/status', checkAuth, async (req, res) => {
     try {
         const { walletStatus } = req.body;
-        
+
         if (!['Active', 'Frozen', 'Hold'].includes(walletStatus)) {
             return res.status(400).json({ success: false, error: "Invalid wallet status. Must be 'Active', 'Frozen', or 'Hold'." });
         }
@@ -11668,7 +11893,7 @@ app.use((req, res, next) => {
 // ==========================================
 function startDripFeedWorker() {
     console.log("⏱️ Drip Feed worker initialized. Checking for scheduled runs every 2 minutes.");
-    
+
     const checkAndProcess = async () => {
         try {
             const now = new Date();
@@ -11682,14 +11907,14 @@ function startDripFeedWorker() {
 
             if (orders.length > 0) {
                 console.log(`⏱️ Drip Feed Worker: Found ${orders.length} orders to process.`);
-                
+
                 for (const order of orders) {
                     try {
                         // Simulate or trigger delivery action for this run
                         order.remainingRuns -= 1;
-                        
+
                         console.log(`⚡ Drip Feed Run: Processing sub-run for order ${order.orderId}. Quantity: ${order.quantityPerRun}. Runs left: ${order.remainingRuns}`);
-                        
+
                         if (order.remainingRuns > 0) {
                             // Schedule next run
                             const intervalMs = order.interval * 60 * 1000;
@@ -11704,7 +11929,7 @@ function startDripFeedWorker() {
                             order.status = 'Completed';
                             console.log(`🏁 Order ${order.orderId} has completed all drip feed runs!`);
                         }
-                        
+
                         await order.save();
                     } catch (orderErr) {
                         console.error(`❌ Drip Feed Worker: Error processing order ${order.orderId}:`, orderErr);
@@ -11718,7 +11943,7 @@ function startDripFeedWorker() {
 
     // Run once immediately on connection
     checkAndProcess();
-    
+
     // Then run every 2 minutes
     setInterval(checkAndProcess, 2 * 60 * 1000);
 }
