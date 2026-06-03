@@ -3546,7 +3546,7 @@
                         await new Promise((resolve, reject) => {
                             if (window.Paytm && window.Paytm.CheckoutJS) return resolve();
                             const script = document.createElement('script');
-                            script.src = `https://securegw-stage.paytm.in/merchantpgpui/checkoutjs/merchants/${orderData.apiKey}.js`;
+                            script.src = `https://securegw.paytm.in/merchantpgpui/checkoutjs/merchants/${orderData.apiKey}.js`;
                             script.onload = resolve;
                             script.onerror = reject;
                             document.head.appendChild(script);

@@ -4484,12 +4484,13 @@ const settingsSchema = new mongoose.Schema({
 });
 const AppSettings = mongoose.model('AppSettings', settingsSchema);
 
-// Global Site Settings (announcement banner)
+// Global Site Settings (announcement banner & compliance)
 const siteSettingsSchema = new mongoose.Schema({
     normalBannerText: { type: String, default: '' },
     isNormalActive: { type: Boolean, default: false },
     smmBannerText: { type: String, default: '' },
-    isSmmActive: { type: Boolean, default: false }
+    isSmmActive: { type: Boolean, default: false },
+    isSmmEnabled: { type: Boolean, default: true }
 }, { timestamps: true });
 const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);
 
@@ -4531,7 +4532,8 @@ async function getOrCreateSiteSettings() {
                 normalBannerText: '',
                 isNormalActive: false,
                 smmBannerText: '',
-                isSmmActive: false
+                isSmmActive: false,
+                isSmmEnabled: true
             }
         },
         {
@@ -5652,6 +5654,35 @@ async function updateBannerSettingsHandler(req, res) {
 
 app.post('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
 app.put('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
+
+// 1c. Compliance Mode / Feature Flags
+app.get('/api/site-settings/compliance', async (req, res) => {
+    try {
+        const settings = await getOrCreateSiteSettings();
+        res.json({ success: true, isSmmEnabled: settings.isSmmEnabled !== false });
+    } catch (e) {
+        console.error('Error in GET /api/site-settings/compliance:', e);
+        res.status(500).json({ success: false, error: 'Failed to load compliance settings.' });
+    }
+});
+
+app.put('/api/admin/site-settings/compliance', checkAuth, async (req, res) => {
+    try {
+        if (!['Admin', 'SuperAdmin', 'SubAdmin'].includes(req.user?.role)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
+        }
+        const { isSmmEnabled } = req.body;
+        const settings = await SiteSettings.findOneAndUpdate(
+            {},
+            { $set: { isSmmEnabled: Boolean(isSmmEnabled) } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        res.json({ success: true, isSmmEnabled: settings.isSmmEnabled });
+    } catch (e) {
+        console.error('Error in PUT /api/admin/site-settings/compliance:', e);
+        res.status(500).json({ success: false, error: 'Failed to save compliance settings.' });
+    }
+});
 
 // ==========================================
 // 📜 LEGAL PAGES CMS APIs
@@ -7815,19 +7846,19 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             }
 
             case 'paytm': {
-                // TEMPORARY DEBUGGING: Comment out DB decryption
-                // const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
-                // const cleanSecret = decryptedSecret.trim();
+                if (!selectedGateway || !selectedGateway.apiKey || !selectedGateway.apiSecret) {
+                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Please check Admin Panel.' });
+                }
 
-                // HARDCODE TEST KEY HERE
-                const cleanSecret = "TGp4%EMY8aKSitLO";
+                const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
+                const cleanSecret = decryptedSecret ? decryptedSecret.trim() : '';
+                const cleanMid = selectedGateway.apiKey.trim();
 
-                if (!selectedGateway.apiKey) {
-                    return res.status(500).json({ success: false, error: 'Paytm config corrupted.' });
+                if (!cleanMid || !cleanSecret) {
+                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid keys.' });
                 }
 
                 const paytmAmount = String(Number(finalPrice).toFixed(2));
-                const cleanMid = selectedGateway.apiKey.trim();
                 const internalOrderId = "ORDER_" + Date.now();
                 const paytmchecksum = require('paytmchecksum');
 
@@ -7835,10 +7866,12 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 paytmParams.body = {
                     "requestType": "Payment",
                     "mid": cleanMid,
-                    "websiteName": "WEBSTAGING",
+                    "websiteName": "DEFAULT",
                     "industryTypeId": "Retail", // ADDED FROM DASHBOARD
                     "orderId": internalOrderId,
-                    "callbackUrl": "http://localhost:3000/api/verify-payment",
+                    "callbackUrl": process.env.NODE_ENV === 'production' 
+                        ? `${process.env.APP_URL || 'https://vibesphere.in'}/api/verify-payment` 
+                        : "http://localhost:3000/api/verify-payment",
                     "txnAmount": {
                         "value": paytmAmount,
                         "currency": "INR"
@@ -7860,12 +7893,13 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 // --- DEBUG LOGS ---
                 console.log("----- PAYTM DEBUG -----");
                 console.log("MID:", cleanMid);
+                console.log("Decrypted Secret Length:", cleanSecret.length);
                 console.log("POST DATA:", post_data);
                 console.log("-----------------------");
 
                 // USING AXIOS TO AVOID 'fetch is not a function' IN OLDER NODE VERSIONS
                 const axios = require('axios');
-                const paytmRes = await axios.post(`https://securegw-stage.paytm.in/theia/api/v1/initiateTransaction?mid=${cleanMid}&orderId=${internalOrderId}`, post_data, {
+                const paytmRes = await axios.post(`https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${cleanMid}&orderId=${internalOrderId}`, post_data, {
                     headers: {
                         'Content-Type': 'application/json'
                     }

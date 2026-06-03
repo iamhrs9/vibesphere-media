@@ -70,8 +70,8 @@
                 <li><a href="/services.html">Services</a></li>
                 <li><a href="/packages.html" class="active">Packages</a></li>
                 <li><a href="/contact.html">Contact</a></li>
-                <!-- <li><a href="/blog.html">Blog</a></li> -->
-                <li class="smm-mobile-li" style="display: none !important;"><a href="/vibesmm" class="btn-smm"><i class="ri-rocket-line"></i> Boost Socials</a></li>
+                <li><a href="/blog.html">Blog</a></li>
+                <li class="smm-mobile-li"><a href="/vibesmm" class="btn-smm"><i class="ri-rocket-line"></i> Boost Socials</a></li>
             </ul>
 
             <div class="nav-actions">
@@ -184,8 +184,8 @@
         </div>
         <div style="display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-bottom: 25px;">
             <a href="/" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Home</a>
-            <!-- <a href="/blog.html"
-                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a> -->
+            <a href="/blog.html"
+                style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Blog</a>
             <a href="/about" style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">About</a>
                         <a href="privacy-policy.html"
                 style="color: #555; text-decoration: none; font-weight: 500; transition: 0.3s;">Privacy Policy</a>
@@ -260,6 +260,10 @@
                     fetch('/api/smm/rates').catch(() => null)
                 ]);
 
+                if (!servicesRes.ok || !packagesRes.ok) {
+                    throw new Error(`API Error: Services: ${servicesRes.status}, Packages: ${packagesRes.status}`);
+                }
+
                 const servicesData = await servicesRes.json();
                 const packagesData = await packagesRes.json();
                 let smmRates = [];
@@ -283,48 +287,35 @@
                 }
 
                 if (servicesData.success) {
-                    allServices = servicesData.services;
-                    if (smmRates.length > 0) {
-                        /* COMPLIANCE UPDATE: Temporarily disable SMM boost filter
-                        allServices.push({
-                            _id: 'smm-services',
-                            title: 'Social Boost',
-                            isActive: true
-                        });
-                        */
-                    }
+                    // Only keep standard services (exclude any SMM/Social services)
+                    allServices = servicesData.services.filter(s => {
+                        const t = (s.title || '').toLowerCase();
+                        return !t.includes('smm') && !t.includes('social boost');
+                    });
                     renderFilters(allServices);
                 }
 
                 if (packagesData.success) {
-                    // COMPLIANCE UPDATE: Only load Web Development packages
+                    // 1. Permanently exclude any SMM/Social Boost packages from the grid
                     allPackages = packagesData.packages.filter(pkg => {
                         const t = (pkg.title || '').toLowerCase();
-                        return t.includes('web') || t.includes('e-commerce') || t.includes('ecommerce') || t.includes('portfolio') || t.includes('business');
+                        const isSmmRelated = pkg.isSmm || 
+                                             t.includes('smm') || 
+                                             t.includes('social boost') || 
+                                             t.includes('followers') || 
+                                             t.includes('likes');
+                        return !isSmmRelated;
                     });
+
+                    // 2. Compliance Mode Check
+                    if (window.isSmmEnabled === false) {
+                        allPackages = allPackages.filter(pkg => {
+                            const t = (pkg.title || '').toLowerCase();
+                            return t.includes('web') || t.includes('e-commerce') || t.includes('ecommerce') || t.includes('portfolio') || t.includes('business');
+                        });
+                    }
                     
                     currentCountryCode = packagesData.countryCode || 'IN';
-
-                    if (smmRates.length > 0) {
-                        /* COMPLIANCE UPDATE: Temporarily disable SMM packages
-                        const smmPackages = smmRates.map(rate => ({
-                            _id: `smm_${rate.serviceId}`,
-                            title: [rate.platform, rate.category].filter(Boolean).join(' '),
-                            description: rate.description || `Boost your ${rate.platform} presence instantly. Professional, fast delivery.`,
-                            geo: {
-                                price: getSmmStartingPrice(rate),
-                                currency: 'INR'
-                            },
-                            pricing: {
-                                isOneTime: true
-                            },
-                            serviceId: 'smm-services',
-                            isSmm: true,
-                            smmServiceId: rate.serviceId
-                        }));
-                        allPackages = [...allPackages, ...smmPackages];
-                        */
-                    }
 
                     renderPackages(allPackages);
                 } else {
@@ -516,8 +507,7 @@
             filterContainer.innerHTML = `<button class="filter-btn active" data-id="all">All Packages</button>`;
 
             services.forEach(service => {
-                // COMPLIANCE UPDATE: Hide non-web services
-                if (service.isActive && service.title.toLowerCase().includes('web')) {
+                if (service.isActive) {
                     const btn = document.createElement('button');
                     btn.className = 'filter-btn';
                     btn.setAttribute('data-id', service._id);
@@ -585,7 +575,7 @@
 
                 if (pkg.isSmm) {
                     return `
-                    <!-- 
+
                     <article class="pricing-card popular">
                         <div class="pricing-card__badge">Social Boost</div>
                         <div class="pricing-card__header">
@@ -610,7 +600,7 @@
                             </a>
                         </div>
                     </article>
-                    -->
+
                     `;
                 }
 
@@ -672,6 +662,12 @@
                     </div>`;
             }
         }
+
+        document.addEventListener('complianceLoaded', (e) => {
+            if (allPackages && allPackages.length > 0) {
+                initDynamicPackages(); // Re-render if compliance changes late
+            }
+        });
     </script>
     <script src="/js/utils/auth.js"></script>
     <script src="/js/utils/global-ui.js"></script>

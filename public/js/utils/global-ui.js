@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 4. Initialize Dropdown
     VibeUI.initAccountDropdown();
 
+    // 5. Initialize Compliance Mode
+    VibeUI.initComplianceMode();
+
     // 5. Handle Mobile Logout Click
     document.addEventListener('click', (e) => {
         const mobileLogout = e.target.closest('#mobileLogoutBtn');
@@ -396,6 +399,29 @@ const VibeUI = {
 
         // Sync wallet navigation pill
         VibeUI.updateNavWallet();
+    },
+    initComplianceMode: async () => {
+        try {
+            const res = await fetch('/api/site-settings/compliance');
+            if (res.ok) {
+                const data = await res.json();
+                window.isSmmEnabled = data.isSmmEnabled !== false; // Default to true
+                
+                // Globally hide the "Boost Socials" button in Navbar
+                if (!window.isSmmEnabled) {
+                    const smmLi = document.querySelectorAll('.smm-mobile-li');
+                    smmLi.forEach(li => {
+                        li.style.setProperty('display', 'none', 'important');
+                    });
+                }
+                
+                // Dispatch event for local page handling (e.g., packages.html)
+                document.dispatchEvent(new CustomEvent('complianceLoaded', { detail: { isSmmEnabled: window.isSmmEnabled } }));
+            }
+        } catch (e) {
+            console.error('Failed to fetch compliance settings', e);
+            window.isSmmEnabled = true; // Fallback
+        }
     },
     updateNavWallet: async () => {
         const user = VibeAuth.getUser();
