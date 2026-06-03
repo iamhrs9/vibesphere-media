@@ -4493,6 +4493,13 @@ const siteSettingsSchema = new mongoose.Schema({
 }, { timestamps: true });
 const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);
 
+// Legal Pages CMS Schema
+const legalPageSchema = new mongoose.Schema({
+    pageSlug: { type: String, required: true, unique: true },
+    content: { type: String, default: '' },
+}, { timestamps: true });
+const LegalPage = mongoose.models.LegalPage || mongoose.model('LegalPage', legalPageSchema);
+
 function normalizeBannerText(value) {
     return String(value ?? '');
 }
@@ -5645,6 +5652,35 @@ async function updateBannerSettingsHandler(req, res) {
 
 app.post('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
 app.put('/api/admin/site-settings/banners', checkAuth, updateBannerSettingsHandler);
+
+// ==========================================
+// 📜 LEGAL PAGES CMS APIs
+// ==========================================
+app.get('/api/legal/:slug', async (req, res) => {
+    try {
+        const page = await LegalPage.findOne({ pageSlug: req.params.slug });
+        res.json({ success: true, content: page ? page.content : '' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to fetch legal page' });
+    }
+});
+
+app.post('/api/admin/legal/:slug', checkAuth, checkSuperAdmin, async (req, res) => {
+    try {
+        const { content } = req.body;
+        let page = await LegalPage.findOne({ pageSlug: req.params.slug });
+        if (page) {
+            page.content = content || '';
+            await page.save();
+        } else {
+            page = new LegalPage({ pageSlug: req.params.slug, content: content || '' });
+            await page.save();
+        }
+        res.json({ success: true, message: 'Legal page saved successfully', page });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to save legal page' });
+    }
+});
 
 // 2. Fetch Chat History (Pichle 100 messages)
 app.get('/api/chat/history', async (req, res) => {

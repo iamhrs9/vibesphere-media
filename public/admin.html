@@ -1309,6 +1309,16 @@
             </button>
 
             <div class="sidebar-group-label">Content &amp; Knowledge</div>
+            <button class="sidebar-link" data-label="Legal Pages"
+                onclick="navTo('legal-pages-section')">
+                <span class="nav-icon"><svg viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <path d="M14 2v6h6"></path>
+                        <path d="M16 13H8"></path>
+                        <path d="M16 17H8"></path>
+                        <path d="M10 9H8"></path>
+                    </svg></span><span class="nav-label"> Legal Pages</span>
+            </button>
             <button class="sidebar-link" data-label="General Reviews" onclick="navTo('reviews', this);">
                 <span class="nav-icon"><svg viewBox="0 0 24 24">
                         <path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01Z">
@@ -1556,6 +1566,7 @@
 
             <div id="clients-section" class="section"></div>
             <div id="banner-management-section" class="section"></div>
+            <div id="legal-pages-section" class="section"></div>
             <script src="/js/NotificationManager.js"></script>
             <script src="/socket.io/socket.io.js"></script>
             <script>
@@ -1857,6 +1868,7 @@
                         'smm-rates-section': 'SMM Rate Manager',
                         'coupons-section': 'Coupon Manager',
                         'smm-orders-section': 'SMM Orders',
+                        'legal-pages-section': 'Legal Pages Management',
                         'banner-management-section': 'Banner Management'
                     };
                     updateTopbarStatus(labels[tabName] || 'Admin Workspace');
@@ -1881,6 +1893,13 @@
                     if (tabName === 'chat-section') fetchAdminChat();
                     if (tabName === 'smm-rates-section') fetchAdminSmmRates();
                     if (tabName === 'coupons-section') fetchCoupons?.();
+                    if (tabName === 'legal-pages-section') {
+                        if (typeof window.initLegalPagesSection === 'function') {
+                            window.initLegalPagesSection();
+                        } else if (typeof window.fetchLegalPages === 'function') {
+                            window.fetchLegalPages();
+                        }
+                    }
                     if (tabName === 'banner-management-section') fetchBannerSettings?.();
                 }
 
@@ -1948,7 +1967,7 @@
                     if (!perms.orders) hideLabels.push('Orders', 'SMM Orders');
                     if (!perms.commerce) hideLabels.push('Packages', 'Services', 'Coupons');
                     if (!perms.smm) hideLabels.push('SMM Rates');
-                    if (!perms.content) hideLabels.push('Write Blog', 'Resources', 'General Reviews', 'Pkg Reviews', 'Banner Management', 'Careers', 'Deliver Project');
+                    if (!perms.content) hideLabels.push('Legal Pages', 'Write Blog', 'Resources', 'General Reviews', 'Pkg Reviews', 'Banner Management', 'Careers', 'Deliver Project');
                     if (!perms.clients) hideLabels.push('Clients', 'Meetings');
                     if (!perms.helpdesk) hideLabels.push('Helpdesk', 'Staff Tickets');
 
@@ -2264,6 +2283,7 @@
             <script src="/admin/sections/smm-rates-section.js?v=20260529-4"></script>
             <script src="/admin/sections/coupons-section.js?v=20260529-2"></script>
             <script src="/admin/sections/banner-management-section.js?v=20260602-1"></script>
+            <script src="/admin/sections/legal-management-section.js"></script>
             <script src="/admin/sections/payment-gateways-section.js"></script>
             <script>
                 window.mountAdminTeamChatSection?.();
@@ -2276,6 +2296,7 @@
                 window.mountAdminSmmRatesSection?.();
                 window.mountAdminCouponSection?.();
                 window.mountAdminBannerManagementSection?.();
+                window.initLegalPagesSection?.();
                 window.mountAdminPaymentGatewaysSection?.();
             </script>
             <!-- END ADMIN SECTION MODULES -->
