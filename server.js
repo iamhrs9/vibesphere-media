@@ -7822,15 +7822,17 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     return res.status(400).json({ success: false, error: "Razorpay requires a minimum transaction amount of ₹1.00. Please increase your cart value." });
                 }
 
-                const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
-                if (!selectedGateway.apiKey || !decryptedSecret) {
-                    return res.status(500).json({ success: false, error: 'Razorpay configuration corrupted.' });
+                const envKeyId = process.env.RAZORPAY_KEY_ID;
+                const envKeySecret = process.env.RAZORPAY_KEY_SECRET;
+
+                if (!envKeyId || !envKeySecret) {
+                    return res.status(500).json({ success: false, error: 'Razorpay environment credentials missing.' });
                 }
 
                 const Razorpay = require('razorpay');
                 const dynamicRazorpay = new Razorpay({
-                    key_id: selectedGateway.apiKey,
-                    key_secret: decryptedSecret
+                    key_id: envKeyId,
+                    key_secret: envKeySecret
                 });
 
                 const options = {
@@ -7845,27 +7847,31 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     success: true,
                     provider: 'razorpay',
                     orderData: razorpayOrder,
-                    apiKey: selectedGateway.apiKey,
+                    apiKey: envKeyId,
                     internalOrderId: options.receipt,
                     customerName, customerEmail, customerPhone
                 });
             }
 
             case 'paytm': {
-                if (!selectedGateway || !selectedGateway.apiKey || !selectedGateway.apiSecret) {
+                if (!selectedGateway) {
                     return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Please check Admin Panel.' });
                 }
 
-                console.log("Raw DB Secret Length:", selectedGateway.apiSecret.length);
-                const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
-                const cleanSecret = decryptedSecret ? decryptedSecret.trim() : '';
-                console.log("Clean Secret Length:", cleanSecret.length);
-                const cleanMid = selectedGateway.apiKey.trim();
+                const envMid = process.env.PAYTM_MID;
+                const envSecret = process.env.PAYTM_MERCHANT_KEY;
 
-                // Paytm Merchant Key MUST be exactly 16 characters. If it's not, decryption failed or wrong key was saved.
-                if (!cleanMid || !cleanSecret || cleanSecret.length !== 16) {
-                    console.error("Paytm Decryption Error or Invalid Key. Length:", cleanSecret.length);
-                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid keys or Decryption mismatch. Please re-enter keys in Admin Panel.' });
+                if (!envMid || !envSecret) {
+                    return res.status(500).json({ success: false, error: 'Paytm environment credentials missing.' });
+                }
+
+                const cleanSecret = envSecret.trim();
+                const cleanMid = envMid.trim();
+
+                // Paytm Merchant Key MUST be exactly 16 characters.
+                if (cleanSecret.length !== 16) {
+                    console.error("Paytm Invalid Environment Key. Length:", cleanSecret.length);
+                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid Paytm Merchant Key length in environment.' });
                 }
 
                 const paytmAmount = String(Number(finalPrice).toFixed(2));
@@ -7937,13 +7943,19 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             }
 
             case 'payu': {
-                const decryptedSalt = decryptGatewaySecret(selectedGateway.apiSecret);
-                if (!selectedGateway.apiKey || !decryptedSalt) {
-                    return res.status(500).json({ success: false, error: 'PayU configuration corrupted.' });
+                if (!selectedGateway) {
+                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Please check Admin Panel.' });
                 }
 
-                const payuKey = selectedGateway.apiKey.trim();
-                const payuSalt = decryptedSalt.trim();
+                const envPayuKey = process.env.PAYU_MERCHANT_KEY;
+                const envPayuSalt = process.env.PAYU_SALT;
+
+                if (!envPayuKey || !envPayuSalt) {
+                    return res.status(500).json({ success: false, error: 'PayU environment credentials missing.' });
+                }
+
+                const payuKey = envPayuKey.trim();
+                const payuSalt = envPayuSalt.trim();
                 const txnid = "txnid_" + Date.now();
                 const payuAmount = String(Number(finalPrice).toFixed(2));
                 const productinfo = "VibeSphere Services";
@@ -8049,18 +8061,18 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
     switch (activeProvider) {
         case 'razorpay': {
-            const razorpayConfig = await PaymentGateway.findOne({ gatewayId: 'razorpay' });
+            const razorpayConfig = await PaymentGateway.findOne({ gatewayId: 'razorpay', isActive: true });
             if (!razorpayConfig) {
-                return res.status(400).json({ success: false, error: 'Razorpay configuration not found.' });
+                return res.status(400).json({ success: false, error: 'Razorpay gateway is disabled or not found.' });
             }
 
-            const decryptedSecret = decryptGatewaySecret(razorpayConfig.apiSecret);
-            if (!decryptedSecret) {
-                return res.status(500).json({ success: false, error: 'Razorpay configuration is corrupted.' });
+            const envKeySecret = process.env.RAZORPAY_KEY_SECRET;
+            if (!envKeySecret) {
+                return res.status(500).json({ success: false, error: 'Razorpay environment secret missing.' });
             }
 
             const body = razorpay_order_id + "|" + razorpay_payment_id;
-            const expectedSignature = crypto.createHmac('sha256', decryptedSecret)
+            const expectedSignature = crypto.createHmac('sha256', envKeySecret)
                 .update(body.toString()).digest('hex');
 
             if (expectedSignature === razorpay_signature) {
@@ -8070,15 +8082,16 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         }
 
         case 'paytm': {
-            const paytmConfig = await PaymentGateway.findOne({ gatewayId: 'paytm' });
+            const paytmConfig = await PaymentGateway.findOne({ gatewayId: 'paytm', isActive: true });
             if (!paytmConfig) {
-                return res.status(400).json({ success: false, error: 'Paytm configuration not found.' });
+                return res.status(400).json({ success: false, error: 'Paytm gateway is disabled or not found.' });
             }
 
-            const decryptedSecret = decryptGatewaySecret(paytmConfig.apiSecret);
-            if (!decryptedSecret) {
-                return res.status(500).json({ success: false, error: 'Paytm configuration is corrupted.' });
+            const envSecret = process.env.PAYTM_MERCHANT_KEY;
+            if (!envSecret) {
+                return res.status(500).json({ success: false, error: 'Paytm environment secret missing.' });
             }
+            const cleanSecret = envSecret.trim();
 
             const paytmResponse = req.body.paytmResponse || {};
             const checksumHash = paytmResponse.CHECKSUMHASH;
@@ -8090,7 +8103,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             delete paytmResponse.CHECKSUMHASH;
 
             const PaytmChecksum = require('paytmchecksum');
-            const isValid = PaytmChecksum.verifySignature(paytmResponse, decryptedSecret, checksumHash);
+            const isValid = PaytmChecksum.verifySignature(paytmResponse, cleanSecret, checksumHash);
 
             if (isValid && paytmResponse.STATUS === 'TXN_SUCCESS') {
                 isSignatureValid = true;
@@ -8101,15 +8114,16 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         }
 
         case 'payu': {
-            const payuConfig = await PaymentGateway.findOne({ gatewayId: 'payu' });
+            const payuConfig = await PaymentGateway.findOne({ gatewayId: 'payu', isActive: true });
             if (!payuConfig) {
-                return res.status(400).send('PayU configuration not found.');
+                return res.status(400).send('PayU gateway is disabled or not found.');
             }
 
-            const decryptedSalt = decryptGatewaySecret(payuConfig.apiSecret);
-            if (!decryptedSalt) {
-                return res.status(500).send('PayU configuration is corrupted.');
+            const envPayuSalt = process.env.PAYU_SALT;
+            if (!envPayuSalt) {
+                return res.status(500).send('PayU environment salt missing.');
             }
+            const decryptedSalt = envPayuSalt.trim();
 
             const { status, txnid, amount, productinfo, firstname, email, hash, key } = req.body;
 
@@ -9051,31 +9065,21 @@ app.post('/api/admin/gateways', checkAuth, async (req, res) => {
             return res.status(403).json({ success: false, error: 'Unauthorized admin access.' });
         }
 
-        const { gatewayId, isActive, apiKey, apiSecret, minOrder, maxOrder } = req.body;
+        const { gatewayId, isActive, minOrder, maxOrder } = req.body;
 
         if (!gatewayId) return res.status(400).json({ success: false, error: 'gatewayId is required' });
-
-        const existingGateway = await PaymentGateway.findOne({ gatewayId });
-
-        let encryptedSecret = existingGateway ? existingGateway.apiSecret : '';
-        // If a new secret was provided and it's not the masked placeholder, encrypt it
-        if (apiSecret && apiSecret !== 'sk_live_********') {
-            encryptedSecret = encryptGatewaySecret(apiSecret);
-        }
 
         const updated = await PaymentGateway.findOneAndUpdate(
             { gatewayId },
             {
                 isActive: !!isActive,
-                apiKey,
-                apiSecret: encryptedSecret,
                 minOrder: Number(minOrder) || 0,
                 maxOrder: Number(maxOrder) || 0
             },
             { new: true, upsert: true }
         ).lean();
 
-        res.json({ success: true, gateway: { ...updated, apiSecret: 'sk_live_********' } });
+        res.json({ success: true, gateway: updated });
     } catch (error) {
         console.error('Error saving gateway:', error);
         res.status(500).json({ success: false, error: 'Failed to save gateway' });

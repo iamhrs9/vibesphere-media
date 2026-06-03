@@ -125,28 +125,7 @@
                                 </div>
 
                                 <!-- API Credentials Section -->
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                        <i class="ri-key-2-fill text-indigo-500"></i> API Credentials
-                                    </h4>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key / Merchant ID</label>
-                                            <input type="text" id="pg-api-key" placeholder="e.g. rzp_live_xxxxxxxxxx" required class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">API Secret</label>
-                                            <div class="relative">
-                                                <input type="password" id="pg-api-secret" placeholder="••••••••••••••••" required class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition pr-10" />
-                                                <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                                                    <i class="ri-eye-off-line"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <hr class="border-gray-200">
+                                <!-- API credentials are now managed securely via .env file. need to update -->
 
                                 <!-- Routing Rules Section -->
                                 <div>
@@ -236,8 +215,8 @@
                 document.getElementById('pg-name').readOnly = true; 
                 document.getElementById('pg-name').classList.add('bg-gray-100');
                 
-                document.getElementById('pg-api-key').value = existing.apiKey || '';
-                document.getElementById('pg-api-secret').value = existing.apiSecret || ''; // will be masked string
+                // document.getElementById('pg-api-key').value = existing.apiKey || '';
+                // document.getElementById('pg-api-secret').value = existing.apiSecret || ''; // will be masked string
                 document.getElementById('pg-min-order').value = existing.minOrder || '';
                 document.getElementById('pg-max-order').value = existing.maxOrder || '';
             }
@@ -301,8 +280,8 @@
                     body: JSON.stringify({
                         gatewayId: gw.gatewayId,
                         isActive: newStatus,
-                        apiKey: gw.apiKey,
-                        apiSecret: gw.apiSecret, // passing back the masked secret is handled by backend gracefully
+                        // apiKey: gw.apiKey,
+                        // apiSecret: gw.apiSecret, // passing back the masked secret is handled by backend gracefully
                         minOrder: gw.minOrder,
                         maxOrder: gw.maxOrder
                     })
@@ -331,8 +310,8 @@
         if (btn) btn.disabled = true;
 
         const nameInput = document.getElementById('pg-name');
-        const keyInput = document.getElementById('pg-api-key');
-        const secretInput = document.getElementById('pg-api-secret');
+        // const keyInput = document.getElementById('pg-api-key');
+        // const secretInput = document.getElementById('pg-api-secret');
         const minOrderInput = document.getElementById('pg-min-order');
         const maxOrderInput = document.getElementById('pg-max-order');
 
@@ -344,8 +323,8 @@
 
         const payload = {
             gatewayId,
-            apiKey: keyInput ? keyInput.value.trim() : '',
-            apiSecret: secretInput ? secretInput.value.trim() : '',
+            // apiKey: keyInput ? keyInput.value.trim() : '',
+            // apiSecret: secretInput ? secretInput.value.trim() : '',
             minOrder: minOrderInput && minOrderInput.value ? Number(minOrderInput.value) : 0,
             maxOrder: maxOrderInput && maxOrderInput.value ? Number(maxOrderInput.value) : 0,
             isActive: isActive
