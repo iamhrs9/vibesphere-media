@@ -2676,6 +2676,10 @@
             const radioWallet = document.querySelector('input[value="wallet"]');
 
             try {
+                if (window.VibeAuth && !window.VibeAuth.isLoggedIn()) {
+                    if (walletOption) walletOption.style.display = 'none';
+                    return;
+                }
                 const res = await fetch('/api/user/wallet', { credentials: 'include' });
                 if (!res.ok) {
                     if (walletOption) walletOption.style.display = 'none';

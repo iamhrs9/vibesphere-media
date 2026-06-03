@@ -6119,6 +6119,7 @@ function encryptGatewaySecret(text) {
 
 function decryptGatewaySecret(text) {
     if (!text) return text;
+    console.log("JWT_SECRET Length:", process.env.JWT_SECRET?.length);
     try {
         const parts = text.split(':');
         if (parts.length !== 2) return text;
@@ -6126,12 +6127,17 @@ function decryptGatewaySecret(text) {
         const encryptedText = Buffer.from(parts[1], 'hex');
         const algorithm = 'aes-256-cbc';
         const key = crypto.createHash('sha256').update(process.env.JWT_SECRET || 'fallback_secret').digest();
-        const decipher = crypto.createDecipheriv(algorithm, key, iv);
-        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
+        try {
+            const decipher = crypto.createDecipheriv(algorithm, key, iv);
+            let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+            decrypted += decipher.final('utf8');
+            return decrypted;
+        } catch (innerErr) {
+            console.error('Decryption inner logic failed. Error message:', innerErr.message);
+            return text;
+        }
     } catch (err) {
-        console.error('Decryption failed', err);
+        console.error('Decryption failed at outer try', err);
         return text;
     }
 }
@@ -7850,12 +7856,16 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Please check Admin Panel.' });
                 }
 
+                console.log("Raw DB Secret Length:", selectedGateway.apiSecret.length);
                 const decryptedSecret = decryptGatewaySecret(selectedGateway.apiSecret);
                 const cleanSecret = decryptedSecret ? decryptedSecret.trim() : '';
+                console.log("Clean Secret Length:", cleanSecret.length);
                 const cleanMid = selectedGateway.apiKey.trim();
 
-                if (!cleanMid || !cleanSecret) {
-                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid keys.' });
+                // Paytm Merchant Key MUST be exactly 16 characters. If it's not, decryption failed or wrong key was saved.
+                if (!cleanMid || !cleanSecret || cleanSecret.length !== 16) {
+                    console.error("Paytm Decryption Error or Invalid Key. Length:", cleanSecret.length);
+                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid keys or Decryption mismatch. Please re-enter keys in Admin Panel.' });
                 }
 
                 const paytmAmount = String(Number(finalPrice).toFixed(2));
