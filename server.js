@@ -7962,8 +7962,9 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 const firstname = customerName;
                 const email = customerEmail;
                 const phone = customerPhone;
-                const surl = "http://localhost:3000/api/verify-payment";
-                const furl = "http://localhost:3000/api/verify-payment";
+                const baseUrl = req.headers.origin || (req.protocol + '://' + req.get('host'));
+                const surl = `${baseUrl}/api/verify-payment`;
+                const furl = `${baseUrl}/api/verify-payment`;
 
                 let resolvedTargetLink = req.body.targetLink || (orderDetails && orderDetails.targetLink) || (orderDetails && orderDetails.instaLink) || '';
                 if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
@@ -8116,12 +8117,12 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         case 'payu': {
             const payuConfig = await PaymentGateway.findOne({ gatewayId: 'payu', isActive: true });
             if (!payuConfig) {
-                return res.status(400).send('PayU gateway is disabled or not found.');
+                return res.redirect('/checkout.html?status=failed&reason=payu_gateway_disabled');
             }
 
             const envPayuSalt = process.env.PAYU_SALT;
             if (!envPayuSalt) {
-                return res.status(500).send('PayU environment salt missing.');
+                return res.redirect('/checkout.html?status=failed&reason=payu_salt_missing');
             }
             const decryptedSalt = envPayuSalt.trim();
 
@@ -8144,10 +8145,10 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
 
                     return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
                 } else {
-                    return res.status(404).send('Pending order not found for this transaction.');
+                    return res.redirect('/checkout.html?status=failed&reason=payu_order_not_found');
                 }
             } else {
-                return res.status(400).send('Invalid PayU Signature or Failed Transaction.');
+                return res.redirect('/checkout.html?status=failed&reason=payu_invalid_signature');
             }
         }
 
