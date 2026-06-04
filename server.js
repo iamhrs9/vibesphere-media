@@ -7876,6 +7876,51 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
 
                 const paytmAmount = String(Number(finalPrice).toFixed(2));
                 const internalOrderId = "ORDER_" + Date.now();
+                
+                const baseUrl = req.headers.origin || (req.protocol + '://' + req.get('host'));
+                const callbackUrl = `${baseUrl}/api/verify-payment?provider=paytm`;
+
+                let resolvedTargetLink = req.body.targetLink || (orderDetails && orderDetails.targetLink) || (orderDetails && orderDetails.instaLink) || '';
+                if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                    resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+                }
+
+                const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
+                const pendingOrder = new Order({
+                    orderId: generatedOrderId,
+                    paymentId: internalOrderId,
+                    paymentStatus: 'Pending',
+                    workStatus: 'Work Pending',
+                    status: 'Pending',
+                    userId: req.user?._id || null,
+                    ...(orderDetails && typeof orderDetails === 'object' ? orderDetails : {}),
+                    customerName,
+                    email: customerEmail,
+                    phone: customerPhone,
+                    orderAmount: finalPrice,
+                    orderItems: Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : (Array.isArray(req.body.items) ? req.body.items : []),
+                    orderType: (isSmm || orderType === 'smm') ? 'smm' : 'agency',
+                    serviceId: (isSmm || orderType === 'smm') ? (serviceId || orderDetails?.serviceId || '') : '',
+                    quantity: (isSmm || orderType === 'smm') ? Number(quantity || orderDetails?.quantity || 0) : 0,
+                    targetLink: resolvedTargetLink,
+                    instaLink: resolvedTargetLink,
+                    selectedVariantName: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedCountry: globalVariant && globalVariant.country ? globalVariant.country.trim() : '',
+                    selectedQuality: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedSpeed: globalVariant && globalVariant.speed ? globalVariant.speed.trim() : '',
+                    selectedRefill: globalVariant && globalVariant.refill ? globalVariant.refill.trim() : '',
+                    isDripFeed: orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true',
+                    runs: Number(orderDetails?.runs || 1),
+                    interval: Number(orderDetails?.interval || 0) * 60,
+                    extraInput: req.body.extraInput || orderDetails?.extraInput || '',
+                    extraInputType: req.body.extraInputType || orderDetails?.extraInputType || 'none',
+                    date: new Date().toLocaleString()
+                });
+
+                if (mongoose.connection.readyState === 1) {
+                    await pendingOrder.save().catch(e => console.error("Paytm Pending Order Save Error:", e));
+                }
+
                 const paytmchecksum = require('paytmchecksum');
 
                 const paytmParams = {};
@@ -7883,17 +7928,16 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     "requestType": "Payment",
                     "mid": cleanMid,
                     "websiteName": "DEFAULT",
-                    "industryTypeId": "Retail", // ADDED FROM DASHBOARD
+                    "industryTypeId": "Retail",
+                    "channelId": "WEB",
                     "orderId": internalOrderId,
-                    "callbackUrl": process.env.NODE_ENV === 'production' 
-                        ? `${process.env.APP_URL || 'https://vibesphere.in'}/api/verify-payment` 
-                        : "http://localhost:3000/api/verify-payment",
+                    "callbackUrl": callbackUrl,
                     "txnAmount": {
                         "value": paytmAmount,
                         "currency": "INR"
                     },
                     "userInfo": {
-                        "custId": "CUST_" + Date.now() // Enforced simple string for testing
+                        "custId": "CUST_" + Date.now()
                     }
                 };
 
@@ -8047,10 +8091,16 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     if (!activeProvider && req.body.mihpayid && req.body.txnid) {
         activeProvider = 'payu';
     }
+    if (!activeProvider && req.body.ORDERID && req.body.TXNAMOUNT) {
+        activeProvider = 'paytm';
+    }
     activeProvider = (activeProvider || 'razorpay').toLowerCase();
 
     if (activeProvider === 'payu' && !internalOrderId) {
         internalOrderId = req.body.txnid;
+    }
+    if (activeProvider === 'paytm' && !internalOrderId) {
+        internalOrderId = req.body.ORDERID;
     }
 
     console.log("--- VERIFY PAYMENT DEBUG ---");
@@ -8085,20 +8135,20 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
         case 'paytm': {
             const paytmConfig = await PaymentGateway.findOne({ gatewayId: 'paytm', isActive: true });
             if (!paytmConfig) {
-                return res.status(400).json({ success: false, error: 'Paytm gateway is disabled or not found.' });
+                return res.redirect('/checkout.html?status=failed&reason=paytm_gateway_disabled');
             }
 
             const envSecret = process.env.PAYTM_MERCHANT_KEY;
             if (!envSecret) {
-                return res.status(500).json({ success: false, error: 'Paytm environment secret missing.' });
+                return res.redirect('/checkout.html?status=failed&reason=paytm_secret_missing');
             }
             const cleanSecret = envSecret.trim();
 
-            const paytmResponse = req.body.paytmResponse || {};
+            const paytmResponse = Object.assign({}, req.body.paytmResponse || req.body);
             const checksumHash = paytmResponse.CHECKSUMHASH;
 
             if (!checksumHash) {
-                return res.status(400).json({ success: false, error: 'Missing Paytm checksum.' });
+                return res.redirect('/checkout.html?status=failed&reason=paytm_missing_checksum');
             }
 
             delete paytmResponse.CHECKSUMHASH;
@@ -8107,11 +8157,20 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             const isValid = PaytmChecksum.verifySignature(paytmResponse, cleanSecret, checksumHash);
 
             if (isValid && paytmResponse.STATUS === 'TXN_SUCCESS') {
-                isSignatureValid = true;
+                const existingOrder = await Order.findOne({ paymentId: paytmResponse.ORDERID });
+                if (existingOrder) {
+                    existingOrder.status = 'Paid';
+                    existingOrder.paymentStatus = 'Paid';
+                    existingOrder.paymentId = paytmResponse.TXNID || paytmResponse.ORDERID;
+                    await existingOrder.save();
+
+                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+                } else {
+                    return res.redirect('/checkout.html?status=failed&reason=paytm_order_not_found');
+                }
             } else {
-                return res.status(400).json({ success: false, error: 'Invalid Paytm Signature or Failed Transaction.' });
+                return res.redirect('/checkout.html?status=failed&reason=paytm_transaction_failed');
             }
-            break;
         }
 
         case 'payu': {
