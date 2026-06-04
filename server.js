@@ -114,6 +114,7 @@ async function uploadToCloudinary(fileBuffer, originalName, mimeType) {
 //const pino = require('pino');
 //const qrcode = require('qrcode');
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 // 🟢 FIX: Live Server ke liye Socket CORS open kar diya
 const io = require('socket.io')(server, {
