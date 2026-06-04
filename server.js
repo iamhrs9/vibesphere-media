@@ -110,9 +110,9 @@ async function uploadToCloudinary(fileBuffer, originalName, mimeType) {
         stream.end(fileBuffer);
     });
 }
-//const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
-//const pino = require('pino');
-//const qrcode = require('qrcode');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const pino = require('pino');
+const qrcode = require('qrcode');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
@@ -2631,10 +2631,10 @@ function buildSmmInvoice(doc, order) {
 
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9)
         .text('Platform', 60, tableTop + 7)
-        .text('Service Type', 140, tableTop + 7)
-        .text('Quantity', 220, tableTop + 7)
-        .text('Target Link', 290, tableTop + 7)
-        .text('Amount', 480, tableTop + 7);
+        .text('Service Type', 120, tableTop + 7)
+        .text('Quantity', 270, tableTop + 7)
+        .text('Target Link', 340, tableTop + 7)
+        .text('Amount', 510, tableTop + 7);
 
     // --- 4. DATA PARSING & TABLE ROWS ---
     let currentY = tableTop + 35;
@@ -2665,17 +2665,32 @@ function buildSmmInvoice(doc, order) {
             const itemCurrency = item.currency || order.currency || 'INR';
             const cleanCurrency = itemCurrency === 'INR' ? 'INR' : itemCurrency;
             const itemPriceText = `${cleanCurrency} ${Number(item.priceAtAdd || 0).toLocaleString()}`;
-            const targetLink = order.targetLink || order.instaLink || 'N/A';
+            const rawTarget = item.targetLink || item.instaLink || order.targetLink || order.instaLink || 'N/A';
+            
+            const cleanTextFilter = (str) => String(str || '').replace(/[^\x20-\x7E•]/g, '').trim();
+            const sanitizedTarget = cleanTextFilter(rawTarget);
+            
+            // 🛡️ SMM Masking (Protect Gateways from words like 'Followers', 'Likes')
+            let dynamicId = item.serviceId || item.packageId || Math.floor(1000 + Math.random() * 9000);
+            if (String(dynamicId).includes('_')) dynamicId = String(dynamicId).split('_')[0];
+            const sanitizedServiceType = `VibeSphere Digital Service #${dynamicId}`;
+            
+            const sanitizedPlatform = cleanTextFilter(pName);
 
-            doc.fillColor('#333333').font('Helvetica').fontSize(9)
-                .text(pName, 60, currentY)
-                .text(sType, 140, currentY)
-                .text(Number(qty).toLocaleString(), 220, currentY);
+            doc.fillColor('#333333').font('Helvetica').fontSize(9);
 
-            doc.text(targetLink, 290, currentY, { width: 170, height: 35, ellipsis: true });
-            doc.text(itemPriceText, 480, currentY);
+            const rowHeight = Math.max(
+                doc.heightOfString(sanitizedServiceType, { width: 140 }),
+                doc.heightOfString(sanitizedTarget, { width: 160 })
+            );
 
-            currentY += 45;
+            doc.text(sanitizedPlatform, 60, currentY, { width: 50 });
+            doc.text(sanitizedServiceType, 120, currentY, { width: 140, lineBreak: true });
+            doc.text(Number(qty).toLocaleString(), 270, currentY, { width: 60 });
+            doc.text(sanitizedTarget, 340, currentY, { width: 160, lineBreak: true });
+            doc.text(itemPriceText, 510, currentY, { width: 70 });
+
+            currentY += rowHeight + 10;
             doc.moveTo(50, currentY - 5).lineTo(540, currentY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
             currentY += 10;
         }
@@ -2697,17 +2712,32 @@ function buildSmmInvoice(doc, order) {
         }
 
         const quantity = order.quantity || 1000;
-        const targetLink = order.targetLink || order.instaLink || 'N/A';
+        const rawTarget = order.targetLink || order.instaLink || 'N/A';
+        
+        const cleanTextFilter = (str) => String(str || '').replace(/[^\x20-\x7E•]/g, '').trim();
+        const sanitizedTarget = cleanTextFilter(rawTarget);
+        
+        // 🛡️ SMM Masking (Protect Gateways from words like 'Followers', 'Likes')
+        let dynamicId = order.serviceId || order.packageId || Math.floor(1000 + Math.random() * 9000);
+        if (String(dynamicId).includes('_')) dynamicId = String(dynamicId).split('_')[0];
+        const sanitizedServiceType = `VibeSphere Digital Service #${dynamicId}`;
+        
+        const sanitizedPlatform = cleanTextFilter(platformName);
 
-        doc.fillColor('#333333').font('Helvetica').fontSize(9)
-            .text(platformName, 60, currentY)
-            .text(serviceType, 140, currentY)
-            .text(Number(quantity).toLocaleString(), 220, currentY);
+        doc.fillColor('#333333').font('Helvetica').fontSize(9);
 
-        doc.text(targetLink, 290, currentY, { width: 170, height: 35, ellipsis: true });
-        doc.text(displayPrice, 480, currentY);
+        const rowHeight = Math.max(
+            doc.heightOfString(sanitizedServiceType, { width: 140 }),
+            doc.heightOfString(sanitizedTarget, { width: 160 })
+        );
 
-        currentY += 45;
+        doc.text(sanitizedPlatform, 60, currentY, { width: 50 });
+        doc.text(sanitizedServiceType, 120, currentY, { width: 140, lineBreak: true });
+        doc.text(Number(quantity).toLocaleString(), 270, currentY, { width: 60 });
+        doc.text(sanitizedTarget, 340, currentY, { width: 160, lineBreak: true });
+        doc.text(displayPrice, 510, currentY, { width: 70 });
+
+        currentY += rowHeight + 10;
         doc.moveTo(50, currentY - 5).lineTo(540, currentY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
         currentY += 10;
     }
@@ -2737,12 +2767,12 @@ function buildSmmInvoice(doc, order) {
     doc.rect(50, termsY, 490, 115).strokeColor('#fef3c7').lineWidth(1).stroke(); // Subtle border
 
     doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(10)
-        .text('Important SMM Terms & Conditions:', 60, termsY + 10);
+        .text('Important Service Terms & Conditions:', 60, termsY + 10);
 
     doc.font('Helvetica').fontSize(8.5).fillColor('#78350f')
-        .text('1. Delivery is fully automated. Your social media account/post MUST remain PUBLIC during delivery.', 60, termsY + 28)
+        .text('1. Delivery is fully automated. Your target destination/URL MUST remain active and public during delivery.', 60, termsY + 28)
         .text('2. Please double-check target links. No refunds or redeliveries can be provided for incorrect or invalid links.', 60, termsY + 45)
-        .text('3. Once processing starts, orders are strictly non-refundable. For issues, contact support within 24 hours.', 60, termsY + 62)
+        .text('3. Once processing starts, digital campaigns are strictly non-refundable. For issues, contact support within 24 hours.', 60, termsY + 62)
         .text('4. Any legal disputes arising from this transaction will be subject to the jurisdiction of Jaipur, India.', 60, termsY + 79)
         .text('5. This is a computer-generated invoice and does not require a physical signature.', 60, termsY + 96);
 
@@ -3139,8 +3169,23 @@ app.post('/api/auth/signup', loginLimiter, async (req, res) => {
             `
         };
 
+        // --- WhatsApp Welcome Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && newUser.phone) {
+                let cleaned = newUser.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🎉 Welcome to VibeSphere Media!\n\nHi ${newUser.name || 'User'}, your account has been successfully created. We are thrilled to have you onboard! You can now log in and explore our services.`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Welcome Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Welcome Alert Error:', waErr);
+        }
+
         // Email background mein shoot kar do
-        transporter.sendMail(mailOptions).catch(err => console.error('Welcome Email Error:', err));
+        try {
+            transporter.sendMail(mailOptions).catch(err => console.error('Welcome Email Error:', err));
+        } catch(e) {}
 
         res.json({ success: true, message: "Account Created! Please Login." });
     } catch (e) { res.status(500).json({ success: false, error: "Signup Failed" }); }
@@ -3277,9 +3322,29 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
                     `
                 };
 
-                transporter.sendMail(mailOptions);
-            } catch (bgError) {
-                console.error('Background Email Error:', bgError);
+                // --- WhatsApp Login Alert ---
+                try {
+                    if (waSocket && user.phone) {
+                        let cleaned = user.phone.toString().replace(/\D/g, '');
+                        if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                        if (cleaned.length === 10) cleaned = '91' + cleaned;
+                        
+                        const alertMsg = `🔐 Security Alert - VibeSphere Media\nHi ${user.name || 'User'}, a new login was detected on your account just now. If this was you, you can safely ignore this message. If this wasn't you, please secure your account immediately.`;
+                        
+                        waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Login Alert Delivery Failed:", e.message));
+                    }
+                } catch (waErr) {
+                    console.error('WhatsApp Login Alert Error:', waErr);
+                }
+
+                // --- Brevo Email Login Alert ---
+                try {
+                    transporter.sendMail(mailOptions).catch(err => console.error('Brevo Login Email Promise Error:', err));
+                } catch (bgError) {
+                    console.error('Background Email Execution Error:', bgError);
+                }
+            } catch (outerBgError) {
+                console.error('Background Process Error:', outerBgError);
             }
 
         } else {
@@ -3336,7 +3401,22 @@ app.post('/api/auth/send-magic-link', async (req, res) => {
             `
         };
 
-        transporter.sendMail(mailOptions);
+        // --- WhatsApp Magic Link Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+                let cleaned = user.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🔗 Secure Login Link - VibeSphere Media\n\nHi ${user.name || 'User'}, here is your direct link to log in to your dashboard. This link is valid for a single use only:\n\n${magicLink}`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Magic Link Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Magic Link Alert Error:', waErr);
+        }
+
+        try {
+            transporter.sendMail(mailOptions);
+        } catch(e) { console.error('Magic Link Email Error:', e); }
         res.json({ success: true, message: "✨ Magic Link sent! Check your inbox." });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to send link" }); }
 });
@@ -3447,7 +3527,22 @@ app.post('/api/auth/forgot-password', otpLimiter, async (req, res) => {
             `
         };
 
-        transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+        // --- WhatsApp Client OTP Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+                let cleaned = user.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🔑 Password Reset OTP - VibeSphere Media\n\nHi ${user.name || 'User'}, your 6-digit OTP code to reset your account password is: ${otp}. Do not share this code with anyone.`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Client OTP Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Client OTP Alert Error:', waErr);
+        }
+
+        try {
+            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+        } catch(e) {}
         res.json({ success: true, message: "OTP sent to your email!" });
 
     } catch (e) { res.status(500).json({ success: false, message: "Error processing forgot password request." }); }
@@ -5977,7 +6072,22 @@ app.post('/api/staff/forgot-password', otpLimiter, async (req, res) => {
             `
         };
 
-        transporter.sendMail(mailOptions);
+        // --- WhatsApp Staff OTP Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && staff.phone) {
+                let cleaned = staff.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🛠️ Staff Security OTP - VibeSphere Media\n\nHi ${staff.name || 'Staff'}, your official 6-digit verification OTP for staff password reset is: ${otp}.`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Staff OTP Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Staff OTP Alert Error:', waErr);
+        }
+
+        try {
+            transporter.sendMail(mailOptions);
+        } catch(e) { console.error('Staff OTP Email Error:', e); }
         res.json({ success: true, message: "OTP sent to your email! Please check inbox/spam." });
     } catch (e) { res.status(500).json({ success: false, error: "Server Error" }); }
 });
@@ -7854,32 +7964,36 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 });
             }
 
-            case 'paytm': {
+            case 'phonepe': {
                 if (!selectedGateway) {
                     return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Please check Admin Panel.' });
                 }
 
-                const envMid = process.env.PAYTM_MID;
-                const envSecret = process.env.PAYTM_MERCHANT_KEY;
+                const envClientId = process.env.PHONEPE_CLIENT_ID;
+                const envClientVersion = process.env.PHONEPE_CLIENT_VERSION || '1';
+                const envClientSecret = process.env.PHONEPE_CLIENT_SECRET;
+                const envPhonePeEnv = (process.env.PHONEPE_ENV || 'sandbox').toLowerCase();
 
-                if (!envMid || !envSecret) {
-                    return res.status(500).json({ success: false, error: 'Paytm environment credentials missing.' });
+                if (!envClientId || !envClientSecret) {
+                    return res.status(500).json({ success: false, error: 'PhonePe environment credentials missing.' });
                 }
 
-                const cleanSecret = envSecret.trim();
-                const cleanMid = envMid.trim();
+                const clientId = envClientId.trim();
+                const clientSecret = envClientSecret.trim();
 
-                // Paytm Merchant Key MUST be exactly 16 characters.
-                if (cleanSecret.length !== 16) {
-                    console.error("Paytm Invalid Environment Key. Length:", cleanSecret.length);
-                    return res.status(500).json({ success: false, error: 'Payment gateway currently unavailable. Invalid Paytm Merchant Key length in environment.' });
+                let authBaseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+                let pgBaseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+
+                if (envPhonePeEnv === 'production') {
+                    authBaseUrl = 'https://api.phonepe.com/apis/identity-manager';
+                    pgBaseUrl = 'https://api.phonepe.com/apis/pg';
                 }
 
-                const paytmAmount = String(Number(finalPrice).toFixed(2));
-                const internalOrderId = "ORDER_" + Date.now();
+                const phonepeAmount = Math.round(Number(finalPrice) * 100);
+                const merchantTransactionId = "TXN_" + Date.now();
                 
-                const baseUrl = req.headers.origin || (req.protocol + '://' + req.get('host'));
-                const callbackUrl = `${baseUrl}/api/verify-payment?provider=paytm`;
+                // PhonePe V2 strictly requires HTTPS URLs for returnUrl and callbackUrl
+                const callbackUrl = 'https://www.vibespheremedia.in/api/verify-payment?provider=phonepe';
 
                 let resolvedTargetLink = req.body.targetLink || (orderDetails && orderDetails.targetLink) || (orderDetails && orderDetails.instaLink) || '';
                 if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
@@ -7889,7 +8003,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
                 const pendingOrder = new Order({
                     orderId: generatedOrderId,
-                    paymentId: internalOrderId,
+                    paymentId: merchantTransactionId,
                     paymentStatus: 'Pending',
                     workStatus: 'Work Pending',
                     status: 'Pending',
@@ -7919,72 +8033,81 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 });
 
                 if (mongoose.connection.readyState === 1) {
-                    await pendingOrder.save().catch(e => console.error("Paytm Pending Order Save Error:", e));
+                    await pendingOrder.save().catch(e => console.error("PhonePe Pending Order Save Error:", e));
                 }
 
-                const paytmchecksum = require('paytmchecksum');
-
-                const paytmParams = {};
-                paytmParams.body = {
-                    "requestType": "Payment",
-                    "mid": cleanMid,
-                    "websiteName": "DEFAULT",
-                    "industryTypeId": "Retail",
-                    "channelId": "WEB",
-                    "orderId": internalOrderId,
-                    "callbackUrl": callbackUrl,
-                    "txnAmount": {
-                        "value": paytmAmount,
-                        "currency": "INR"
-                    },
-                    "userInfo": {
-                        "custId": "CUST_" + Date.now()
-                    }
-                };
-
-                // Generate Checksum strictly on the stringified body
-                const checksum = await paytmchecksum.generateSignature(JSON.stringify(paytmParams.body), cleanSecret);
-
-                paytmParams.head = {
-                    "signature": checksum
-                };
-
-                const post_data = JSON.stringify(paytmParams);
-
-                // --- DEBUG LOGS ---
-                console.log("----- PAYTM DEBUG -----");
-                console.log("MID:", cleanMid);
-                console.log("Decrypted Secret Length:", cleanSecret.length);
-                console.log("POST DATA:", post_data);
-                console.log("-----------------------");
-
-                // USING AXIOS TO AVOID 'fetch is not a function' IN OLDER NODE VERSIONS
                 const axios = require('axios');
-                const paytmRes = await axios.post(`https://securegw.paytm.in/theia/api/v1/initiateTransaction?mid=${cleanMid}&orderId=${internalOrderId}`, post_data, {
-                    headers: {
-                        'Content-Type': 'application/json'
+                let accessToken = '';
+
+                // Step A: Authorization (OAuth Token)
+                try {
+                    const tokenParams = new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        client_version: envClientVersion,
+                        grant_type: 'client_credentials'
+                    });
+                    
+                    const tokenResponse = await axios.post(`${authBaseUrl}/v1/oauth/token`, tokenParams.toString(), {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    });
+                    
+                    if (tokenResponse.data && tokenResponse.data.access_token) {
+                        accessToken = tokenResponse.data.access_token;
+                    } else {
+                        console.error("PhonePe Auth Error: No access token received", tokenResponse.data);
+                        return res.status(400).json({ success: false, error: 'Failed to authenticate with PhonePe.' });
                     }
-                });
-
-                const paytmData = paytmRes.data;
-                console.log("PAYTM API RESPONSE:", paytmData);
-
-                if (paytmData.body.resultInfo.resultStatus !== 'S') {
-                    console.error("Paytm Init Error:", paytmData);
-                    return res.status(400).json({ success: false, error: 'Paytm gateway rejected the request.' });
+                } catch (err) {
+                    console.error("PhonePe Auth Request Error:", err.response ? err.response.data : err.message);
+                    return res.status(500).json({ success: false, error: 'Failed to retrieve PhonePe authorization token.' });
                 }
 
-                return res.json({
-                    success: true,
-                    provider: 'paytm',
-                    transactionData: {
-                        txnToken: paytmData.body.txnToken,
-                        orderId: internalOrderId,
-                        amount: paytmAmount
-                    },
-                    apiKey: cleanMid,
-                    internalOrderId: internalOrderId
-                });
+                // Step B: Create Payment (Checkout V2 API)
+                try {
+                    const checkoutPayload = {
+                        merchantOrderId: merchantTransactionId, // Ensure this is a string
+                        amount: phonepeAmount, // CRITICAL: Must be a strict INTEGER Number (Paise)
+                        returnUrl: callbackUrl, // The redirect URL after payment
+                        callbackUrl: callbackUrl // The webhook notification URL
+                    };
+
+                    console.log("----- PHONEPE V2 OUTBOUND PAYLOAD -----");
+                    console.log(JSON.stringify(checkoutPayload, null, 2));
+                    console.log("----------------------------------------");
+
+                    const checkoutResponse = await axios.post(`${pgBaseUrl}/checkout/v2/pay`, checkoutPayload, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    });
+
+                    const pgData = checkoutResponse.data;
+
+                    const redirectUrl = pgData.redirectUrl || (pgData.data && pgData.data.redirectUrl) || (pgData.instrumentResponse && pgData.instrumentResponse.redirectInfo && pgData.instrumentResponse.redirectInfo.url);
+
+                    if (!redirectUrl) {
+                        console.error("PhonePe No Redirect URL in V2 Response:", pgData);
+                        return res.status(400).json({ success: false, error: 'PhonePe did not return a redirect URL.' });
+                    }
+
+                    return res.json({
+                        success: true,
+                        provider: 'phonepe',
+                        transactionData: {
+                            redirectUrl: redirectUrl,
+                            orderId: merchantTransactionId,
+                            amount: phonepeAmount
+                        },
+                        internalOrderId: merchantTransactionId
+                    });
+                } catch (err) {
+                    console.error("PhonePe Checkout V2 Error:", err.response ? err.response.data : err.message);
+                    return res.status(500).json({ success: false, error: 'PhonePe checkout initialization failed.' });
+                }
             }
 
             case 'payu': {
@@ -8085,6 +8208,98 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
     }
 });
 
+// --- WHATSAPP DISPATCH LOGIC ---
+async function getInvoiceBuffer(order) {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ margin: 40, size: 'A4' });
+            const buffers = [];
+            
+            doc.on('data', buffers.push.bind(buffers));
+            doc.on('end', () => resolve(Buffer.concat(buffers)));
+            doc.on('error', (err) => reject(err)); // Stream error boundary
+            
+            // The master orchestrator internally calls doc.end()
+            buildProfessionalInvoice(doc, order);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function dispatchWhatsAppInvoice(existingOrder) {
+    try {
+        console.log("🚀 WhatsApp Dispatch Triggered for Order:", existingOrder.orderId);
+
+        if (!waSocket) {
+            console.log("⚠️ WhatsApp Socket not active. Skipping invoice dispatch.");
+            return;
+        }
+
+        console.log("📦 Generating PDF Buffer...");
+        const pdfBuffer = await getInvoiceBuffer(existingOrder);
+        console.log("✅ PDF Buffer Generated successfully. Size:", pdfBuffer.length);
+
+        const cleanPhone = (num) => {
+            if (!num) return null;
+            // 1. Strip all non-numeric characters
+            let cleaned = num.toString().replace(/\D/g, '');
+            // 2. Remove leading 0 if present
+            if (cleaned.startsWith('0')) {
+                cleaned = cleaned.substring(1);
+            }
+            // 3. Automatically prefix with 91 if it's exactly 10 digits long
+            if (cleaned.length === 10) {
+                cleaned = '91' + cleaned;
+            }
+            return cleaned;
+        };
+
+        const customerNumber = cleanPhone(existingOrder.phone);
+        const clientJid = customerNumber ? `${customerNumber}@s.whatsapp.net` : null;
+        const groupJid = process.env.WHATSAPP_GROUP_JID;
+
+        console.log("📱 Sending to Client JID:", clientJid, "and Group JID:", groupJid);
+
+        if (clientJid) {
+            try {
+                const customerMsg = `Hello ${existingOrder.customerName || 'Valued Customer'}, your order ${existingOrder.orderId} of ${existingOrder.orderAmount} INR has been successfully placed! Thanks for choosing VibeSphere Media. Invoice attached.`;
+                
+                await waSocket.sendMessage(clientJid, { text: customerMsg });
+                await waSocket.sendMessage(clientJid, { 
+                    document: pdfBuffer, 
+                    fileName: `Invoice_${existingOrder.orderId}.pdf`, 
+                    mimetype: 'application/pdf' 
+                });
+                console.log(`✅ WhatsApp Invoice dispatched to Customer: ${customerNumber}`);
+            } catch (clientErr) {
+                console.error(`❌ Client WhatsApp Dispatch Error:`, clientErr.message);
+            }
+        }
+
+        if (groupJid) {
+            try {
+                const adminMsg = `🔥 New Order Received! Order ID: ${existingOrder.orderId}, Customer: ${existingOrder.customerName}, Amount: ${existingOrder.orderAmount} INR. Check the attached invoice for details.`;
+                
+                await waSocket.sendMessage(groupJid, { text: adminMsg });
+                await waSocket.sendMessage(groupJid, { 
+                    document: pdfBuffer, 
+                    fileName: `OrderAlert_${existingOrder.orderId}.pdf`, 
+                    mimetype: 'application/pdf' 
+                });
+                console.log(`✅ WhatsApp Alert dispatched to Admin Group: ${groupJid}`);
+            } catch (adminErr) {
+                console.error(`❌ Admin Group WhatsApp Dispatch Error:`, adminErr.message);
+            }
+        } else {
+            console.log("⚠️ WHATSAPP_GROUP_JID not configured in .env, skipping admin group alert.");
+        }
+        
+    } catch (err) {
+        console.error("❌ WhatsApp Dispatch Error:", err);
+    }
+}
+
 app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     let { provider, internalOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
 
@@ -8092,16 +8307,16 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
     if (!activeProvider && req.body.mihpayid && req.body.txnid) {
         activeProvider = 'payu';
     }
-    if (!activeProvider && req.body.ORDERID && req.body.TXNAMOUNT) {
-        activeProvider = 'paytm';
+    if (!activeProvider && (req.body.transactionId || (req.body.response && typeof req.body.response === 'string'))) {
+        activeProvider = 'phonepe';
     }
     activeProvider = (activeProvider || 'razorpay').toLowerCase();
 
     if (activeProvider === 'payu' && !internalOrderId) {
         internalOrderId = req.body.txnid;
     }
-    if (activeProvider === 'paytm' && !internalOrderId) {
-        internalOrderId = req.body.ORDERID;
+    if (activeProvider === 'phonepe' && !internalOrderId) {
+        internalOrderId = req.body.transactionId;
     }
 
     console.log("--- VERIFY PAYMENT DEBUG ---");
@@ -8133,44 +8348,96 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             break;
         }
 
-        case 'paytm': {
-            const paytmConfig = await PaymentGateway.findOne({ gatewayId: 'paytm', isActive: true });
-            if (!paytmConfig) {
-                return res.redirect('/checkout.html?status=failed&reason=paytm_gateway_disabled');
+        case 'phonepe': {
+            const phonepeConfig = await PaymentGateway.findOne({ gatewayId: 'phonepe', isActive: true });
+            if (!phonepeConfig) {
+                return res.redirect('/checkout.html?status=failed&reason=phonepe_gateway_disabled');
             }
 
-            const envSecret = process.env.PAYTM_MERCHANT_KEY;
-            if (!envSecret) {
-                return res.redirect('/checkout.html?status=failed&reason=paytm_secret_missing');
-            }
-            const cleanSecret = envSecret.trim();
+            const envClientId = process.env.PHONEPE_CLIENT_ID;
+            const envClientSecret = process.env.PHONEPE_CLIENT_SECRET;
+            const envPhonePeEnv = (process.env.PHONEPE_ENV || 'sandbox').toLowerCase();
 
-            const paytmResponse = Object.assign({}, req.body.paytmResponse || req.body);
-            const checksumHash = paytmResponse.CHECKSUMHASH;
-
-            if (!checksumHash) {
-                return res.redirect('/checkout.html?status=failed&reason=paytm_missing_checksum');
+            if (!envClientId || !envClientSecret) {
+                return res.redirect('/checkout.html?status=failed&reason=phonepe_credentials_missing');
             }
 
-            delete paytmResponse.CHECKSUMHASH;
+            const clientId = envClientId.trim();
+            const clientSecret = envClientSecret.trim();
 
-            const PaytmChecksum = require('paytmchecksum');
-            const isValid = PaytmChecksum.verifySignature(paytmResponse, cleanSecret, checksumHash);
+            let authBaseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+            let pgBaseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
 
-            if (isValid && paytmResponse.STATUS === 'TXN_SUCCESS') {
-                const existingOrder = await Order.findOne({ paymentId: paytmResponse.ORDERID });
-                if (existingOrder) {
-                    existingOrder.status = 'Paid';
-                    existingOrder.paymentStatus = 'Paid';
-                    existingOrder.paymentId = paytmResponse.TXNID || paytmResponse.ORDERID;
-                    await existingOrder.save();
+            if (envPhonePeEnv === 'production') {
+                authBaseUrl = 'https://api.phonepe.com/apis/identity-manager';
+                pgBaseUrl = 'https://api.phonepe.com/apis/pg';
+            }
 
-                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+            const merchantOrderId = req.query.merchantOrderId || req.body.merchantOrderId || req.body.transactionId || req.query.transactionId || internalOrderId;
+            
+            if (!merchantOrderId) {
+                return res.redirect('/checkout.html?status=failed&reason=phonepe_missing_order_id');
+            }
+
+            const axios = require('axios');
+            let accessToken = '';
+
+            try {
+                const tokenParams = new URLSearchParams({
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    client_version: envClientVersion || '1',
+                    grant_type: 'client_credentials'
+                });
+                
+                const tokenResponse = await axios.post(`${authBaseUrl}/v1/oauth/token`, tokenParams.toString(), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                });
+                
+                if (tokenResponse.data && tokenResponse.data.access_token) {
+                    accessToken = tokenResponse.data.access_token;
                 } else {
-                    return res.redirect('/checkout.html?status=failed&reason=paytm_order_not_found');
+                    return res.redirect('/checkout.html?status=failed&reason=phonepe_auth_failed');
                 }
-            } else {
-                return res.redirect('/checkout.html?status=failed&reason=paytm_transaction_failed');
+            } catch (err) {
+                console.error("PhonePe Auth Request Error in Verify:", err.response ? err.response.data : err.message);
+                return res.redirect('/checkout.html?status=failed&reason=phonepe_auth_failed');
+            }
+
+            try {
+                const statusResponse = await axios.get(`${pgBaseUrl}/checkout/v2/order/${merchantOrderId}/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const pgData = statusResponse.data;
+                const state = pgData.state || pgData.status || (pgData.data && pgData.data.state);
+
+                if (state === 'COMPLETED' || state === 'SUCCESS' || state === 'PAYMENT_SUCCESS') {
+                    const existingOrder = await Order.findOne({ paymentId: merchantOrderId });
+                    
+                    if (existingOrder) {
+                        existingOrder.status = 'Paid';
+                        existingOrder.paymentStatus = 'Paid';
+                        existingOrder.paymentId = (pgData.data && pgData.data.transactionId) || merchantOrderId;
+                        await existingOrder.save();
+
+                        dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
+
+                        return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+                    } else {
+                        return res.redirect('/checkout.html?status=failed&reason=phonepe_order_not_found');
+                    }
+                } else {
+                    return res.redirect('/checkout.html?status=failed&reason=phonepe_v2_failed');
+                }
+
+            } catch (err) {
+                console.error("PhonePe Status Verification Error:", err.response ? err.response.data : err.message);
+                return res.redirect('/checkout.html?status=failed&reason=phonepe_v2_failed');
             }
         }
 
@@ -8202,6 +8469,8 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                     existingOrder.paymentStatus = 'Paid';
                     existingOrder.paymentId = req.body.mihpayid;
                     await existingOrder.save();
+
+                    dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
 
                     return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
                 } else {
@@ -8405,8 +8674,14 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
                     attachments: [{ filename: `Invoice-${newOrder.orderId}.pdf`, content: pdfData }]
                 };
 
-                // Email send karo (Background me)
-                transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+                dispatchWhatsAppInvoice(newOrder); // Execute WhatsApp FIRST
+
+                // Isolate Brevo Email Logic
+                try {
+                    transporter.sendMail(mailOptions).catch(err => console.error('Background Email Promise Error:', err));
+                } catch (brevoErr) {
+                    console.error('Brevo Email Execution Error Caught:', brevoErr);
+                }
 
                 // IMPORTANT: res.json MUST be here so it waits for PDF generating
                 if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId));
@@ -9037,7 +9312,14 @@ app.post('/api/checkout/wallet', checkAuth, async (req, res) => {
                     attachments: [{ filename: `Invoice-${newOrder.orderId}.pdf`, content: pdfData }]
                 };
 
-                transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+                dispatchWhatsAppInvoice(newOrder); // Execute WhatsApp FIRST for Wallet
+
+                // Isolate Brevo Email Logic
+                try {
+                    transporter.sendMail(mailOptions).catch(err => console.error('Background Email Promise Error:', err));
+                } catch (brevoErr) {
+                    console.error('Brevo Email Execution Error Caught:', brevoErr);
+                }
 
                 res.json({ success: true, orderId: newOrder.orderId, transactionId: transaction.transactionId });
             });
@@ -10184,7 +10466,21 @@ People & Culture`,
                     ]
                 };
 
-                await transporter.sendMail(mailOptions);
+                // --- WhatsApp Staff Onboarding Alert ---
+                try {
+                    let staffPhone = req.body.phone;
+                    if (typeof waSocket !== 'undefined' && waSocket && staffPhone) {
+                        let cleaned = staffPhone.toString().replace(/\D/g, '');
+                        if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                        if (cleaned.length === 10) cleaned = '91' + cleaned;
+                        const alertMsg = `💼 Official Onboarding - VibeSphere Media\n\nWelcome to the team, ${staffName}!\n\nYour official staff account has been created successfully.\nEmployee ID: ${staffEmpId}\nRole: ${staffRole}\nTemporary Password: ${rawEnteredPassword}\n\nPlease find your official Welcome Pack/Joining Letter attached below. Log in to the staff portal to update your credentials.`;
+                        waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: joiningBuf, fileName: `Joining_Letter_${staffEmpId}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Staff Onboarding Alert Failed:", e.message));
+                    }
+                } catch (waErr) {
+                    console.error('WhatsApp Staff Onboarding Error:', waErr);
+                }
+
+                try { await transporter.sendMail(mailOptions); } catch(e) { console.error('Staff Onboarding Email Error:', e); }
                 console.log(`📧 Onboarding email sent to ${staffEmail} with 3 PDF attachments.`);
             } catch (onboardErr) {
                 console.error(`❌ Onboarding email failed for ${staffEmail}:`, onboardErr.message);
@@ -11357,8 +11653,21 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
                 attachments: [{ filename: `Invoice-${order.orderId}.pdf`, content: pdfData }]
             };
 
+            // --- WhatsApp Resend Invoice Alert ---
+            try {
+                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                    let cleaned = order.phone.toString().replace(/\D/g, '');
+                    if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                    if (cleaned.length === 10) cleaned = '91' + cleaned;
+                    const alertMsg = `📄 Invoice Re-sent - VibeSphere Media\n\nHi ${order.customerName || 'Customer'}, as requested, we have resent your official invoice for Order #${order.orderId}. Please find the PDF document attached below.`;
+                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `Invoice-${order.orderId}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Resend Invoice Failed:", e.message));
+                }
+            } catch (waErr) {
+                console.error('WhatsApp Resend Invoice Error:', waErr);
+            }
+
             // 3. Email Send karo (Background)
-            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            try { transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err)); } catch(e) {}
             res.json({ success: true, message: `Invoice sent successfully to ${order.email}` });
         });
 
@@ -11449,7 +11758,20 @@ app.post('/api/admin/email-handover', checkAuth, async (req, res) => {
                 text: `Hi ${clientName},\n\nYour project "${projectName}" has been successfully delivered!\n\nPlease find your Official Project Handover Certificate attached to this email.\n\nLive Link: ${liveLink}\n\nThank you for trusting VibeSphere Media.\n\nRegards,\nTeam VibeSphere`,
                 attachments: [{ filename: `VibeSphere-Handover-${orderNumber}.pdf`, content: pdfData }]
             };
-            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            // --- WhatsApp Handover Certificate ---
+            try {
+                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                    let cleaned = order.phone.toString().replace(/\D/g, '');
+                    if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                    if (cleaned.length === 10) cleaned = '91' + cleaned;
+                    const alertMsg = `🎓 Project Handover Successful!\n\nHi ${clientName}, congratulations! Your project ${projectName} is now fully live and successfully handed over to you. You can check it out here: ${liveLink}\n\nYour official Handover Certificate is attached below. Thank you for choosing VibeSphere Media!`;
+                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `VibeSphere_Handover_${projectName}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Handover Alert Failed:", e.message));
+                }
+            } catch (waErr) {
+                console.error('WhatsApp Handover Error:', waErr);
+            }
+
+            try { transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err)); } catch(e) {}
             res.json({ success: true, message: `Handover Certificate sent to ${order.email}` });
         });
 
@@ -11506,7 +11828,20 @@ app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
                 text: `Hi ${clientName},\n\nYour project "${projectName}" has been successfully delivered!\n\nPlease find your Official Project Handover Certificate attached to this email.\n\nLive Link: ${liveLink}\n\nThank you for trusting VibeSphere Media.\n\nRegards,\nTeam VibeSphere`,
                 attachments: [{ filename: `VibeSphere-Handover-${orderNumber}.pdf`, content: pdfData }]
             };
-            transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+            // --- WhatsApp Re-Email Handover ---
+            try {
+                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                    let cleaned = order.phone.toString().replace(/\D/g, '');
+                    if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                    if (cleaned.length === 10) cleaned = '91' + cleaned;
+                    const alertMsg = `📄 Handover Certificate Copy - VibeSphere Media\n\nHi ${clientName}, here is a digital copy of your official Handover Certificate for the project ${projectName} (Order #${orderNumber}) as requested. Attached below.`;
+                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `VibeSphere_Handover_${projectName}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Re-Email Handover Failed:", e.message));
+                }
+            } catch (waErr) {
+                console.error('WhatsApp Re-Email Handover Error:', waErr);
+            }
+
+            try { transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err)); } catch(e) {}
             res.json({ success: true, message: `Certificate resent to ${order.email}` });
         });
 
@@ -11683,7 +12018,21 @@ app.post('/api/contact', async (req, res) => {
             `
         };
 
-        transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err));
+        // --- WhatsApp Admin Lead Alert ---
+        try {
+            let adminNumber = process.env.ADMIN_WHATSAPP_NUMBER;
+            if (typeof waSocket !== 'undefined' && waSocket && adminNumber) {
+                let cleaned = adminNumber.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🔥 New Lead Received! - VibeSphere Media\n\nA new client has submitted the contact form on the website:\n\n👤 Name: ${name}\n📧 Email: ${email}\n📱 Phone: ${phone || 'Not Provided'}\n📝 Subject: ${subject || 'General Inquiry'}\n💬 Message: ${message}\n\nReach out to them immediately!`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Lead Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Lead Alert Error:', waErr);
+        }
+
+        try { transporter.sendMail(mailOptions).catch(err => console.error('Background Email Error:', err)); } catch(e) {}
         res.json({ success: true, message: "Thank you! Your message has been sent successfully." });
     } catch (error) {
         console.error("❌ Contact Form Error:", error);
@@ -11747,7 +12096,21 @@ app.post('/api/admin/reset-client-password', checkAuth, async (req, res) => {
                 </div>
             `
         };
-        transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err));
+
+        // --- WhatsApp Admin Force-Reset Client Password Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+                let cleaned = user.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = `🔐 Account Security Update - VibeSphere Media\n\nHi ${user.name || 'User'}, an administrator has securely reset your account password. Your new temporary login password is:\n\n*${newPassword}*\n\nPlease log in to your dashboard and change this password immediately for safety.`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Force-Reset Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Force-Reset Alert Error:', waErr);
+        }
+
+        try { transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err)); } catch(e) {}
 
         res.json({ success: true, message: `Password updated & email sent to ${user.email}!` });
     } catch (e) {
@@ -11808,7 +12171,22 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
                 </div>
             `
         };
-        transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err));
+        // --- WhatsApp Ban/Restore Alert ---
+        try {
+            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+                let cleaned = user.phone.toString().replace(/\D/g, '');
+                if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                if (cleaned.length === 10) cleaned = '91' + cleaned;
+                const alertMsg = isBanned 
+                    ? `⚠️ Account Status Alert - VibeSphere Media\n\nHi ${user.name || 'User'}, we regret to inform you that your VibeSphere Media account has been suspended due to a violation of our terms of service. If you believe this is a mistake, please contact support.`
+                    : `✅ Account Restored - VibeSphere Media\n\nHi ${user.name || 'User'}, great news! Your VibeSphere Media account has been fully restored and activated. You can now log in to your dashboard normally.`;
+                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Ban/Restore Alert Failed:", e.message));
+            }
+        } catch (waErr) {
+            console.error('WhatsApp Ban/Restore Alert Error:', waErr);
+        }
+
+        try { transporter.sendMail(mailOptions).catch(err => console.error('Email Error:', err)); } catch(e) {}
 
         res.json({ success: true, message: isBanned ? "User Restricted & Notified 🚫" : "User Restored & Notified ✅" });
     } catch (e) { res.status(500).json({ success: false, error: "Status update failed" }); }
@@ -12009,6 +12387,22 @@ async function connectToWhatsApp() {
                     });
 
                     console.log("✅ Test Message Delivered!");
+                    
+                    // --- Fetch and Log All Participating Groups ---
+                    try {
+                        console.log("\n🔍 Fetching WhatsApp Groups...");
+                        const groups = await waSocket.groupFetchAllParticipating();
+                        console.log("========================================");
+                        console.log("          📱 WHATSAPP GROUPS");
+                        console.log("========================================");
+                        for (const id in groups) {
+                            console.log(`📌 Name: ${groups[id].subject}`);
+                            console.log(`🔗 JID:  ${id}`);
+                            console.log("----------------------------------------");
+                        }
+                    } catch (grpErr) {
+                        console.error("❌ Failed to fetch groups:", grpErr.message);
+                    }
                 } catch (err) {
                     console.log("❌ Failed to send test message:", err.message);
                 }
@@ -12021,7 +12415,7 @@ async function connectToWhatsApp() {
 }
 
 
-// connectToWhatsApp(); 
+connectToWhatsApp(); 
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao
