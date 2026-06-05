@@ -12356,10 +12356,26 @@ async function connectToWhatsApp() {
 
     waSocket = sock;
 
+    // 🟢 PAIRING CODE LOGIC: Bypass QR if phone number is provided
+    if (process.env.WHATSAPP_PHONE_NUMBER && !state.creds.registered) {
+        setTimeout(async () => {
+            try {
+                let phoneNumber = process.env.WHATSAPP_PHONE_NUMBER.replace(/[^0-9]/g, '');
+                let code = await sock.requestPairingCode(phoneNumber);
+                let formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+                console.log(`\n==============================================`);
+                console.log(`[ACTION REQUIRED] Your Pairing Code is: ${formattedCode}`);
+                console.log(`==============================================\n`);
+            } catch (err) {
+                console.error("Failed to request pairing code:", err);
+            }
+        }, 3500); // 3.5s delay to avoid Baileys rate limits
+    }
+
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
+        if (qr && !process.env.WHATSAPP_PHONE_NUMBER) {
             qrcode.toString(qr, { type: 'terminal', small: true }, function (err, url) {
                 if (err) console.log("QR Error:", err);
                 console.log("\n📲 SCAN THIS QR CODE WITH YOUR WHATSAPP LINKED DEVICES:");
