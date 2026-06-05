@@ -12336,9 +12336,9 @@ let waSocket = null;
 let pairingCodeRequested = false;
 
 async function connectToWhatsApp() {
-    if (process.env.DISABLE_WHATSAPP === 'true') {
-        console.log("🚫 WhatsApp connection disabled on Localhost.");
-        return; // कनेक्शन यहीं रोक दो
+    if (process.env.WHATSAPP_LOGIN === 'false') {
+        console.log("🚫 WhatsApp connection disabled via WHATSAPP_LOGIN=false.");
+        return; // Completely abort socket initialization and break reconnect loops
     }
 
     // 🟢 1. NAYA FIX: WhatsApp ka ekdum latest version fetch karo
