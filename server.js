@@ -12333,6 +12333,7 @@ app.patch('/api/admin/clients/:id', checkAuth, async (req, res) => {
 // 🟢 THE WHATSAPP ENGINE (BAILEYS) - VERSION 405 FIX
 // ==========================================
 let waSocket = null;
+let pairingCodeRequested = false;
 
 async function connectToWhatsApp() {
     if (process.env.DISABLE_WHATSAPP === 'true') {
@@ -12356,8 +12357,9 @@ async function connectToWhatsApp() {
 
     waSocket = sock;
 
-    // 🟢 PAIRING CODE LOGIC: Bypass QR if phone number is provided
-    if (process.env.WHATSAPP_PHONE_NUMBER && !state.creds.registered) {
+    // 🟢 PAIRING CODE LOGIC: Safely request code once to prevent rate-limit bans
+    if (process.env.WHATSAPP_LOGIN === 'true' && process.env.WHATSAPP_PHONE_NUMBER && !state.creds.registered && !pairingCodeRequested) {
+        pairingCodeRequested = true; // Lock immediately to prevent infinite loops
         setTimeout(async () => {
             try {
                 let phoneNumber = process.env.WHATSAPP_PHONE_NUMBER.replace(/[^0-9]/g, '');
@@ -12369,7 +12371,7 @@ async function connectToWhatsApp() {
             } catch (err) {
                 console.error("Failed to request pairing code:", err);
             }
-        }, 3500); // 3.5s delay to avoid Baileys rate limits
+        }, 3000); // 3s delay to avoid Baileys rate limits
     }
 
     sock.ev.on('connection.update', (update) => {
