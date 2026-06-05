@@ -12335,11 +12335,17 @@ app.patch('/api/admin/clients/:id', checkAuth, async (req, res) => {
 let waSocket = null;
 
 async function connectToWhatsApp() {
+    if (process.env.DISABLE_WHATSAPP === 'true') {
+        console.log("🚫 WhatsApp connection disabled on Localhost.");
+        return; // कनेक्शन यहीं रोक दो
+    }
+
     // 🟢 1. NAYA FIX: WhatsApp ka ekdum latest version fetch karo
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`📡 Fetching Latest WhatsApp Version: v${version.join('.')} (Latest: ${isLatest})`);
 
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    const sessionId = process.env.WHATSAPP_SESSION_ID || 'default_vibesphere_session';
+    const { state, saveCreds } = await useMultiFileAuthState(sessionId);
 
     const sock = makeWASocket({
         version, // 🟢 2. NAYA FIX: Version attach kar diya
