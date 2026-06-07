@@ -33,6 +33,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs'); // Using bcryptjs for compatibility
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+const whatsappApi = require('./utils/whatsappApi');
 let puppeteerLib = null;
 try {
     puppeteerLib = require('puppeteer');
@@ -110,9 +111,6 @@ async function uploadToCloudinary(fileBuffer, originalName, mimeType) {
         stream.end(fileBuffer);
     });
 }
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
-const pino = require('pino');
-const qrcode = require('qrcode');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
@@ -3171,12 +3169,12 @@ app.post('/api/auth/signup', loginLimiter, async (req, res) => {
 
         // --- WhatsApp Welcome Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && newUser.phone) {
+            if (newUser.phone) {
                 let cleaned = newUser.phone.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🎉 Welcome to VibeSphere Media!\n\nHi ${newUser.name || 'User'}, your account has been successfully created. We are thrilled to have you onboard! You can now log in and explore our services.`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Welcome Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Welcome Alert Error:', waErr);
@@ -3324,14 +3322,14 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 
                 // --- WhatsApp Login Alert ---
                 try {
-                    if (waSocket && user.phone) {
+                    if (user.phone) {
                         let cleaned = user.phone.toString().replace(/\D/g, '');
                         if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                         if (cleaned.length === 10) cleaned = '91' + cleaned;
                         
                         const alertMsg = `🔐 Security Alert - VibeSphere Media\nHi ${user.name || 'User'}, a new login was detected on your account just now. If this was you, you can safely ignore this message. If this wasn't you, please secure your account immediately.`;
                         
-                        waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Login Alert Delivery Failed:", e.message));
+                        whatsappApi.sendTextMessage(cleaned, alertMsg);
                     }
                 } catch (waErr) {
                     console.error('WhatsApp Login Alert Error:', waErr);
@@ -3403,12 +3401,12 @@ app.post('/api/auth/send-magic-link', async (req, res) => {
 
         // --- WhatsApp Magic Link Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+            if (user.phone) {
                 let cleaned = user.phone.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🔗 Secure Login Link - VibeSphere Media\n\nHi ${user.name || 'User'}, here is your direct link to log in to your dashboard. This link is valid for a single use only:\n\n${magicLink}`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Magic Link Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Magic Link Alert Error:', waErr);
@@ -3529,12 +3527,12 @@ app.post('/api/auth/forgot-password', otpLimiter, async (req, res) => {
 
         // --- WhatsApp Client OTP Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+            if (user.phone) {
                 let cleaned = user.phone.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🔑 Password Reset OTP - VibeSphere Media\n\nHi ${user.name || 'User'}, your 6-digit OTP code to reset your account password is: ${otp}. Do not share this code with anyone.`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Client OTP Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Client OTP Alert Error:', waErr);
@@ -4238,6 +4236,76 @@ function scheduleAutoCheckoutJob() {
     console.log('⏰ Auto-Checkout Job scheduled (23:59 IST). Will auto-close forgotten shifts.');
 }
 
+function scheduleMorningAttendanceReminder() {
+    const runJob = async () => {
+        try {
+            const staffs = await Staff.find({ status: 'Active' });
+            for (const staff of staffs) {
+                if (staff.whatsappNumber) {
+                    const alertMsg = `🌅 Good Morning ${staff.name || 'Team'}!\n\nPlease login to your dashboard and update your attendance for today.`;
+                    let cleaned = staff.whatsappNumber.toString().replace(/\D/g, '');
+                    if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                    if (cleaned.length === 10) cleaned = '91' + cleaned;
+                    whatsappApi.sendTextMessage(cleaned, alertMsg).catch(()=>{});
+                }
+            }
+        } catch(e) { console.error('Morning Reminder Error', e); }
+    };
+
+    const nowIST = getISTNow();
+    const nextRun = new Date(nowIST);
+    nextRun.setHours(10, 0, 0, 0);
+
+    if (nextRun.getTime() <= nowIST.getTime()) {
+        nextRun.setDate(nextRun.getDate() + 1);
+    }
+
+    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
+    setTimeout(async () => {
+        await runJob();
+        setInterval(runJob, 24 * 60 * 60 * 1000);
+    }, initialDelay);
+
+    console.log('⏰ Morning Attendance Reminder scheduled (10:00 IST).');
+}
+
+function scheduleEveningAbsenceAlert() {
+    const runJob = async () => {
+        try {
+            const todayStr = getISTDateString(0);
+            const staffs = await Staff.find({ status: 'Active' });
+            for (const staff of staffs) {
+                const record = await Attendance.findOne({ staffEmail: staff.email, dateString: todayStr });
+                if (!record || (record.status !== 'Present' && record.status !== 'Half Day')) {
+                    if (staff.whatsappNumber) {
+                        const alertMsg = `⚠️ Attendance Alert\n\nHey ${staff.name || 'Team'}, you have not updated your attendance today, so you are marked absent.`;
+                        let cleaned = staff.whatsappNumber.toString().replace(/\D/g, '');
+                        if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+                        if (cleaned.length === 10) cleaned = '91' + cleaned;
+                        whatsappApi.sendTextMessage(cleaned, alertMsg).catch(()=>{});
+                    }
+                }
+            }
+        } catch(e) { console.error('Evening Absence Alert Error', e); }
+    };
+
+    const nowIST = getISTNow();
+    const nextRun = new Date(nowIST);
+    nextRun.setHours(21, 0, 0, 0);
+
+    if (nextRun.getTime() <= nowIST.getTime()) {
+        nextRun.setDate(nextRun.getDate() + 1);
+    }
+
+    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
+    setTimeout(async () => {
+        await runJob();
+        setInterval(runJob, 24 * 60 * 60 * 1000);
+    }, initialDelay);
+
+    console.log('⏰ Evening Absence Alert scheduled (21:00 IST).');
+}
+
 // ==========================================
 // 🎧 HELPDESK TICKETING SCHEMA
 // ==========================================
@@ -4516,11 +4584,46 @@ const staffSchema = new mongoose.Schema({
     isMuted: { type: Boolean, default: false },
     lastActive: { type: Date, default: Date.now },
 
-    date: { type: Date, default: Date.now }
+    date: { type: Date, default: Date.now },
+    whatsappNumber: { type: String, default: '' },
+    notificationPreferences: [{
+        type: String,
+        enum: ['NEW_LEAD', 'ORDER_CREATED', 'DAILY_ATTENDANCE', 'SYSTEM_ALERTS']
+    }]
 });
 const Staff = mongoose.model('Staff', staffSchema);
+
+const systemSettingsSchema = new mongoose.Schema({
+    isWhatsAppEnabled: { type: Boolean, default: false },
+    updatedAt: { type: Date, default: Date.now }
+});
+const SystemSettings = mongoose.model('SystemSettings', systemSettingsSchema);
+
+const whatsappGroupSchema = new mongoose.Schema({
+    groupId: { type: String, required: true, unique: true }, // The JID from Baileys
+    groupName: { type: String, required: true },
+    notificationPreferences: [{
+        type: String,
+        enum: ['NEW_LEAD', 'ORDER_CREATED', 'DAILY_ATTENDANCE', 'SYSTEM_ALERTS']
+    }],
+    isActive: { type: Boolean, default: true }
+});
+const WhatsAppGroup = mongoose.model('WhatsAppGroup', whatsappGroupSchema);
+
+const whatsappContactSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    phoneNumber: { type: String, required: true, unique: true },
+    notificationPreferences: [{
+        type: String,
+        enum: ['NEW_LEAD', 'ORDER_CREATED', 'DAILY_ATTENDANCE', 'SYSTEM_ALERTS']
+    }],
+    isActive: { type: Boolean, default: true }
+});
+const WhatsAppContact = mongoose.model('WhatsAppContact', whatsappContactSchema);
 scheduleDailyAbsentJob();
 scheduleAutoCheckoutJob();
+scheduleMorningAttendanceReminder();
+scheduleEveningAbsenceAlert();
 // 2. Task/Lead Schema (Calling Data Ke Liye)
 const taskSchema = new mongoose.Schema({
     clientName: String,
@@ -4874,6 +4977,9 @@ app.post('/api/staff/check-in', async (req, res) => {
         staff.lastActive = Date.now();
         await staff.save();
 
+        // 📱 WhatsApp Notification
+        sendTargetedMessage('DAILY_ATTENDANCE', `🟢 *Staff Check-In* 🟢\n\n*Name:* ${staff.name}\n*Emp ID:* ${staff.empId || 'N/A'}\n*Time:* ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}`).catch(err => console.error("WhatsApp Dispatch Error:", err));
+
         res.json({ success: true, message: 'Checked in successfully.', attendance, isOnline: true });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Check-in failed.' });
@@ -4963,7 +5069,12 @@ app.post('/api/staff/check-out', async (req, res) => {
         attendance.totalWorkingMs = metrics.netWorkingMs;
         await attendance.save();
 
-        await Staff.findOneAndUpdate({ email }, { isOnline: false, lastActive: Date.now() });
+        const staff = await Staff.findOneAndUpdate({ email }, { isOnline: false, lastActive: Date.now() });
+
+        // 📱 WhatsApp Notification
+        const hoursWorked = (metrics.netWorkingMs / (1000 * 60 * 60)).toFixed(2);
+        sendTargetedMessage('DAILY_ATTENDANCE', `🔴 *Staff Check-Out* 🔴\n\n*Name:* ${attendance.staffName}\n*Emp ID:* ${attendance.empId || 'N/A'}\n*Time:* ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}\n*Hours Worked:* ${hoursWorked} hrs`).catch(err => console.error("WhatsApp Dispatch Error:", err));
+
         res.json({ success: true, message: 'Checked out successfully.', attendance, isOnline: false });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Check-out failed.' });
@@ -5692,6 +5803,15 @@ app.post('/api/staff/update-task', async (req, res) => {
         // 🟢 REAL-TIME: Notify Admin for live performance updates
         io.emit('lead_status_updated', updatedTask);
 
+        // 📱 WhatsApp Alert to Admin if completed
+        if (status === 'completed' || status === 'closed' || status === 'won' || status === 'success') {
+            const groupJid = process.env.WHATSAPP_GROUP_JID;
+            if (groupJid) {
+                const adminMsg = `✅ Staff Task Completed!\n\nStaff member ${updatedTask.assignedTo} has just completed a lead/task.\n\n👤 Client: ${updatedTask.clientName}\n📝 Notes: ${notes || 'None'}`;
+                whatsappApi.sendTextMessage(groupJid, adminMsg).catch(err => console.error("Admin WA Err:", err));
+            }
+        }
+
         res.json({ success: true, message: "Lead Updated Successfully!" });
     } catch (e) { res.status(500).json({ success: false, error: "Update Error" }); }
 });
@@ -6074,12 +6194,12 @@ app.post('/api/staff/forgot-password', otpLimiter, async (req, res) => {
 
         // --- WhatsApp Staff OTP Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && staff.phone) {
-                let cleaned = staff.phone.toString().replace(/\D/g, '');
+            if (staff.whatsappNumber) {
+                let cleaned = staff.whatsappNumber.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🛠️ Staff Security OTP - VibeSphere Media\n\nHi ${staff.name || 'Staff'}, your official 6-digit verification OTP for staff password reset is: ${otp}.`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Staff OTP Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Staff OTP Alert Error:', waErr);
@@ -8231,7 +8351,7 @@ async function dispatchWhatsAppInvoice(existingOrder) {
     try {
         console.log("🚀 WhatsApp Dispatch Triggered for Order:", existingOrder.orderId);
 
-        if (!waSocket) {
+        if (false) { // waSocket check removed for OpenWA migration
             console.log("⚠️ WhatsApp Socket not active. Skipping invoice dispatch.");
             return;
         }
@@ -8263,15 +8383,11 @@ async function dispatchWhatsAppInvoice(existingOrder) {
 
         if (clientJid) {
             try {
-                const customerMsg = `Hello ${existingOrder.customerName || 'Valued Customer'}, your order ${existingOrder.orderId} of ${existingOrder.orderAmount} INR has been successfully placed! Thanks for choosing VibeSphere Media. Invoice attached.`;
+                const customerMsg = `Hello ${existingOrder.customerName || 'Valued Customer'}, your order ${existingOrder.orderId} of ${existingOrder.orderAmount} INR has been successfully placed! Thanks for choosing VibeSphere Media.`;
+                const filename = `Invoice-${existingOrder.orderId}.pdf`;
                 
-                await waSocket.sendMessage(clientJid, { text: customerMsg });
-                await waSocket.sendMessage(clientJid, { 
-                    document: pdfBuffer, 
-                    fileName: `Invoice_${existingOrder.orderId}.pdf`, 
-                    mimetype: 'application/pdf' 
-                });
-                console.log(`✅ WhatsApp Invoice dispatched to Customer: ${customerNumber}`);
+                await whatsappApi.sendDocumentMessage(clientJid, pdfBuffer, filename, customerMsg);
+                console.log(`✅ PDF Invoice dispatched to Customer: ${customerNumber}`);
             } catch (clientErr) {
                 console.error(`❌ Client WhatsApp Dispatch Error:`, clientErr.message);
             }
@@ -8279,15 +8395,11 @@ async function dispatchWhatsAppInvoice(existingOrder) {
 
         if (groupJid) {
             try {
-                const adminMsg = `🔥 New Order Received! Order ID: ${existingOrder.orderId}, Customer: ${existingOrder.customerName}, Amount: ${existingOrder.orderAmount} INR. Check the attached invoice for details.`;
+                const adminMsg = `🔥 New Order Received! Order ID: ${existingOrder.orderId}, Customer: ${existingOrder.customerName}, Amount: ${existingOrder.orderAmount} INR.`;
+                const filename = `Invoice-${existingOrder.orderId}.pdf`;
                 
-                await waSocket.sendMessage(groupJid, { text: adminMsg });
-                await waSocket.sendMessage(groupJid, { 
-                    document: pdfBuffer, 
-                    fileName: `OrderAlert_${existingOrder.orderId}.pdf`, 
-                    mimetype: 'application/pdf' 
-                });
-                console.log(`✅ WhatsApp Alert dispatched to Admin Group: ${groupJid}`);
+                await whatsappApi.sendDocumentMessage(groupJid, pdfBuffer, filename, adminMsg);
+                console.log(`✅ PDF Order Alert dispatched to Admin Group: ${groupJid}`);
             } catch (adminErr) {
                 console.error(`❌ Admin Group WhatsApp Dispatch Error:`, adminErr.message);
             }
@@ -9709,6 +9821,9 @@ app.post('/api/admin/assign-order', checkAuth, async (req, res) => {
         // 🟢 REAL-TIME SYNC
         io.emit('order_assigned', updatedOrder);
 
+        // 📱 WhatsApp Notification
+        sendTargetedMessage('ORDER_CREATED', `📦 *Order Assigned* 📦\n\n*Order ID:* ${order.orderId}\n*Service:* ${order.service || 'N/A'}\n*Assigned To:* ${cleanEmail}\n\nPlease check your dashboard for details.`).catch(err => console.error("WhatsApp Dispatch Error:", err));
+
         res.json({
             success: true,
             message: isReassignment
@@ -9910,7 +10025,7 @@ app.get('/api/admin/staff-directory', checkAuth, async (req, res) => {
             query.$or = [{ name: regex }, { email: regex }, { empId: regex }];
         }
 
-        const projection = 'name email role empId isOnline isMuted monthlyTarget joiningDate profilePhoto';
+        const projection = 'name email role empId isOnline isMuted monthlyTarget joiningDate profilePhoto whatsappNumber notificationPreferences';
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -10289,7 +10404,7 @@ app.get('/api/admin/staff', checkAuth, async (req, res) => {
 // 2. Add new staff
 app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
     try {
-        const { name, email, password, role, joiningDate } = req.body;
+        const { name, email, password, role, joiningDate, whatsappNumber, notificationPreferences } = req.body;
 
         const existingStaff = await Staff.findOne({ email });
         if (existingStaff) return res.status(400).json({ success: false, error: "Email already exists!" });
@@ -10319,7 +10434,9 @@ app.post('/api/admin/add-staff', checkAuth, async (req, res) => {
             email,
             password: hashedPassword,
             role: normalizeStaffRoleInput(role),
-            joiningDate: normalizedJoiningDate
+            joiningDate: normalizedJoiningDate,
+            whatsappNumber: whatsappNumber || '',
+            notificationPreferences: Array.isArray(notificationPreferences) ? notificationPreferences : []
         });
         await newStaff.save();
 
@@ -10469,12 +10586,13 @@ People & Culture`,
                 // --- WhatsApp Staff Onboarding Alert ---
                 try {
                     let staffPhone = req.body.phone;
-                    if (typeof waSocket !== 'undefined' && waSocket && staffPhone) {
+                    if (staffPhone) {
                         let cleaned = staffPhone.toString().replace(/\D/g, '');
                         if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                         if (cleaned.length === 10) cleaned = '91' + cleaned;
                         const alertMsg = `💼 Official Onboarding - VibeSphere Media\n\nWelcome to the team, ${staffName}!\n\nYour official staff account has been created successfully.\nEmployee ID: ${staffEmpId}\nRole: ${staffRole}\nTemporary Password: ${rawEnteredPassword}\n\nPlease find your official Welcome Pack/Joining Letter attached below. Log in to the staff portal to update your credentials.`;
-                        waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: joiningBuf, fileName: `Joining_Letter_${staffEmpId}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Staff Onboarding Alert Failed:", e.message));
+                        whatsappApi.sendDocumentMessage(cleaned, welcomePdfBase64, `Welcome_Guide_${staffEmpId}.pdf`, alertMsg);
+                        console.log(`✅ Onboarding PDF WhatsApp dispatched to ${cleaned}`);
                     }
                 } catch (waErr) {
                     console.error('WhatsApp Staff Onboarding Error:', waErr);
@@ -10515,6 +10633,13 @@ app.patch('/api/admin/staff/:id', checkAuth, async (req, res) => {
         staff.name = nextName;
         staff.role = nextRole;
 
+        if (req.body.whatsappNumber !== undefined) {
+            staff.whatsappNumber = req.body.whatsappNumber;
+        }
+        if (Array.isArray(req.body.notificationPreferences)) {
+            staff.notificationPreferences = req.body.notificationPreferences;
+        }
+
         if (!staff.joiningDate) {
             const parsedJoiningDate = req.body.joiningDate ? new Date(req.body.joiningDate) : null;
             if (parsedJoiningDate && !Number.isNaN(parsedJoiningDate.getTime())) {
@@ -10538,7 +10663,8 @@ app.patch('/api/admin/staff/:id', checkAuth, async (req, res) => {
                 profilePhoto: staff.profilePhoto,
                 isOnline: staff.isOnline,
                 isMuted: staff.isMuted,
-                monthlyTarget: staff.monthlyTarget
+                monthlyTarget: staff.monthlyTarget,
+                whatsappNumber: staff.whatsappNumber
             }
         });
     } catch (e) {
@@ -10607,7 +10733,7 @@ app.post('/api/admin/add-task', checkAuth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Assigned staff is required.' });
         }
 
-        const staffExists = await Staff.findOne({ email: normalizedAssignedTo }).select('_id').lean();
+        const staffExists = await Staff.findOne({ email: normalizedAssignedTo }).select('_id name whatsappNumber').lean();
         if (!staffExists) {
             return res.status(404).json({ success: false, error: 'Assigned staff member not found.' });
         }
@@ -10624,6 +10750,15 @@ app.post('/api/admin/add-task', checkAuth, async (req, res) => {
         // 🟢 REAL-TIME: Notify assigned staff and Admin
         io.to(normalizedAssignedTo).emit('lead_assigned', { clientName, servicePitch });
         io.emit('staff_list_updated'); // Refresh Admin's staffView if needed
+
+        // 📱 WhatsApp Alert to Staff
+        if (staffExists.whatsappNumber) {
+            const alertMsg = `🚀 New Lead/Task Assigned!\n\nHey ${staffExists.name || 'Team'}, a new lead/task has been assigned to you by Admin.\n\n👤 Client: ${clientName}\n📝 Pitch/Service: ${servicePitch}\n\nPlease complete this as soon as possible.`;
+            let cleaned = staffExists.whatsappNumber.toString().replace(/\D/g, '');
+            if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+            if (cleaned.length === 10) cleaned = '91' + cleaned;
+            whatsappApi.sendTextMessage(cleaned, alertMsg).catch(err => console.error("Lead WA Err:", err));
+        }
 
         // 🧠 AI Lead Scoring (Background - Non-blocking)
         scoreLeadWithAI(newTask._id, newTask);
@@ -10693,6 +10828,9 @@ app.post('/api/admin/add-notice', checkAuth, async (req, res) => {
 
         // 🟢 REAL-TIME: Notify all online staff
         io.emit('notice_posted');
+
+        // 📱 WhatsApp Notification
+        sendTargetedMessage('SYSTEM_ALERTS', `📢 *New System Notice* 📢\n\n*${title}*\n\n${message}`).catch(err => console.error("WhatsApp Dispatch Error:", err));
 
         res.json({ success: true, message: "Notice Posted on Staff Board!" });
     } catch (e) { res.status(500).json({ success: false, error: "Failed to post notice" }); }
@@ -11655,12 +11793,13 @@ app.post('/api/admin/resend-invoice', checkAuth, async (req, res) => {
 
             // --- WhatsApp Resend Invoice Alert ---
             try {
-                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                if (order.phone) {
                     let cleaned = order.phone.toString().replace(/\D/g, '');
                     if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                     if (cleaned.length === 10) cleaned = '91' + cleaned;
                     const alertMsg = `📄 Invoice Re-sent - VibeSphere Media\n\nHi ${order.customerName || 'Customer'}, as requested, we have resent your official invoice for Order #${order.orderId}. Please find the PDF document attached below.`;
-                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `Invoice-${order.orderId}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Resend Invoice Failed:", e.message));
+                    whatsappApi.sendDocumentMessage(cleaned, pdfData, `Invoice-${order.orderId}.pdf`, alertMsg);
+                    console.log(`✅ Resent Invoice PDF dispatched to ${cleaned}`);
                 }
             } catch (waErr) {
                 console.error('WhatsApp Resend Invoice Error:', waErr);
@@ -11760,12 +11899,13 @@ app.post('/api/admin/email-handover', checkAuth, async (req, res) => {
             };
             // --- WhatsApp Handover Certificate ---
             try {
-                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                if (order.phone) {
                     let cleaned = order.phone.toString().replace(/\D/g, '');
                     if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                     if (cleaned.length === 10) cleaned = '91' + cleaned;
                     const alertMsg = `🎓 Project Handover Successful!\n\nHi ${clientName}, congratulations! Your project ${projectName} is now fully live and successfully handed over to you. You can check it out here: ${liveLink}\n\nYour official Handover Certificate is attached below. Thank you for choosing VibeSphere Media!`;
-                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `VibeSphere_Handover_${projectName}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Handover Alert Failed:", e.message));
+                    whatsappApi.sendDocumentMessage(cleaned, pdfData, `VibeSphere-Handover-${orderNumber}.pdf`, alertMsg);
+                    console.log(`✅ Handover Certificate PDF dispatched to ${cleaned}`);
                 }
             } catch (waErr) {
                 console.error('WhatsApp Handover Error:', waErr);
@@ -11830,12 +11970,13 @@ app.post('/api/admin/re-email-handover/:id', checkAuth, async (req, res) => {
             };
             // --- WhatsApp Re-Email Handover ---
             try {
-                if (typeof waSocket !== 'undefined' && waSocket && order.phone) {
+                if (order.phone) {
                     let cleaned = order.phone.toString().replace(/\D/g, '');
                     if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                     if (cleaned.length === 10) cleaned = '91' + cleaned;
                     const alertMsg = `📄 Handover Certificate Copy - VibeSphere Media\n\nHi ${clientName}, here is a digital copy of your official Handover Certificate for the project ${projectName} (Order #${orderNumber}) as requested. Attached below.`;
-                    waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { document: pdfData, fileName: `VibeSphere_Handover_${projectName}.pdf`, mimetype: 'application/pdf', caption: alertMsg }).catch(e => console.error("WA Re-Email Handover Failed:", e.message));
+                    whatsappApi.sendDocumentMessage(cleaned, pdfData, `VibeSphere-Handover-${orderNumber}.pdf`, alertMsg);
+                    console.log(`✅ Re-sent Handover Certificate PDF dispatched to ${cleaned}`);
                 }
             } catch (waErr) {
                 console.error('WhatsApp Re-Email Handover Error:', waErr);
@@ -12021,12 +12162,12 @@ app.post('/api/contact', async (req, res) => {
         // --- WhatsApp Admin Lead Alert ---
         try {
             let adminNumber = process.env.ADMIN_WHATSAPP_NUMBER;
-            if (typeof waSocket !== 'undefined' && waSocket && adminNumber) {
+            if (adminNumber) {
                 let cleaned = adminNumber.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🔥 New Lead Received! - VibeSphere Media\n\nA new client has submitted the contact form on the website:\n\n👤 Name: ${name}\n📧 Email: ${email}\n📱 Phone: ${phone || 'Not Provided'}\n📝 Subject: ${subject || 'General Inquiry'}\n💬 Message: ${message}\n\nReach out to them immediately!`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Lead Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Lead Alert Error:', waErr);
@@ -12099,12 +12240,12 @@ app.post('/api/admin/reset-client-password', checkAuth, async (req, res) => {
 
         // --- WhatsApp Admin Force-Reset Client Password Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+            if (user.phone) {
                 let cleaned = user.phone.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = `🔐 Account Security Update - VibeSphere Media\n\nHi ${user.name || 'User'}, an administrator has securely reset your account password. Your new temporary login password is:\n\n*${newPassword}*\n\nPlease log in to your dashboard and change this password immediately for safety.`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Force-Reset Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Force-Reset Alert Error:', waErr);
@@ -12173,14 +12314,14 @@ app.post('/api/admin/toggle-ban-client', checkAuth, async (req, res) => {
         };
         // --- WhatsApp Ban/Restore Alert ---
         try {
-            if (typeof waSocket !== 'undefined' && waSocket && user.phone) {
+            if (user.phone) {
                 let cleaned = user.phone.toString().replace(/\D/g, '');
                 if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
                 if (cleaned.length === 10) cleaned = '91' + cleaned;
                 const alertMsg = isBanned 
                     ? `⚠️ Account Status Alert - VibeSphere Media\n\nHi ${user.name || 'User'}, we regret to inform you that your VibeSphere Media account has been suspended due to a violation of our terms of service. If you believe this is a mistake, please contact support.`
                     : `✅ Account Restored - VibeSphere Media\n\nHi ${user.name || 'User'}, great news! Your VibeSphere Media account has been fully restored and activated. You can now log in to your dashboard normally.`;
-                waSocket.sendMessage(`${cleaned}@s.whatsapp.net`, { text: alertMsg }).catch(e => console.error("WA Ban/Restore Alert Failed:", e.message));
+                whatsappApi.sendTextMessage(cleaned, alertMsg);
             }
         } catch (waErr) {
             console.error('WhatsApp Ban/Restore Alert Error:', waErr);
@@ -12330,116 +12471,218 @@ app.patch('/api/admin/clients/:id', checkAuth, async (req, res) => {
 });
 
 // ==========================================
-// 🟢 THE WHATSAPP ENGINE (BAILEYS) - VERSION 405 FIX
+// 🟢 WHATSAPP ADMIN APIS & DISPATCHER
 // ==========================================
-let waSocket = null;
-let pairingCodeRequested = false;
 
-async function connectToWhatsApp() {
-    if (process.env.WHATSAPP_LOGIN === 'false') {
-        console.log("🚫 WhatsApp connection disabled via WHATSAPP_LOGIN=false.");
-        return; // Completely abort socket initialization and break reconnect loops
-    }
+// Global variable to store live pairing code for UI
+let livePairingCode = null;
 
-    // 🟢 1. NAYA FIX: WhatsApp ka ekdum latest version fetch karo
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-    console.log(`📡 Fetching Latest WhatsApp Version: v${version.join('.')} (Latest: ${isLatest})`);
+// Utility: Dispatch targeted messages based on Notification Preferences
+async function sendTargetedMessage(eventType, messageText, pdfData = null, pdfName = 'Document.pdf') {
+    try {
+        const settings = await SystemSettings.findOne();
+        if (!settings || !settings.isWhatsAppEnabled) {
+            console.log(`🔕 WhatsApp Disabled. Skipping ${eventType} dispatch.`);
+            return;
+        }
 
-    const sessionId = process.env.WHATSAPP_SESSION_ID || 'default_vibesphere_session';
-    const { state, saveCreds } = await useMultiFileAuthState(sessionId);
+        // Find applicable Staff
+        const staffList = await Staff.find({
+            notificationPreferences: eventType,
+            whatsappNumber: { $exists: true, $ne: '' }
+        });
 
-    const sock = makeWASocket({
-        version, // 🟢 2. NAYA FIX: Version attach kar diya
-        logger: pino({ level: 'silent' }),
-        auth: state,
-        browser: ['VibeSphere Media', 'Chrome', '1.0.0'],
-    });
+        // Find applicable Groups
+        const groupList = await WhatsAppGroup.find({
+            notificationPreferences: eventType,
+            isActive: true
+        });
 
-    waSocket = sock;
+        // Find applicable Custom Contacts
+        const customContactList = await WhatsAppContact.find({
+            notificationPreferences: eventType,
+            isActive: true
+        });
 
-    // 🟢 PAIRING CODE LOGIC: Safely request code once to prevent rate-limit bans
-    if (process.env.WHATSAPP_LOGIN === 'true' && process.env.WHATSAPP_PHONE_NUMBER && !state.creds.registered && !pairingCodeRequested) {
-        pairingCodeRequested = true; // Lock immediately to prevent infinite loops
-        setTimeout(async () => {
+        // Collect all target JIDs
+        const targets = [];
+        staffList.forEach(s => {
+            let num = s.whatsappNumber.replace(/[^0-9]/g, '');
+            if (!num.endsWith('@s.whatsapp.net')) num += '@s.whatsapp.net';
+            targets.push(num);
+        });
+        groupList.forEach(g => {
+            targets.push(g.groupId); // Groups should already have @g.us
+        });
+        customContactList.forEach(c => {
+            let num = c.phoneNumber.replace(/[^0-9]/g, '');
+            if (!num.endsWith('@s.whatsapp.net')) num += '@s.whatsapp.net';
+            targets.push(num);
+        });
+
+        if (targets.length === 0) return;
+
+        console.log(`📤 Dispatching ${eventType} to ${targets.length} targets...`);
+
+        for (const jid of targets) {
             try {
-                let phoneNumber = process.env.WHATSAPP_PHONE_NUMBER.replace(/[^0-9]/g, '');
-                let code = await sock.requestPairingCode(phoneNumber);
-                let formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-                console.log(`\n==============================================`);
-                console.log(`[ACTION REQUIRED] Your Pairing Code is: ${formattedCode}`);
-                console.log(`==============================================\n`);
-            } catch (err) {
-                console.error("Failed to request pairing code:", err);
-            }
-        }, 3000); // 3s delay to avoid Baileys rate limits
-    }
-
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr && !process.env.WHATSAPP_PHONE_NUMBER) {
-            qrcode.toString(qr, { type: 'terminal', small: true }, function (err, url) {
-                if (err) console.log("QR Error:", err);
-                console.log("\n📲 SCAN THIS QR CODE WITH YOUR WHATSAPP LINKED DEVICES:");
-                console.log(url);
-            });
-        }
-
-        if (connection === 'close') {
-            const statusCode = lastDisconnect.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-            console.log(`⚠️ WhatsApp Connection closed. Reason: ${statusCode}`);
-
-            if (shouldReconnect) {
-                console.log("🔄 Reconnecting in 3 seconds...");
-                setTimeout(connectToWhatsApp, 3000);
-            } else {
-                console.log('🚨 Logged out! Please delete "auth_info_baileys" folder and restart.');
-            }
-        } else if (connection === 'open') {
-            console.log('✅ BOOM! WHATSAPP CONNECTED SUCCESSFULLY!');
-
-            // 🟢 NAYA FIX: WhatsApp ko sync karne ke liye 5 second ka time do
-            setTimeout(async () => {
-                try {
-                    console.log("📨 Sending Test Message...");
-                    const myNumber = "918302485826@s.whatsapp.net"; // Tera number
-
-                    await waSocket.sendMessage(myNumber, {
-                        text: "🚀 VibeSphere WhatsApp API is LIVE!\n\nYeh message direct tere Node.js server se aaya hai. Tu sach mein ek Indie Hacker ban chuka hai! 😎"
-                    });
-
-                    console.log("✅ Test Message Delivered!");
-                    
-                    // --- Fetch and Log All Participating Groups ---
-                    try {
-                        console.log("\n🔍 Fetching WhatsApp Groups...");
-                        const groups = await waSocket.groupFetchAllParticipating();
-                        console.log("========================================");
-                        console.log("          📱 WHATSAPP GROUPS");
-                        console.log("========================================");
-                        for (const id in groups) {
-                            console.log(`📌 Name: ${groups[id].subject}`);
-                            console.log(`🔗 JID:  ${id}`);
-                            console.log("----------------------------------------");
-                        }
-                    } catch (grpErr) {
-                        console.error("❌ Failed to fetch groups:", grpErr.message);
-                    }
-                } catch (err) {
-                    console.log("❌ Failed to send test message:", err.message);
+                if (pdfData) {
+                    await whatsappApi.sendDocumentMessage(jid, pdfData, pdfName, messageText);
+                    console.log(`✅ Document + Message dispatched to JID: ${jid}`);
+                } else {
+                    await whatsappApi.sendTextMessage(jid, messageText);
+                    console.log(`✅ Message dispatched to JID: ${jid}`);
                 }
-            }, 5000); // 5 seconds delay
+            } catch (err) {
+                console.error(`❌ Failed to dispatch to ${jid}:`, err.message);
+            }
         }
-
-    });
-
-    sock.ev.on('creds.update', saveCreds);
+    } catch (error) {
+        console.error("❌ sendTargetedMessage Error:", error);
+    }
 }
 
+// API: Get WhatsApp Status & Live Pairing Code
+app.get('/api/admin/whatsapp/status', checkAuth, async (req, res) => {
+    try {
+        const settings = await SystemSettings.findOne() || { isWhatsAppEnabled: false };
+        const whatsappApi = require('./utils/whatsappApi');
+        let isConnected = false;
+        if (settings.isWhatsAppEnabled) {
+            const status = await whatsappApi.getSessionStatus();
+            isConnected = status.success && status.data && status.data.status === 'ready';
+        }
+        res.json({
+            success: true,
+            isWhatsAppEnabled: settings.isWhatsAppEnabled,
+            isConnected,
+            pairingCode: null
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server error" });
+    }
+});
 
-connectToWhatsApp(); 
+// API: Toggle WhatsApp Engine
+app.post('/api/admin/whatsapp/toggle', checkAuth, async (req, res) => {
+    try {
+        const { isEnabled } = req.body;
+        let settings = await SystemSettings.findOne();
+        if (!settings) {
+            settings = new SystemSettings({ isWhatsAppEnabled: isEnabled });
+        } else {
+            settings.isWhatsAppEnabled = isEnabled;
+        }
+        await settings.save();
+        res.json({ success: true, isWhatsAppEnabled: isEnabled });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// API: Sync WhatsApp Groups
+app.post('/api/admin/whatsapp/sync-groups', checkAuth, async (req, res) => {
+    try {
+        res.json({ success: true, groups: [] }); // Sync groups via OpenWA not yet fully implemented
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// API: Get All WhatsApp Groups
+app.get('/api/admin/whatsapp/groups', checkAuth, async (req, res) => {
+    try {
+        const groups = await WhatsAppGroup.find();
+        res.json({ success: true, groups });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server error" });
+    }
+});
+
+// API: Update Group Preferences
+app.post('/api/admin/whatsapp/groups/:id/preferences', checkAuth, async (req, res) => {
+    try {
+        const { notificationPreferences, isActive } = req.body;
+        const group = await WhatsAppGroup.findById(req.params.id);
+        if (!group) return res.status(404).json({ success: false, error: "Group not found." });
+
+        if (Array.isArray(notificationPreferences)) {
+            group.notificationPreferences = notificationPreferences;
+        }
+        if (isActive !== undefined) {
+            group.isActive = isActive;
+        }
+
+        await group.save();
+        res.json({ success: true, group });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// API: Get All Custom Contacts
+app.get('/api/admin/whatsapp/contacts', checkAuth, async (req, res) => {
+    try {
+        const contacts = await WhatsAppContact.find();
+        res.json({ success: true, contacts });
+    } catch (e) {
+        res.status(500).json({ success: false, error: "Server error" });
+    }
+});
+
+// API: Add a Custom Contact
+app.post('/api/admin/whatsapp/contacts', checkAuth, async (req, res) => {
+    try {
+        const { name, phoneNumber, notificationPreferences } = req.body;
+        let cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+        
+        let existing = await WhatsAppContact.findOne({ phoneNumber: cleanedPhone });
+        if (existing) return res.status(400).json({ success: false, error: "Phone number already added." });
+
+        const newContact = new WhatsAppContact({
+            name,
+            phoneNumber: cleanedPhone,
+            notificationPreferences: notificationPreferences || []
+        });
+        await newContact.save();
+        res.json({ success: true, contact: newContact });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// API: Update Custom Contact Preferences
+app.put('/api/admin/whatsapp/contacts/:id/preferences', checkAuth, async (req, res) => {
+    try {
+        const { notificationPreferences, isActive } = req.body;
+        const contact = await WhatsAppContact.findById(req.params.id);
+        if (!contact) return res.status(404).json({ success: false, error: "Contact not found." });
+
+        if (Array.isArray(notificationPreferences)) {
+            contact.notificationPreferences = notificationPreferences;
+        }
+        if (isActive !== undefined) {
+            contact.isActive = isActive;
+        }
+
+        await contact.save();
+        res.json({ success: true, contact });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// API: Delete a Custom Contact
+app.delete('/api/admin/whatsapp/contacts/:id', checkAuth, async (req, res) => {
+    try {
+        await WhatsAppContact.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Contact deleted." });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+ 
 // --- 404 Handler (UPDATED) ---
 app.use((req, res, next) => {
     // Agar API route nahi hai, toh 404 page dikhao

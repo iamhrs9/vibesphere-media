@@ -1164,6 +1164,10 @@
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg></span><span class="nav-label"> Admin Management</span>
             </button>
+            <button class="sidebar-link" data-label="WhatsApp Control"
+                onclick="navTo('whatsapp-control-section', this); window.fetchWhatsAppStatus && window.fetchWhatsAppStatus();">
+                <span class="nav-icon"><i class="ri-whatsapp-line"></i></span><span class="nav-label"> WhatsApp Control</span>
+            </button>
 
             <div class="sidebar-group-label">People Ops</div>
             <button class="sidebar-link" data-label="Staff Mgmt"
@@ -2289,6 +2293,7 @@
              ⚙️ SITE SETTINGS SECTION
              ========================================== -->
             <div id="site-settings-section" class="section"></div>
+            <div id="whatsapp-control-section" class="section"></div>
 
             <!-- ADMIN SECTION MODULES -->
             <script src="/admin/sections/admin-management-section.js"></script>
@@ -2305,6 +2310,7 @@
             <script src="/admin/sections/legal-management-section.js"></script>
             <script src="/admin/sections/site-settings-section.js"></script>
             <script src="/admin/sections/payment-gateways-section.js"></script>
+            <script src="/admin/sections/whatsapp-control-section.js"></script>
             <script>
                 window.mountAdminTeamChatSection?.();
                 window.mountAdminClientOpsSections?.();
@@ -2318,6 +2324,7 @@
                 window.mountAdminBannerManagementSection?.();
                 window.initLegalPagesSection?.();
                 window.mountAdminPaymentGatewaysSection?.();
+                window.mountWhatsAppControlSection?.();
             </script>
             <!-- END ADMIN SECTION MODULES -->
 
