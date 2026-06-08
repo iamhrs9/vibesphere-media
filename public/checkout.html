@@ -2961,6 +2961,12 @@
                 showPaymentSuccess(cleanOrderId || '');
                 return; // Stop further initialization for Step 1/2
             }
+            if (urlParams.get('status') === 'failed') {
+                const reason = urlParams.get('reason') || 'Unknown error';
+                console.error("Payment failed:", reason);
+                showPaymentFailed(reason);
+                return; // Stop further initialization, prevent cart redirect
+            }
             syncPaymentMethodCards();
             syncPayButtonLabel();
 

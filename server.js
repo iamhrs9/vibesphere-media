@@ -8411,6 +8411,22 @@ async function dispatchWhatsAppInvoice(existingOrder) {
         } else {
             console.log("⚠️ WHATSAPP_GROUP_JID not configured in .env, skipping admin group alert.");
         }
+
+        if (existingOrder.email) {
+            try {
+                let mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: existingOrder.email,
+                    subject: `Order Confirmed! Your Invoice ${existingOrder.orderId} - VibeSphere Media`,
+                    text: `Hi ${existingOrder.customerName || 'Valued Customer'},\n\nThank you for choosing VibeSphere Media! Your payment was successful and your order (${existingOrder.orderId}) is now confirmed.\n\nPlease find your official invoice attached to this email.\n\nOur team will contact you shortly to start the work.\n\nRegards,\nTeam VibeSphere`,
+                    attachments: [{ filename: `Invoice-${existingOrder.orderId}.pdf`, content: pdfBuffer }]
+                };
+                transporter.sendMail(mailOptions).catch(err => console.error('Background Email Promise Error:', err));
+                console.log(`✅ Email Invoice dispatched to Customer: ${existingOrder.email}`);
+            } catch (emailErr) {
+                console.error(`❌ Client Email Dispatch Error:`, emailErr.message);
+            }
+        }
         
     } catch (err) {
         console.error("❌ WhatsApp Dispatch Error:", err);
@@ -8490,9 +8506,21 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                 pgBaseUrl = 'https://api.phonepe.com/apis/pg';
             }
 
-            const merchantOrderId = req.query.merchantOrderId || req.body.merchantOrderId || req.body.transactionId || req.query.transactionId || internalOrderId;
+            let merchantOrderId = req.query.merchantOrderId || req.body.merchantOrderId || req.body.transactionId || req.query.transactionId || internalOrderId;
+            
+            if (!merchantOrderId && req.body.response) {
+                try {
+                    const decodedStr = Buffer.from(req.body.response, 'base64').toString('utf8');
+                    const decodedJson = JSON.parse(decodedStr);
+                    merchantOrderId = decodedJson.data?.merchantTransactionId || merchantOrderId;
+                    req.isPhonePeWebhook = true;
+                } catch (e) {
+                    console.error("Failed to decode PhonePe webhook response", e);
+                }
+            }
             
             if (!merchantOrderId) {
+                if (req.isPhonePeWebhook) return res.status(400).send('Missing Order ID');
                 return res.redirect('/checkout.html?status=failed&reason=phonepe_missing_order_id');
             }
 
@@ -8537,23 +8565,28 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                     const existingOrder = await Order.findOne({ paymentId: merchantOrderId });
                     
                     if (existingOrder) {
-                        existingOrder.status = 'Paid';
-                        existingOrder.paymentStatus = 'Paid';
-                        existingOrder.paymentId = (pgData.data && pgData.data.transactionId) || merchantOrderId;
-                        await existingOrder.save();
+                        if (existingOrder.status !== 'Paid') {
+                            existingOrder.status = 'Paid';
+                            existingOrder.paymentStatus = 'Paid';
+                            existingOrder.paymentId = (pgData.data && pgData.data.transactionId) || merchantOrderId;
+                            await existingOrder.save();
+                            dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook (WhatsApp & Email)
+                        }
 
-                        dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
-
+                        if (req.isPhonePeWebhook) return res.status(200).send('OK');
                         return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
                     } else {
+                        if (req.isPhonePeWebhook) return res.status(404).send('Order not found');
                         return res.redirect('/checkout.html?status=failed&reason=phonepe_order_not_found');
                     }
                 } else {
+                    if (req.isPhonePeWebhook) return res.status(200).send('OK');
                     return res.redirect('/checkout.html?status=failed&reason=phonepe_v2_failed');
                 }
 
             } catch (err) {
                 console.error("PhonePe Status Verification Error:", err.response ? err.response.data : err.message);
+                if (req.isPhonePeWebhook) return res.status(500).send('Verification Error');
                 return res.redirect('/checkout.html?status=failed&reason=phonepe_v2_failed');
             }
         }
