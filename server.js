@@ -8193,7 +8193,8 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                         paymentFlow: {
                             type: "PG_CHECKOUT",
                             merchantUrls: {
-                                redirectUrl: callbackUrl
+                                redirectUrl: callbackUrl + '&transactionId=' + merchantTransactionId,
+                                callbackUrl: callbackUrl
                             }
                         }
                     };
@@ -8552,14 +8553,28 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
             }
 
             try {
-                const statusResponse = await axios.get(`${pgBaseUrl}/checkout/v2/order/${merchantOrderId}/status`, {
-                    headers: {
-                        'Authorization': `O-Bearer ${accessToken}`
-                    }
-                });
+                let pgData = null;
+                let state = null;
+                let attempts = 0;
+                const maxAttempts = req.isPhonePeWebhook ? 1 : 4; // Wait up to 9 seconds if browser GET
 
-                const pgData = statusResponse.data;
-                const state = pgData.state || pgData.status || (pgData.data && pgData.data.state);
+                while (attempts < maxAttempts) {
+                    const statusResponse = await axios.get(`${pgBaseUrl}/checkout/v2/order/${merchantOrderId}/status`, {
+                        headers: {
+                            'Authorization': `O-Bearer ${accessToken}`
+                        }
+                    });
+
+                    pgData = statusResponse.data;
+                    state = pgData.state || pgData.status || (pgData.data && pgData.data.state);
+
+                    if (state === 'PENDING' && attempts < maxAttempts - 1) {
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    } else {
+                        break;
+                    }
+                }
 
                 if (state === 'COMPLETED' || state === 'SUCCESS' || state === 'PAYMENT_SUCCESS') {
                     const existingOrder = await Order.findOne({ paymentId: merchantOrderId });
