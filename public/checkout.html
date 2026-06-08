@@ -3669,6 +3669,16 @@
                         break;
                     }
 
+                    case 'phonepe': {
+                        if (!orderData.transactionData || !orderData.transactionData.redirectUrl) {
+                            throw new Error("PhonePe redirect URL missing");
+                        }
+                        
+                        // Redirect user directly to PhonePe secure PayPage
+                        window.location.href = orderData.transactionData.redirectUrl;
+                        break;
+                    }
+
                     default: {
                         console.error('Unknown payment provider:', orderData.provider);
                         alert('Configuration Error: Unsupported payment provider.');
