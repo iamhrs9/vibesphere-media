@@ -22,6 +22,7 @@ const cors = require('cors');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const cron = require('node-cron');
 const UAParser = require('ua-parser-js');
 const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = "877277700036-mk598mhkp55jdqmtcdi3k8tks1dhi045.apps.googleusercontent.com";
@@ -4197,17 +4198,8 @@ function scheduleDailyAbsentJob() {
         await markAbsentForDate(targetDateString);
     };
 
-    const nowIST = getISTNow();
-    const nextRun = new Date(nowIST);
-    nextRun.setHours(24, 5, 0, 0);
-    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
-
-    setTimeout(async () => {
-        await runJob();
-        setInterval(runJob, 24 * 60 * 60 * 1000);
-    }, initialDelay);
-
-    console.log('🗓️ Daily Absent Job scheduled (00:05 IST). Now checks approved leaves before marking absent.');
+    cron.schedule('5 0 * * *', runJob, { timezone: "Asia/Kolkata" });
+    console.log('🗓️ Daily Absent Job scheduled (00:05 IST) using node-cron.');
 }
 
 function scheduleAutoCheckoutJob() {
@@ -4217,23 +4209,8 @@ function scheduleAutoCheckoutJob() {
         await autoCheckoutForDate(todayDateString);
     };
 
-    const nowIST = getISTNow();
-    const nextRun = new Date(nowIST);
-    nextRun.setHours(23, 59, 0, 0);
-
-    // If it's already past 23:59 today, schedule for tomorrow
-    if (nextRun.getTime() <= nowIST.getTime()) {
-        nextRun.setDate(nextRun.getDate() + 1);
-    }
-
-    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
-
-    setTimeout(async () => {
-        await runJob();
-        setInterval(runJob, 24 * 60 * 60 * 1000);
-    }, initialDelay);
-
-    console.log('⏰ Auto-Checkout Job scheduled (23:59 IST). Will auto-close forgotten shifts.');
+    cron.schedule('59 23 * * *', runJob, { timezone: "Asia/Kolkata" });
+    console.log('⏰ Auto-Checkout Job scheduled (23:59 IST) using node-cron.');
 }
 
 function scheduleMorningAttendanceReminder() {
@@ -4252,21 +4229,8 @@ function scheduleMorningAttendanceReminder() {
         } catch(e) { console.error('Morning Reminder Error', e); }
     };
 
-    const nowIST = getISTNow();
-    const nextRun = new Date(nowIST);
-    nextRun.setHours(10, 0, 0, 0);
-
-    if (nextRun.getTime() <= nowIST.getTime()) {
-        nextRun.setDate(nextRun.getDate() + 1);
-    }
-
-    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
-    setTimeout(async () => {
-        await runJob();
-        setInterval(runJob, 24 * 60 * 60 * 1000);
-    }, initialDelay);
-
-    console.log('⏰ Morning Attendance Reminder scheduled (10:00 IST).');
+    cron.schedule('0 10 * * *', runJob, { timezone: "Asia/Kolkata" });
+    console.log('⏰ Morning Attendance Reminder scheduled (10:00 IST) using node-cron.');
 }
 
 function scheduleEveningAbsenceAlert() {
@@ -4289,21 +4253,8 @@ function scheduleEveningAbsenceAlert() {
         } catch(e) { console.error('Evening Absence Alert Error', e); }
     };
 
-    const nowIST = getISTNow();
-    const nextRun = new Date(nowIST);
-    nextRun.setHours(21, 0, 0, 0);
-
-    if (nextRun.getTime() <= nowIST.getTime()) {
-        nextRun.setDate(nextRun.getDate() + 1);
-    }
-
-    const initialDelay = Math.max(1000, nextRun.getTime() - nowIST.getTime());
-    setTimeout(async () => {
-        await runJob();
-        setInterval(runJob, 24 * 60 * 60 * 1000);
-    }, initialDelay);
-
-    console.log('⏰ Evening Absence Alert scheduled (21:00 IST).');
+    cron.schedule('0 22 * * *', runJob, { timezone: "Asia/Kolkata" });
+    console.log('⏰ Evening Absence Alert scheduled (22:00 IST) using node-cron.');
 }
 
 // ==========================================
@@ -8598,7 +8549,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                         }
 
                         if (req.isPhonePeWebhook) return res.status(200).send('OK');
-                        return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.totalAmount || '')}&method=phonepe`);
+                        return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.finalAmount || existingOrder.price || '')}&method=phonepe`);
                     } else {
                         if (req.isPhonePeWebhook) return res.status(404).send('Order not found');
                         return res.redirect('/checkout.html?status=failed&reason=phonepe_order_not_found');
@@ -8646,7 +8597,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
 
                     dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
 
-                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.totalAmount || '')}&method=payu`);
+                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.finalAmount || existingOrder.price || '')}&method=payu`);
                 } else {
                     return res.redirect('/checkout.html?status=failed&reason=payu_order_not_found');
                 }
@@ -8858,7 +8809,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                 }
 
                 // IMPORTANT: res.json MUST be here so it waits for PDF generating
-                if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.totalAmount || '') + '&method=payu');
+                if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.finalAmount || newOrder.price || '') + '&method=payu');
                 res.json({ success: true, orderId: newOrder.orderId });
             });
 
@@ -8867,7 +8818,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
 
         } catch (emailErr) {
             console.log("Failed to process email", emailErr);
-            if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.totalAmount || '') + '&method=payu');
+            if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.finalAmount || newOrder.price || '') + '&method=payu');
             res.json({ success: true, orderId: newOrder.orderId }); // Fallback response if PDF generation completely fails
         }
     } else {

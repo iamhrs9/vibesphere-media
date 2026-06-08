@@ -4186,7 +4186,39 @@
             countdownText.style.color = '#fff';
             countdownText.style.fontFamily = 'Impact, sans-serif';
             countdownText.innerText = '3';
+            countdownText.style.display = 'none'; // Hidden initially
 
+            bombContainer.style.display = 'none'; // Hidden initially
+
+            const revealBtn = document.createElement('button');
+            revealBtn.innerHTML = '✨ Reveal Receipt';
+            revealBtn.style.padding = '16px 45px';
+            revealBtn.style.fontSize = '20px';
+            revealBtn.style.fontWeight = '700';
+            revealBtn.style.borderRadius = '50px'; // Sleek pill shape
+            revealBtn.style.background = 'rgba(109, 62, 244, 0.85)'; // Theme Purple
+            revealBtn.style.backdropFilter = 'blur(10px)'; // Glassmorphism
+            revealBtn.style.color = 'white';
+            revealBtn.style.border = '1px solid rgba(255, 255, 255, 0.2)'; // Thin subtle border
+            revealBtn.style.cursor = 'pointer';
+            revealBtn.style.boxShadow = '0 8px 32px rgba(109, 62, 244, 0.4)'; // Soft aesthetic glow
+            revealBtn.style.fontFamily = 'Space Grotesk, sans-serif';
+            revealBtn.style.letterSpacing = '1px';
+            revealBtn.style.transition = 'all 0.3s ease';
+            revealBtn.style.animation = 'floatBtn 3s ease-in-out infinite';
+
+            const styleBtn = document.createElement('style');
+            styleBtn.innerHTML = `
+                @keyframes floatBtn {
+                    0% { transform: translateY(0px); box-shadow: 0 8px 32px rgba(109, 62, 244, 0.4); }
+                    50% { transform: translateY(-8px); box-shadow: 0 12px 40px rgba(109, 62, 244, 0.6); }
+                    100% { transform: translateY(0px); box-shadow: 0 8px 32px rgba(109, 62, 244, 0.4); }
+                }
+                button:active { transform: scale(0.95) !important; background: rgba(109, 62, 244, 1) !important; border-color: rgba(255,255,255,0.4) !important; }
+            `;
+            document.head.appendChild(styleBtn);
+
+            bombOverlay.appendChild(revealBtn);
             bombOverlay.appendChild(bombContainer);
             bombOverlay.appendChild(countdownText);
             document.body.appendChild(bombOverlay);
@@ -4325,12 +4357,11 @@
                         // Green & Gold confetti for the Hustler vibe
                         const moneyColors = ['#10b981', '#059669', '#f59e0b', '#fbbf24'];
 
-                        // HEAVY continuous party poppers from 4 Corners + Center!
-                        confetti({ particleCount: 6, angle: 60, spread: 60, origin: { x: 0, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Left
-                        confetti({ particleCount: 6, angle: 120, spread: 60, origin: { x: 1, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Right
-                        confetti({ particleCount: 5, angle: 315, spread: 60, origin: { x: 0, y: 0 }, gravity: 0.7, colors: moneyColors }); // Top Left
-                        confetti({ particleCount: 5, angle: 225, spread: 60, origin: { x: 1, y: 0 }, gravity: 0.7, colors: moneyColors }); // Top Right
-                        confetti({ particleCount: 4, angle: 90, spread: 100, origin: { x: 0.5, y: 0.5 }, gravity: 0.7, colors: moneyColors }); // Center
+                        // Throttled party poppers so it doesn't clutter mobile screens!
+                        if (frameCount % 10 === 0) {
+                            confetti({ particleCount: 5, angle: 60, spread: 60, origin: { x: 0, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Left
+                            confetti({ particleCount: 5, angle: 120, spread: 60, origin: { x: 1, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Right
+                        }
 
                         if (Date.now() < end) {
                             requestAnimationFrame(frame);
@@ -4339,9 +4370,22 @@
                 }
             };
 
-            let count = 3;
-            const countInterval = setInterval(() => {
-                count--;
+            revealBtn.onclick = () => {
+                revealBtn.style.display = 'none';
+                countdownText.style.display = 'block';
+                bombContainer.style.display = 'flex';
+                
+                // UNLOCK AUDIO CONTEXT IMMEDIATELY ON USER GESTURE
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    ctx.resume(); 
+                } catch(e) {}
+
+                playSynthesizedTick(); // First tick!
+
+                let count = 3;
+                const countInterval = setInterval(() => {
+                    count--;
                 if (count > 0) {
                     countdownText.innerText = count;
                     bombContainer.style.transform = `scale(${1 + (3 - count) * 0.5})`; // Bomb gets bigger!
@@ -4380,6 +4424,7 @@
                     }, 150);
                 }
             }, 400); // 400ms per tick (MUCH FASTER!)
+            }; // End of revealBtn.onclick
 
             if (orderId) {
                 const el = document.getElementById('success-order-id');
