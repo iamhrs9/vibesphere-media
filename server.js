@@ -8188,10 +8188,14 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 // Step B: Create Payment (Checkout V2 API)
                 try {
                     const checkoutPayload = {
-                        merchantOrderId: merchantTransactionId, // Ensure this is a string
-                        amount: phonepeAmount, // CRITICAL: Must be a strict INTEGER Number (Paise)
-                        returnUrl: callbackUrl, // The redirect URL after payment
-                        callbackUrl: callbackUrl // The webhook notification URL
+                        merchantOrderId: merchantTransactionId,
+                        amount: phonepeAmount,
+                        paymentFlow: {
+                            type: "PG_CHECKOUT",
+                            merchantUrls: {
+                                redirectUrl: callbackUrl
+                            }
+                        }
                     };
 
                     console.log("----- PHONEPE V2 OUTBOUND PAYLOAD -----");
@@ -8201,7 +8205,8 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     const checkoutResponse = await axios.post(`${pgBaseUrl}/checkout/v2/pay`, checkoutPayload, {
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `O-Bearer ${accessToken}`
+                            'Authorization': `O-Bearer ${accessToken}`,
+                            'X-CALLBACK-URL': callbackUrl
                         }
                     });
 
