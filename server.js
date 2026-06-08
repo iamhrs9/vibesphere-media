@@ -8584,7 +8584,15 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                         if (existingOrder.status !== 'Paid') {
                             existingOrder.status = 'Paid';
                             existingOrder.paymentStatus = 'Paid';
-                            existingOrder.paymentId = (pgData.data && pgData.data.transactionId) || merchantOrderId;
+                            let phonepeTxnId = merchantOrderId;
+                            if (pgData.paymentDetails && pgData.paymentDetails.length > 0) {
+                                phonepeTxnId = pgData.paymentDetails[0].transactionId || merchantOrderId;
+                            } else if (pgData.data && pgData.data.transactionId) {
+                                phonepeTxnId = pgData.data.transactionId;
+                            } else if (pgData.providerReferenceId) {
+                                phonepeTxnId = pgData.providerReferenceId;
+                            }
+                            existingOrder.paymentId = phonepeTxnId;
                             await existingOrder.save();
                             dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook (WhatsApp & Email)
                         }
