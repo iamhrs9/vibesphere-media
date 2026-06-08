@@ -7,7 +7,12 @@
     <title>Checkout - VibeSphere</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Confetti Script -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
@@ -283,7 +288,7 @@
             pointer-events: none;
         }
 
-        .panel > * {
+        .panel>* {
             position: relative;
             z-index: 1;
         }
@@ -950,6 +955,7 @@
         }
 
         @media (max-width: 720px) {
+
             .checkout-shell,
             .checkout-footer {
                 width: min(100%, calc(100% - 18px));
@@ -1040,7 +1046,6 @@
             display: grid !important;
             grid-template-rows: auto minmax(0, 1fr) auto !important;
             gap: 10px !important;
-            overflow: hidden !important;
         }
 
         .checkout-topbar,
@@ -1897,45 +1902,60 @@
     <svg aria-hidden="true" focusable="false" class="checkout-logo-sprite">
         <symbol id="logo-upi" viewBox="0 0 64 64">
             <rect x="4" y="10" width="56" height="44" rx="14" fill="#ffffff" stroke="#e5e7eb" />
-            <path d="M14 24v12c0 4 3.2 7.2 7.2 7.2s7.2-3.2 7.2-7.2V24h-3.4v11.8c0 2.1-1.7 3.8-3.8 3.8s-3.8-1.7-3.8-3.8V24H14z" fill="#0f172a"/>
-            <path d="M30.6 24v19h3.5v-6.2h3.5c4 0 7.2-2.9 7.2-6.5 0-3.6-3.2-6.3-7.2-6.3h-7z" fill="#0f172a"/>
-            <path d="M34.1 27.1h3.1c1.8 0 3.2 1.1 3.2 2.5 0 1.5-1.4 2.7-3.2 2.7h-3.1v-5.2z" fill="#ffffff"/>
-            <rect x="46.5" y="24" width="3.4" height="19" rx="1.7" fill="#0f172a"/>
-            <path d="M24.8 20.8c0 0 4.5-2.1 8.9.1M30.7 18.6c0 0 6.1-2.5 10.8 1.7" fill="none" stroke="#6d3ef4" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M37.3 18.9c0 0 5.5 1.5 8.1 5.8" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M40.2 18.2c0 0 5.6 2.6 6.9 7.9" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-linecap="round"/>
+            <path
+                d="M14 24v12c0 4 3.2 7.2 7.2 7.2s7.2-3.2 7.2-7.2V24h-3.4v11.8c0 2.1-1.7 3.8-3.8 3.8s-3.8-1.7-3.8-3.8V24H14z"
+                fill="#0f172a" />
+            <path d="M30.6 24v19h3.5v-6.2h3.5c4 0 7.2-2.9 7.2-6.5 0-3.6-3.2-6.3-7.2-6.3h-7z" fill="#0f172a" />
+            <path d="M34.1 27.1h3.1c1.8 0 3.2 1.1 3.2 2.5 0 1.5-1.4 2.7-3.2 2.7h-3.1v-5.2z" fill="#ffffff" />
+            <rect x="46.5" y="24" width="3.4" height="19" rx="1.7" fill="#0f172a" />
+            <path d="M24.8 20.8c0 0 4.5-2.1 8.9.1M30.7 18.6c0 0 6.1-2.5 10.8 1.7" fill="none" stroke="#6d3ef4"
+                stroke-width="2.2" stroke-linecap="round" />
+            <path d="M37.3 18.9c0 0 5.5 1.5 8.1 5.8" fill="none" stroke="#ef4444" stroke-width="2.2"
+                stroke-linecap="round" />
+            <path d="M40.2 18.2c0 0 5.6 2.6 6.9 7.9" fill="none" stroke="#14b8a6" stroke-width="2.2"
+                stroke-linecap="round" />
         </symbol>
         <symbol id="logo-gpay" viewBox="0 0 110 32">
-            <text x="0" y="21" font-family="Poppins, Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="-0.02em">
-                <tspan fill="#4285F4">G</tspan><tspan fill="#EA4335">P</tspan><tspan fill="#FBBC05">a</tspan><tspan fill="#34A853">y</tspan>
+            <text x="0" y="21" font-family="Poppins, Arial, sans-serif" font-size="18" font-weight="800"
+                letter-spacing="-0.02em">
+                <tspan fill="#4285F4">G</tspan>
+                <tspan fill="#EA4335">P</tspan>
+                <tspan fill="#FBBC05">a</tspan>
+                <tspan fill="#34A853">y</tspan>
             </text>
         </symbol>
         <symbol id="logo-phonepe" viewBox="0 0 32 32">
             <circle cx="16" cy="16" r="15" fill="#6739B7" />
-            <text x="16" y="21" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-size="18" font-weight="800" fill="#ffffff">प</text>
+            <text x="16" y="21" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-size="18"
+                font-weight="800" fill="#ffffff">प</text>
         </symbol>
         <symbol id="logo-paytm" viewBox="0 0 104 28">
-            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="-0.03em" fill="#00b9f1">paytm</text>
+            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800"
+                letter-spacing="-0.03em" fill="#00b9f1">paytm</text>
         </symbol>
         <symbol id="logo-bhim" viewBox="0 0 84 28">
-            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="-0.02em" fill="#8a94a6">BHIM</text>
+            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800"
+                letter-spacing="-0.02em" fill="#8a94a6">BHIM</text>
         </symbol>
         <symbol id="logo-visa" viewBox="0 0 80 28">
-            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="-0.02em" fill="#1a44b8">VISA</text>
+            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800"
+                letter-spacing="-0.02em" fill="#1a44b8">VISA</text>
         </symbol>
         <symbol id="logo-mastercard" viewBox="0 0 68 28">
             <circle cx="24" cy="14" r="10" fill="#eb001b" opacity="0.95" />
             <circle cx="38" cy="14" r="10" fill="#f79e1b" opacity="0.95" />
         </symbol>
         <symbol id="logo-rupay" viewBox="0 0 96 28">
-            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="-0.02em" fill="#1f3c88">RuPay</text>
+            <text x="0" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800"
+                letter-spacing="-0.02em" fill="#1f3c88">RuPay</text>
             <rect x="58" y="8" width="4" height="12" rx="2" fill="#1f3c88" />
             <rect x="63" y="8" width="4" height="12" rx="2" fill="#fb923c" />
             <rect x="68" y="8" width="4" height="12" rx="2" fill="#22c55e" />
         </symbol>
         <symbol id="logo-razorpay" viewBox="0 0 120 28">
             <path d="M3 19.5 L10 8 H15 L8 19.5 Z" fill="#0f4fa8" />
-            <text x="17" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800" font-style="italic" letter-spacing="-0.03em" fill="#1e3a8a">Razorpay</text>
+            <text x="17" y="20" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="800"
+                font-style="italic" letter-spacing="-0.03em" fill="#1e3a8a">Razorpay</text>
         </symbol>
         <symbol id="icon-wallet" viewBox="0 0 64 64">
             <rect x="12" y="16" width="40" height="28" rx="8" fill="none" stroke="#6d3ef4" stroke-width="4" />
@@ -1953,18 +1973,22 @@
             <path d="M10 44h44" stroke="#667085" stroke-width="4" stroke-linecap="round" />
         </symbol>
         <symbol id="icon-shield" viewBox="0 0 64 64">
-            <path d="M32 8l18 6v12c0 13-7 22-18 30-11-8-18-17-18-30V14l18-6z" fill="none" stroke="#6d3ef4" stroke-width="4" />
-            <path d="M24 31l6 6 10-12" fill="none" stroke="#6d3ef4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M32 8l18 6v12c0 13-7 22-18 30-11-8-18-17-18-30V14l18-6z" fill="none" stroke="#6d3ef4"
+                stroke-width="4" />
+            <path d="M24 31l6 6 10-12" fill="none" stroke="#6d3ef4" stroke-width="4" stroke-linecap="round"
+                stroke-linejoin="round" />
         </symbol>
         <symbol id="icon-lock" viewBox="0 0 24 24">
             <rect x="5" y="10" width="14" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8" />
-            <path d="M8 10V8a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <path d="M8 10V8a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" />
         </symbol>
     </svg>
     <main class="checkout-shell">
         <header class="checkout-topbar" aria-label="Checkout progress and security">
             <div class="brand-lockup">
-                <a href="/" class="flex items-center gap-2 cursor-pointer" style="text-decoration: none; color: inherit;">
+                <a href="/" class="flex items-center gap-2 cursor-pointer"
+                    style="text-decoration: none; color: inherit;">
                     <img src="/vibeicon.png" alt="VibeSphere Media">
                     <div style="display: flex; flex-direction: column;">
                         <strong>VIBESPHERE</strong>
@@ -2000,254 +2024,546 @@
         <div id="view-checkout" class="block w-full">
             <form id="orderForm" class="checkout-grid">
                 <section class="checkout-column checkout-column--left">
-                <section class="panel panel--summary">
-                    <div class="hero-copy">
-                        <h1>Complete Your <span class="accent">Order</span></h1>
-                        <p>Review your package details, apply discounts, and choose your preferred payment method.</p>
-                    </div>
-                    <div class="panel-title">
-                        <div class="panel-title__icon" aria-hidden="true">
-                            <svg class="text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <section class="panel panel--summary">
+                        <div class="hero-copy">
+                            <h1>Complete Your <span class="accent">Order</span></h1>
+                            <p>Review your package details, apply discounts, and choose your preferred payment method.
+                            </p>
                         </div>
-                        <div>
-                            <h2>Order Summary</h2>
-                        </div>
-                    </div>
-
-                    <div class="summary-items" id="summaryItems">
-                        <div class="summary-item summary-item--placeholder">Loading your order details...</div>
-                    </div>
-
-                    <div class="summary-meta">
-                        <div class="summary-meta__row" style="display:none;" id="pkgMetaRow">
-                            <span>Package</span>
-                            <strong id="dispPkg">Loading...</strong>
-                        </div>
-                        <div class="summary-meta__row" style="display:none;">
-                            <span>Target</span>
-                            <strong id="dispInsta">...</strong>
-                        </div>
-                        <div class="summary-meta__row" id="couponMetaRow" style="display:none;">
-                            <span>Promo Code</span>
-                            <strong id="couponMetaValue">—</strong>
-                        </div>
-                        <div class="summary-meta__row" id="couponDiscountRow" style="display:none;">
-                            <span>Discount</span>
-                            <strong id="couponDiscountValue">—</strong>
-                        </div>
-                    </div>
-
-                    <div class="breakdown">
-                        <div class="breakdown-row">
-                            <span>Subtotal</span>
-                            <strong id="breakdownSubtotal">₹0.00</strong>
-                        </div>
-                        <div class="breakdown-row" id="couponBreakdownRow" style="display:none;">
-                            <span>Promo savings</span>
-                            <strong id="breakdownCoupon">—</strong>
-                        </div>
-                        <div class="breakdown-row breakdown-row--total">
-                            <span>Final total</span>
-                            <strong id="final-total">₹0.00</strong>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="coupon-card">
-                    <div class="coupon-card__header">
-                        <div class="panel-title" style="margin-bottom:10px;">
-                            <div class="panel-title__icon" style="width:44px;height:44px;border-radius:16px;" aria-hidden="true"><i class="ri-coupon-3-line"></i></div>
-                            <div>
-                                <h2 style="margin:0;font-size:1.05rem;">Have a Coupon Code?</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="coupon-card__row">
-                        <input type="text" id="couponCodeInput" class="coupon-card__input" placeholder="WELCOME10">
-                        <button type="button" id="applyCouponBtn" class="coupon-card__button">Apply</button>
-                    </div>
-                    <div id="couponStatus" class="coupon-status">Have a promo? Apply it before you pay.</div>
-                </section>
-
-                <div class="checkout-hidden-fields" aria-hidden="true">
-                    <label for="name">Full Name
-                        <input type="text" id="name" placeholder="Enter your full name">
-                    </label>
-                    <label for="email">Email Address
-                        <input type="email" id="email" placeholder="harsh@vibespheremedia.in">
-                    </label>
-                    <label for="phone">Phone Number
-                        <input type="tel" id="phone" placeholder="+91 98765 43210">
-                    </label>
-                </div>
-            </section>
-
-            <section class="checkout-column checkout-column--right">
-                <section class="panel payment-panel">
-                    <div class="panel-title">
-                        <div class="panel-title__icon" aria-hidden="true"><i class="ri-wallet-3-line"></i></div>
-                        <div>
-                            <h2>Payment Method</h2>
-                            <p>Choose your preferred payment option</p>
-                        </div>
-                    </div>
-
-                    <div class="payment-methods" aria-label="Payment methods">
-                        <label id="walletPayOption" class="payment-method-card payment-method-card--wallet is-active" data-method-card="wallet">
-                            <input type="radio" class="payment-method-card__input" id="payment-wallet" name="payment_method" value="wallet" checked>
-                            <div class="payment-method-card__radio" aria-hidden="true"></div>
-                            <div class="payment-method-card__icon" aria-hidden="true">
-                                <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
-                                    <use href="#icon-wallet"></use>
+                        <div class="panel-title">
+                            <div class="panel-title__icon" aria-hidden="true">
+                                <svg class="text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                             </div>
-                            <div class="payment-method-card__copy">
-                                <strong>VibeSphere Wallet</strong>
-                                <span>Pay using your VibeSphere Wallet balance</span>
+                            <div>
+                                <h2>Order Summary</h2>
                             </div>
-                            <div class="payment-method-card__right">
-                                <span class="method-pill">Recommended</span>
-                                <div class="method-balance">
-                                    <span>Wallet Balance</span>
-                                    <strong id="checkoutWalletBalance">₹0.00</strong>
+                        </div>
+
+                        <div class="summary-items" id="summaryItems">
+                            <div class="summary-item summary-item--placeholder">Loading your order details...</div>
+                        </div>
+
+                        <div class="summary-meta">
+                            <div class="summary-meta__row" style="display:none;" id="pkgMetaRow">
+                                <span>Package</span>
+                                <strong id="dispPkg">Loading...</strong>
+                            </div>
+                            <div class="summary-meta__row" style="display:none;">
+                                <span>Target</span>
+                                <strong id="dispInsta">...</strong>
+                            </div>
+                            <div class="summary-meta__row" id="couponMetaRow" style="display:none;">
+                                <span>Promo Code</span>
+                                <strong id="couponMetaValue">—</strong>
+                            </div>
+                            <div class="summary-meta__row" id="couponDiscountRow" style="display:none;">
+                                <span>Discount</span>
+                                <strong id="couponDiscountValue">—</strong>
+                            </div>
+                        </div>
+
+                        <div class="breakdown">
+                            <div class="breakdown-row">
+                                <span>Subtotal</span>
+                                <strong id="breakdownSubtotal">₹0.00</strong>
+                            </div>
+                            <div class="breakdown-row" id="couponBreakdownRow" style="display:none;">
+                                <span>Promo savings</span>
+                                <strong id="breakdownCoupon">—</strong>
+                            </div>
+                            <div class="breakdown-row breakdown-row--total">
+                                <span>Final total</span>
+                                <strong id="final-total">₹0.00</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="coupon-card">
+                        <div class="coupon-card__header">
+                            <div class="panel-title" style="margin-bottom:10px;">
+                                <div class="panel-title__icon" style="width:44px;height:44px;border-radius:16px;"
+                                    aria-hidden="true"><i class="ri-coupon-3-line"></i></div>
+                                <div>
+                                    <h2 style="margin:0;font-size:1.05rem;">Have a Coupon Code?</h2>
                                 </div>
                             </div>
-                        </label>
-                        <div id="insufficientBalanceWarn" class="wallet-note">Your wallet balance is not enough for this total.</div>
-
-                        <label id="online-payment-card" class="payment-method-card" data-method-card="online">
-                            <input type="radio" id="online-payment-input" class="payment-method-card__input" name="payment_method" value="online">
-                            <div class="payment-method-card__radio" aria-hidden="true"></div>
-                            <div class="payment-method-card__icon" aria-hidden="true">
-                                <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
-                                    <use href="#icon-card"></use>
-                                </svg>
-                            </div>
-                            <div class="payment-method-card__copy">
-                                <strong>Pay Online</strong>
-                                <span>UPI, Debit/Credit Cards & Netbanking</span>
-                            </div>
-                            <div class="payment-method-card__right flex flex-col items-end justify-center">
-                                <div class="flex -space-x-3" aria-label="Accepted methods">
-                                    <div class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
-                                        <img src="assets/images/upi-main.png" class="w-full h-full object-contain" alt="UPI" />
-                                    </div>
-                                    <div class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
-                                        <img src="assets/images/visa.png" class="w-full h-full object-contain" alt="Visa" />
-                                    </div>
-                                    <div class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
-                                        <img src="assets/images/mastercard.png" class="w-full h-full object-contain" alt="Mastercard" />
-                                    </div>
-                                </div>
-                            </div>
-                        </label>
-                        <div id="onlinePaymentWarn" class="wallet-note" style="display:none; color: #ef4444;">Minimum ₹1 required for online payments.</div>
-
-                        <label class="payment-method-card opacity-50 cursor-not-allowed" data-method-card="manual" style="pointer-events: none;">
-                            <input type="radio" class="payment-method-card__input" name="payment_method" value="manual" disabled>
-                            <div class="payment-method-card__radio" aria-hidden="true"></div>
-                            <div class="payment-method-card__icon" aria-hidden="true">
-                                <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
-                                    <use href="#icon-bank"></use>
-                                </svg>
-                            </div>
-                            <div class="payment-method-card__copy">
-                                <strong>Manual Payment</strong>
-                                <span>Direct bank transfer / NEFT / RTGS</span>
-                            </div>
-                            <div class="payment-method-card__right">
-                                <span class="bg-gray-200 text-gray-500 text-[10px] uppercase font-bold px-2 py-1 rounded">Under Testing</span>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div class="trust-strip" aria-label="Checkout trust indicators">
-                        <div class="trust-strip__left">
-                            <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true" style="height:22px;">
-                                <use href="#icon-shield"></use>
-                            </svg>
-                            <div>
-                                <strong>100% Secured Payments</strong>
-                            </div>
                         </div>
-                        <div class="trust-strip__right">
-                            <span>Protected by</span>
-                            <svg class="brand-logo" viewBox="0 0 120 28" aria-label="Razorpay">
-                                <use href="#logo-razorpay"></use>
-                            </svg>
+                        <div class="coupon-card__row">
+                            <input type="text" id="couponCodeInput" class="coupon-card__input" placeholder="WELCOME10">
+                            <button type="button" id="applyCouponBtn" class="coupon-card__button">Apply</button>
                         </div>
-                    </div>
+                        <div id="couponStatus" class="coupon-status">Have a promo? Apply it before you pay.</div>
+                    </section>
 
-                    <div class="checkout-paybar">
-                        <div class="checkout-paybar__total">
-                            <span>Total Payable</span>
-                            <strong id="dispPrice">₹0.00</strong>
-                        </div>
-                        <button type="submit" class="btn-pay">Pay ₹0.00 Securely</button>
-                    </div>
-
-                    <p id="smm-checkout-error" style="display:none;margin:0;color:#b91c1c;font-weight:600;text-align:center;"></p>
-                    <div class="mt-2 hidden md:flex items-center justify-center gap-1.5 text-center text-xs text-gray-500">
-                        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="h-3.5 w-3.5 text-gray-400">
-                            <use href="#icon-lock"></use>
-                        </svg>
-                        <span>By proceeding, you agree to our <a class="font-medium text-[#6d3ef4] hover:text-[#5b21b6] focus-visible:text-[#5b21b6] focus-visible:outline-none" href="/terms">Terms &amp; Conditions</a> and <a class="font-medium text-[#6d3ef4] hover:text-[#5b21b6] focus-visible:text-[#5b21b6] focus-visible:outline-none" href="privacy-policy.html">Privacy Policy.</a></span>
+                    <div class="checkout-hidden-fields" aria-hidden="true">
+                        <label for="name">Full Name
+                            <input type="text" id="name" placeholder="Enter your full name">
+                        </label>
+                        <label for="email">Email Address
+                            <input type="email" id="email" placeholder="harsh@vibespheremedia.in">
+                        </label>
+                        <label for="phone">Phone Number
+                            <input type="tel" id="phone" placeholder="+91 98765 43210">
+                        </label>
                     </div>
                 </section>
-            </section>
-        </form>
+
+                <section class="checkout-column checkout-column--right">
+                    <section class="panel payment-panel">
+                        <div class="panel-title">
+                            <div class="panel-title__icon" aria-hidden="true"><i class="ri-wallet-3-line"></i></div>
+                            <div>
+                                <h2>Payment Method</h2>
+                                <p>Choose your preferred payment option</p>
+                            </div>
+                        </div>
+
+                        <div class="payment-methods" aria-label="Payment methods">
+                            <label id="walletPayOption"
+                                class="payment-method-card payment-method-card--wallet is-active"
+                                data-method-card="wallet">
+                                <input type="radio" class="payment-method-card__input" id="payment-wallet"
+                                    name="payment_method" value="wallet" checked>
+                                <div class="payment-method-card__radio" aria-hidden="true"></div>
+                                <div class="payment-method-card__icon" aria-hidden="true">
+                                    <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
+                                        <use href="#icon-wallet"></use>
+                                    </svg>
+                                </div>
+                                <div class="payment-method-card__copy">
+                                    <strong>VibeSphere Wallet</strong>
+                                    <span>Pay using your VibeSphere Wallet balance</span>
+                                </div>
+                                <div class="payment-method-card__right">
+                                    <span class="method-pill">Recommended</span>
+                                    <div class="method-balance">
+                                        <span>Wallet Balance</span>
+                                        <strong id="checkoutWalletBalance">₹0.00</strong>
+                                    </div>
+                                </div>
+                            </label>
+                            <div id="insufficientBalanceWarn" class="wallet-note">Your wallet balance is not enough for
+                                this total.</div>
+
+                            <label id="online-payment-card" class="payment-method-card" data-method-card="online">
+                                <input type="radio" id="online-payment-input" class="payment-method-card__input"
+                                    name="payment_method" value="online">
+                                <div class="payment-method-card__radio" aria-hidden="true"></div>
+                                <div class="payment-method-card__icon" aria-hidden="true">
+                                    <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
+                                        <use href="#icon-card"></use>
+                                    </svg>
+                                </div>
+                                <div class="payment-method-card__copy">
+                                    <strong>Pay Online</strong>
+                                    <span>UPI, Debit/Credit Cards & Netbanking</span>
+                                </div>
+                                <div class="payment-method-card__right flex flex-col items-end justify-center">
+                                    <div class="flex -space-x-3" aria-label="Accepted methods">
+                                        <div
+                                            class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
+                                            <img src="assets/images/upi-main.png" class="w-full h-full object-contain"
+                                                alt="UPI" />
+                                        </div>
+                                        <div
+                                            class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
+                                            <img src="assets/images/visa.png" class="w-full h-full object-contain"
+                                                alt="Visa" />
+                                        </div>
+                                        <div
+                                            class="flex w-8 h-8 p-1 items-center justify-center rounded-full border border-gray-100 bg-white ring-2 ring-white shadow-sm shrink-0">
+                                            <img src="assets/images/mastercard.png" class="w-full h-full object-contain"
+                                                alt="Mastercard" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            <div id="onlinePaymentWarn" class="wallet-note" style="display:none; color: #ef4444;">
+                                Minimum ₹1 required for online payments.</div>
+
+                            <label class="payment-method-card opacity-50 cursor-not-allowed" data-method-card="manual"
+                                style="pointer-events: none;">
+                                <input type="radio" class="payment-method-card__input" name="payment_method"
+                                    value="manual" disabled>
+                                <div class="payment-method-card__radio" aria-hidden="true"></div>
+                                <div class="payment-method-card__icon" aria-hidden="true">
+                                    <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
+                                        <use href="#icon-bank"></use>
+                                    </svg>
+                                </div>
+                                <div class="payment-method-card__copy">
+                                    <strong>Manual Payment</strong>
+                                    <span>Direct bank transfer / NEFT / RTGS</span>
+                                </div>
+                                <div class="payment-method-card__right">
+                                    <span
+                                        class="bg-gray-200 text-gray-500 text-[10px] uppercase font-bold px-2 py-1 rounded">Under
+                                        Testing</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="trust-strip" aria-label="Checkout trust indicators">
+                            <div class="trust-strip__left">
+                                <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true" style="height:22px;">
+                                    <use href="#icon-shield"></use>
+                                </svg>
+                                <div>
+                                    <strong>100% Secured Payments</strong>
+                                </div>
+                            </div>
+                            <div class="trust-strip__right">
+                                <span>Protected by</span>
+                                <svg class="brand-logo" viewBox="0 0 120 28" aria-label="Razorpay">
+                                    <use href="#logo-razorpay"></use>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="checkout-paybar">
+                            <div class="checkout-paybar__total">
+                                <span>Total Payable</span>
+                                <strong id="dispPrice">₹0.00</strong>
+                            </div>
+                            <button type="submit" class="btn-pay">Pay ₹0.00 Securely</button>
+                        </div>
+
+                        <p id="smm-checkout-error"
+                            style="display:none;margin:0;color:#b91c1c;font-weight:600;text-align:center;"></p>
+                        <div
+                            class="mt-2 hidden md:flex items-center justify-center gap-1.5 text-center text-xs text-gray-500">
+                            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"
+                                class="h-3.5 w-3.5 text-gray-400">
+                                <use href="#icon-lock"></use>
+                            </svg>
+                            <span>By proceeding, you agree to our <a
+                                    class="font-medium text-[#6d3ef4] hover:text-[#5b21b6] focus-visible:text-[#5b21b6] focus-visible:outline-none"
+                                    href="/terms">Terms &amp; Conditions</a> and <a
+                                    class="font-medium text-[#6d3ef4] hover:text-[#5b21b6] focus-visible:text-[#5b21b6] focus-visible:outline-none"
+                                    href="privacy-policy.html">Privacy Policy.</a></span>
+                        </div>
+                    </section>
+                </section>
+            </form>
         </div>
 
         <div id="view-failed" class="hidden flex-col items-center justify-center min-h-[60vh] text-center w-full mt-8">
-            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-xl shadow-red-500/10">
+            <div
+                class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-xl shadow-red-500/10">
                 <i class="ri-close-circle-fill text-5xl"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">Payment Failed or Cancelled</h2>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">Payment Failed or
+                Cancelled</h2>
             <p class="text-gray-500 max-w-md mx-auto mb-8 text-[0.95rem] leading-relaxed">
                 We couldn't process your payment. This could be due to a network issue or the transaction was cancelled.
             </p>
-            <button type="button" onclick="resetCheckout()" class="bg-gradient-to-r from-[#6d3ef4] to-[#7f4ef5] text-white px-8 py-3.5 rounded-2xl font-bold tracking-wide shadow-lg shadow-[#6d3ef4]/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#6d3ef4]/30 transition-all duration-200 flex items-center gap-2">
+            <button type="button" onclick="resetCheckout()"
+                class="bg-gradient-to-r from-[#6d3ef4] to-[#7f4ef5] text-white px-8 py-3.5 rounded-2xl font-bold tracking-wide shadow-lg shadow-[#6d3ef4]/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#6d3ef4]/30 transition-all duration-200 flex items-center gap-2">
                 <i class="ri-refresh-line"></i>
                 Retry Payment
             </button>
         </div>
 
-        <div id="view-success" class="hidden flex-col items-center justify-center min-h-[60vh] text-center w-full mt-8">
-            <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 text-white shadow-2xl shadow-green-500/20 ring-8 ring-green-50">
-                <i class="ri-check-line text-5xl font-bold"></i>
+        <div id="view-success" class="hidden flex-col lg:flex-row justify-between items-stretch gap-6 w-full max-w-full mt-5">
+            <!-- Left Column -->
+            <div class="w-full lg:w-[calc(50%-12px)] flex flex-col">
+                <div class="panel text-center pb-8 border border-emerald-100/50 relative overflow-hidden bg-white h-full">
+                        <!-- Decorative background elements -->
+                        <div
+                            class="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-gradient-to-br from-[#6d3ef4]/5 to-emerald-400/5 blur-3xl pointer-events-none">
+                        </div>
+
+                        <div class="relative z-10 flex flex-col items-center px-4 md:px-8 mt-4">
+                            <!-- Animated Check Icon -->
+                            <div
+                                class="w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center mb-5 text-white shadow-lg shadow-emerald-500/30 ring-8 ring-emerald-50">
+                                <i class="ri-check-double-line text-4xl font-black"></i>
+                            </div>
+
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Payment
+                                Successful!</h2>
+                            <p class="text-gray-500 text-sm md:text-[0.95rem] leading-relaxed max-w-sm mb-6">
+                                Thank you for choosing VibeSphere! A detailed invoice has been sent to your Email and
+                                WhatsApp.
+                            </p>
+
+                            <!-- Printer Machine & Animated Receipt -->
+                            <div class="relative w-full max-w-sm mx-auto mt-2 z-20" style="perspective: 1000px;">
+                                <!-- Printer Machine Graphic -->
+                                <div
+                                    class="bg-gray-800 rounded-t-xl h-8 w-full relative z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] flex items-center justify-center border-b-[6px] border-gray-950">
+                                    <div
+                                        class="w-16 h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981] animate-pulse absolute top-2 right-4">
+                                    </div>
+                                    <div class="w-[85%] h-3 bg-black rounded-b-md absolute bottom-0 shadow-inner"></div>
+                                </div>
+
+                                <!-- Order Detail Card (The Receipt) -->
+                                <div id="receipt-card"
+                                    class="w-[92%] mx-auto bg-[#fcfcfc] rounded-b-none p-5 text-left relative receipt-hidden z-10"
+                                    style="margin-top: -5px;">
+                                    <style>
+                                        #receipt-card {
+                                            background-color: #fdfcf6 !important;
+                                            background-image: 
+                                                linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px), 
+                                                linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px) !important;
+                                            background-size: 16px 16px !important;
+                                            box-shadow: inset 0 0 40px rgba(0,0,0,0.02) !important;
+                                            border-left: 1px solid #e5e7eb;
+                                            border-right: 1px solid #e5e7eb;
+                                        }
+                                        #receipt-card::after {
+                                            content: '';
+                                            position: absolute;
+                                            bottom: -8px;
+                                            left: -1px; /* Cover borders */
+                                            width: calc(100% + 2px);
+                                            height: 8px;
+                                            background: linear-gradient(-45deg, transparent 33.33%, #fdfcf6 33.33%, #fdfcf6 66.66%, transparent 66.66%), linear-gradient(45deg, transparent 33.33%, #fdfcf6 33.33%, #fdfcf6 66.66%, transparent 66.66%);
+                                            background-size: 16px 16px;
+                                            filter: drop-shadow(0px 4px 2px rgba(0,0,0,0.1));
+                                        }
+
+                                        .receipt-hidden {
+                                            opacity: 0 !important;
+                                            clip-path: inset(0 0 100% 0) !important;
+                                            transform: scale(0.9) !important;
+                                            transform-origin: top center !important;
+                                        }
+
+                                        @keyframes printAndStick {
+                                            0% {
+                                                opacity: 1;
+                                                clip-path: inset(0 0 100% 0);
+                                                transform: scale(0.9);
+                                                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                                                transform-origin: top center;
+                                            }
+
+                                            45% {
+                                                opacity: 1;
+                                                clip-path: inset(0 0 -15px 0);
+                                                transform: scale(0.9);
+                                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                                                transform-origin: top center;
+                                            }
+
+                                            60% {
+                                                opacity: 1;
+                                                clip-path: inset(0 0 -15px 0);
+                                                transform: scale(0.9);
+                                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                                                transform-origin: top center;
+                                            }
+
+                                            100% {
+                                                opacity: 1;
+                                                clip-path: inset(0 0 -15px 0);
+                                                transform: scale(1.1);
+                                                box-shadow: 0 40px 80px -10px rgba(0, 0, 0, 0.7);
+                                                transform-origin: top center;
+                                                z-index: 100;
+                                            }
+                                        }
+
+                                        .receipt-printing {
+                                            animation: printAndStick 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+                                        }
+
+                                        @keyframes screenShake {
+                                            0% {
+                                                transform: translate(0, 0) rotate(0deg);
+                                            }
+
+                                            10% {
+                                                transform: translate(-20px, -20px) rotate(-2deg);
+                                                filter: blur(2px);
+                                            }
+
+                                            20% {
+                                                transform: translate(20px, -20px) rotate(2deg);
+                                            }
+
+                                            30% {
+                                                transform: translate(-20px, 20px) rotate(-2deg);
+                                            }
+
+                                            40% {
+                                                transform: translate(20px, 20px) rotate(2deg);
+                                                filter: blur(1px);
+                                            }
+
+                                            50% {
+                                                transform: translate(-10px, -10px) rotate(-1deg);
+                                            }
+
+                                            60% {
+                                                transform: translate(10px, -10px) rotate(1deg);
+                                            }
+
+                                            70% {
+                                                transform: translate(-10px, 10px) rotate(-1deg);
+                                                filter: blur(0);
+                                            }
+
+                                            80% {
+                                                transform: translate(10px, 10px) rotate(1deg);
+                                            }
+
+                                            90% {
+                                                transform: translate(-5px, -5px) rotate(0);
+                                            }
+
+                                            100% {
+                                                transform: translate(0, 0) rotate(0);
+                                            }
+                                        }
+
+                                        body.shake-active {
+                                            animation: screenShake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+                                            overflow-x: hidden;
+                                        }
+                                    </style>
+                                    <div
+                                        class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#6d3ef4] to-[#7f4ef5]">
+                                    </div>
+                                    <div class="flex justify-between items-start mb-3">
+                                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order
+                                            ID</span>
+                                        <span
+                                            class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">Confirmed</span>
+                                    </div>
+                                    <div class="text-lg font-bold text-gray-900 font-mono tracking-tight mb-4"
+                                        id="success-order-id">#ORD-XXXXXX</div>
+
+                                    <div class="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 mt-2">
+                                        <div>
+                                            <span
+                                                class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Amount
+                                                Paid</span>
+                                            <div class="text-sm font-bold text-gray-900" id="success-amount">₹0.00</div>
+                                        </div>
+                                        <div>
+                                            <span
+                                                class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Payment
+                                                Method</span>
+                                            <div class="text-sm font-bold text-gray-900 truncate" id="success-method">
+                                                Online</div>
+                                        </div>
+                                        <div class="col-span-2 border-t border-gray-100 pt-3">
+                                            <span
+                                                class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Transaction
+                                                ID</span>
+                                            <div class="text-sm font-bold text-gray-900 font-mono truncate"
+                                                title="Transaction ID" id="success-txn-id">PENDING</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Right Column -->
+            <div class="w-full lg:w-[calc(50%-12px)] flex flex-col">
+                <div class="panel h-full flex flex-col" style="width: 100%; flex: 1;">
+                    <div class="panel-title mb-5 border-b border-gray-100 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 uppercase tracking-wide">What happens next?</h2>
+                        </div>
+                    </div>
+
+                    <!-- Next Steps / Tracker -->
+                    <div class="w-full mb-8 text-left">
+                        <div
+                            class="space-y-6 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-gray-200 before:to-transparent pl-1 mt-2">
+                            <!-- Step 1 -->
+                            <div class="relative flex items-start gap-4">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-emerald-500 flex-shrink-0 z-10 border-4 border-white shadow-sm ring-1 ring-gray-100 flex items-center justify-center">
+                                </div>
+                                <div class="pt-0.5">
+                                    <h4 class="text-sm font-bold text-gray-900">Order Placed</h4>
+                                    <p class="text-xs text-gray-500 mt-1 leading-relaxed">We've securely received your
+                                        payment.</p>
+                                </div>
+                            </div>
+                            <!-- Step 2 -->
+                            <div class="relative flex items-start gap-4">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-white flex-shrink-0 z-10 border-4 border-[#6d3ef4] shadow-sm ring-1 ring-gray-100 flex items-center justify-center">
+                                    <div class="w-2 h-2 bg-[#6d3ef4] rounded-full animate-pulse"></div>
+                                </div>
+                                <div class="pt-0.5">
+                                    <h4 class="text-sm font-bold text-gray-900">Campaign Processing</h4>
+                                    <p class="text-xs text-gray-500 mt-1 leading-relaxed">Our system is setting up your
+                                        campaign. Results usually begin within 1-4 hours.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="w-full flex flex-col gap-3 mt-4 border-t border-gray-100 pt-6">
+                        <div class="flex gap-3">
+                            <a href="/dashboard.html?tab=orders"
+                                class="flex-1 bg-gradient-to-r from-[#6d3ef4] to-[#7f4ef5] text-white px-4 py-3.5 rounded-xl font-bold tracking-wide shadow-lg shadow-[#6d3ef4]/20 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#6d3ef4]/30 transition-all duration-200 flex items-center justify-center gap-2 text-sm">
+                                <i class="ri-dashboard-line text-lg"></i>
+                                Dashboard
+                            </a>
+                            <a href="/index.html"
+                                class="flex-1 bg-white border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl font-bold tracking-wide hover:border-[#6d3ef4] hover:text-[#6d3ef4] hover:bg-[#6d3ef4]/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm">
+                                <i class="ri-home-4-line text-lg"></i>
+                                Home
+                            </a>
+                        </div>
+                        <a href="https://wa.me/918302485826" target="_blank"
+                            class="w-full bg-[#25D366]/10 border border-[#25D366]/30 text-[#075E54] px-4 py-3.5 rounded-xl font-bold tracking-wide hover:bg-[#25D366]/20 transition-all duration-200 flex items-center justify-center gap-2 text-sm">
+                            <i class="ri-whatsapp-line text-lg text-[#25D366]"></i>
+                            Need Help? WhatsApp Us
+                        </a>
+                    </div>
+                </div>
             </div>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">Order Confirmed!</h2>
-            <p class="text-gray-500 max-w-md mx-auto mb-2 text-[0.95rem] leading-relaxed">
-                Your payment was successful and your order is being processed.
-            </p>
-            <p class="font-bold text-[#6d3ef4] mb-8 bg-[#6d3ef4]/10 py-2 px-4 rounded-full inline-block">
-                Order ID: <span id="success-order-id">XXXXXX</span>
-            </p>
-            <a href="/dashboard.html?tab=orders" class="border-2 border-gray-200 text-gray-700 px-8 py-3.5 rounded-2xl font-bold tracking-wide hover:border-[#6d3ef4] hover:text-[#6d3ef4] hover:bg-[#6d3ef4]/5 transition-all duration-200">
-                Back to Dashboard
-            </a>
+        </div>
         </div>
 
         <!-- Progressive Detail Collection Modal -->
-        <div id="detailsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
-            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 transform scale-95 transition-transform duration-300">
+        <div id="detailsModal"
+            class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+            <div
+                class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 transform scale-95 transition-transform duration-300">
                 <h3 class="text-2xl font-bold mb-2 text-gray-900">Almost there!</h3>
-                <p class="text-gray-500 mb-6 text-sm">Please provide your details so we can send you the invoice and project updates.</p>
-                
+                <p class="text-gray-500 mb-6 text-sm">Please provide your details so we can send you the invoice and
+                    project updates.</p>
+
                 <form id="detailsModalForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input type="text" id="modalName" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all" placeholder="John Doe">
+                        <input type="text" id="modalName" required
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all"
+                            placeholder="John Doe">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input type="email" id="modalEmail" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all" placeholder="john@example.com">
+                        <input type="email" id="modalEmail" required
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all"
+                            placeholder="john@example.com">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
-                        <input type="tel" id="modalPhone" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all" placeholder="+91 98765 43210">
+                        <input type="tel" id="modalPhone" required
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-[#6d3ef4] outline-none transition-all"
+                            placeholder="+91 98765 43210">
                     </div>
-                    <button type="submit" class="w-full mt-6 bg-gradient-to-r from-[#6d3ef4] to-[#7f4ef5] text-white px-8 py-3.5 rounded-xl font-bold tracking-wide shadow-lg hover:shadow-xl transition-all">
+                    <button type="submit"
+                        class="w-full mt-6 bg-gradient-to-r from-[#6d3ef4] to-[#7f4ef5] text-white px-8 py-3.5 rounded-xl font-bold tracking-wide shadow-lg hover:shadow-xl transition-all">
                         Continue to Payment
                     </button>
                 </form>
@@ -2463,7 +2779,7 @@
             const razorpayWarning = document.getElementById('razorpayMinWarning');
             const externalMethods = document.querySelectorAll('label[data-method-card="upi"], label[data-method-card="card"], label[data-method-card="netbanking"]');
             let customWarning = document.getElementById('externalMinWarning');
-            
+
             if (!customWarning) {
                 customWarning = document.createElement('div');
                 customWarning.id = 'externalMinWarning';
@@ -2475,7 +2791,7 @@
                     methodsContainer.appendChild(customWarning);
                 }
             }
-            
+
             if (finalTotal < 1) {
                 if (razorpayRadio) {
                     razorpayRadio.disabled = true;
@@ -2493,7 +2809,7 @@
                     }
                 }
                 if (razorpayWarning) razorpayWarning.style.display = 'block';
-                
+
                 externalMethods.forEach(label => {
                     label.classList.add('opacity-50', 'grayscale', 'pointer-events-none');
                     const radio = label.querySelector('input[type="radio"]');
@@ -2519,7 +2835,7 @@
                     }
                 }
                 if (razorpayWarning) razorpayWarning.style.display = 'none';
-                
+
                 externalMethods.forEach(label => {
                     label.classList.remove('opacity-50', 'grayscale', 'pointer-events-none');
                     const radio = label.querySelector('input[type="radio"]');
@@ -2529,7 +2845,7 @@
                 });
                 customWarning.style.display = 'none';
             }
-            
+
             if (typeof syncPaymentMethodCards === 'function') {
                 syncPaymentMethodCards();
             }
@@ -2836,7 +3152,7 @@
             const onlineCard = document.getElementById('online-payment-card');
             const onlineInput = document.getElementById('online-payment-input');
             const onlineWarn = document.getElementById('onlinePaymentWarn');
-            
+
             if (onlineCard && onlineInput && onlineWarn) {
                 const finalAmt = Number(checkoutPayableTotal || 0);
                 if (finalAmt < 1) {
@@ -2844,7 +3160,7 @@
                     onlineCard.classList.add('opacity-50', 'cursor-not-allowed');
                     onlineCard.style.pointerEvents = 'none';
                     onlineWarn.style.display = 'block';
-                    
+
                     if (onlineInput.checked) {
                         onlineInput.checked = false;
                         const walletInput = document.getElementById('payment-wallet');
@@ -2955,10 +3271,13 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('step') === '3' && urlParams.get('status') === 'success') {
                 let cleanOrderId = urlParams.get('orderId');
+                let paymentId = urlParams.get('paymentId');
+                let amount = urlParams.get('amount');
+                let method = urlParams.get('method');
                 if (cleanOrderId && !cleanOrderId.startsWith('#')) {
                     cleanOrderId = '#' + cleanOrderId;
                 }
-                showPaymentSuccess(cleanOrderId || '');
+                showPaymentSuccess(cleanOrderId || '', paymentId || '', amount || '', method || '');
                 return; // Stop further initialization for Step 1/2
             }
             if (urlParams.get('status') === 'failed') {
@@ -3081,20 +3400,20 @@
                         const fieldLabel = document.createElement('label');
                         fieldLabel.className = 'field field--full';
                         fieldLabel.setAttribute('for', 'smmTargetLink');
-                        
+
                         fieldLabel.innerHTML = `
                             <span class="field__label">Target Profile / Post Link</span>
                             <input type="text" id="smmTargetLink" placeholder="Enter target profile or post link" required>
                         `;
                         formGrid.appendChild(fieldLabel);
-                        
+
                         // Add listener to update UI reactively
                         const targetInput = document.getElementById('smmTargetLink');
                         targetInput.addEventListener('input', (e) => {
                             const val = e.target.value.trim();
                             insta = val; // update the global/outer 'insta' variable
                             document.getElementById('dispInsta').innerText = val || "Not Provided";
-                            
+
                             // Also update the summary list subtitle
                             renderSummaryItems([{
                                 title: pkg,
@@ -3195,7 +3514,7 @@
                     window.location.href = '/cart.html';
                 }
             }
-            
+
             // Parse final price and init wallet balance checkout checks
             await initCheckoutWallet(checkoutPayableTotal);
 
@@ -3236,7 +3555,7 @@
             let nameInput = document.getElementById('name').value.trim();
             let emailInput = document.getElementById('email').value.trim();
             let phoneInput = document.getElementById('phone').value.trim();
-            
+
             if (!nameInput || !emailInput || !phoneInput) {
                 const modal = document.getElementById('detailsModal');
                 if (modal) {
@@ -3259,12 +3578,12 @@
             const modalName = document.getElementById('modalName').value.trim();
             const modalEmail = document.getElementById('modalEmail').value.trim();
             const modalPhone = document.getElementById('modalPhone').value.trim();
-            
+
             // Save to hidden fields
             document.getElementById('name').value = modalName;
             document.getElementById('email').value = modalEmail;
             document.getElementById('phone').value = modalPhone;
-            
+
             // Hide Modal
             const modal = document.getElementById('detailsModal');
             modal.classList.add('opacity-0');
@@ -3272,7 +3591,7 @@
             setTimeout(() => {
                 modal.classList.add('hidden');
             }, 300);
-            
+
             // Trigger payment
             await executePaymentFlow(modalName, modalEmail, modalPhone);
         });
@@ -3326,7 +3645,7 @@
             const btn = document.querySelector('.btn-pay');
             btn.disabled = true;
             setPayButtonLoading(true);
-            
+
             startPayment();
 
             const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value || 'online';
@@ -3378,7 +3697,7 @@
 
                     const walletData = await walletRes.json();
                     if (walletData.status === 'success_free') {
-                        showPaymentSuccess(walletData.orderId);
+                        showPaymentSuccess(walletData.orderId, walletData.orderId, '0.00', 'free');
                         return;
                     }
                     if (walletData.success) {
@@ -3394,8 +3713,8 @@
                                 try { await fetch('/api/cart', { method: 'DELETE', credentials: 'include' }); } catch (e) { }
                             }
                         }
-                        
-                        showPaymentSuccess(walletData.orderId);
+
+                        showPaymentSuccess(walletData.orderId, walletData.transactionId || 'WALLET', checkoutPayableTotal, 'wallet');
                     } else {
                         throw new Error(walletData.error || 'Wallet checkout transaction failed.');
                     }
@@ -3452,7 +3771,7 @@
 
                 const orderData = await orderResponse.json();
                 if (orderData.status === 'success_free') {
-                    showPaymentSuccess(orderData.orderId || 'FREE');
+                    showPaymentSuccess(orderData.orderId || 'FREE', 'FREE', '0.00', 'free');
                     return;
                 }
                 if (!orderResponse.ok || orderData.success === false) {
@@ -3529,20 +3848,25 @@
                                             try { await fetch('/api/cart', { method: 'DELETE', credentials: 'include' }); } catch (e) { }
                                         }
                                     }
-                                    
-                                    showPaymentSuccess(result.orderId || '');
+
+                                    showPaymentSuccess(result.orderId || '', response.razorpay_payment_id, finalAmount, 'razorpay');
                                 } else {
                                     showPaymentFailed();
                                 }
                             },
                             "prefill": { "name": name, "email": email, "contact": phone },
-                            "theme": { "color": "#6B46C1" }
+                            "theme": { "color": "#6d3ef4" },
+                            "modal": {
+                                "ondismiss": function() {
+                                    showPaymentFailed('Payment cancelled by user.');
+                                }
+                            }
                         };
 
                         const rzp1 = new Razorpay(options);
 
                         rzp1.on('payment.failed', function (response) {
-                            showPaymentFailed();
+                            showPaymentFailed(response.error ? response.error.description : 'Payment failed');
                         });
 
                         rzp1.open();
@@ -3574,7 +3898,7 @@
                                 "amount": orderData.transactionData.amount
                             },
                             "handler": {
-                                "transactionStatus": async function(paymentStatus) {
+                                "transactionStatus": async function (paymentStatus) {
                                     const verifyPayload = {
                                         provider: 'paytm',
                                         internalOrderId: orderData.internalOrderId,
@@ -3599,7 +3923,7 @@
                                     } else {
                                         verifyPayload.orderType = 'agency';
                                     }
-                                    
+
                                     const verifyResponse = await fetch('/api/verify-payment', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
@@ -3625,18 +3949,18 @@
                                     } else {
                                         showPaymentFailed();
                                     }
-                                    
-                                    if(window.Paytm && window.Paytm.CheckoutJS) {
+
+                                    if (window.Paytm && window.Paytm.CheckoutJS) {
                                         window.Paytm.CheckoutJS.close();
                                     }
                                 }
                             }
                         };
 
-                        if(window.Paytm && window.Paytm.CheckoutJS) {
+                        if (window.Paytm && window.Paytm.CheckoutJS) {
                             window.Paytm.CheckoutJS.init(config).then(function onSuccess() {
                                 window.Paytm.CheckoutJS.invoke();
-                            }).catch(function onError(error){
+                            }).catch(function onError(error) {
                                 console.error("Paytm SDK Error:", error);
                                 showPaymentFailed();
                             });
@@ -3648,12 +3972,13 @@
                         if (!orderData.transactionData || !orderData.transactionData.hash) {
                             throw new Error("PayU gateway configuration missing");
                         }
-                        
+
                         const payuForm = document.createElement('form');
                         payuForm.method = 'POST';
                         payuForm.action = 'https://secure.payu.in/_payment';
-                        payuForm.target = '_blank'; // Open in new tab
-                        
+                        // Removed target='_blank' to open in the same tab
+                        // payuForm.target = '_self';
+
                         const params = orderData.transactionData;
                         for (const key in params) {
                             const hiddenField = document.createElement('input');
@@ -3662,10 +3987,10 @@
                             hiddenField.value = params[key];
                             payuForm.appendChild(hiddenField);
                         }
-                        
+
                         document.body.appendChild(payuForm);
                         payuForm.submit();
-                        
+
                         // Show waiting message in current UI
                         const payBtn = document.getElementById('payNowBtn');
                         if (payBtn) {
@@ -3679,7 +4004,7 @@
                         if (!orderData.transactionData || !orderData.transactionData.redirectUrl) {
                             throw new Error("PhonePe redirect URL missing");
                         }
-                        
+
                         // Redirect user directly to PhonePe secure PayPage
                         window.location.href = orderData.transactionData.redirectUrl;
                         break;
@@ -3702,7 +4027,7 @@
         function startPayment() {
             document.getElementById('view-checkout').classList.remove('block');
             document.getElementById('view-checkout').classList.add('hidden');
-            
+
             document.getElementById('step-1').classList.remove('is-active');
             document.getElementById('step-2').classList.add('is-active');
             document.getElementById('step-3').classList.remove('is-active');
@@ -3711,51 +4036,395 @@
         function showPaymentFailed() {
             document.getElementById('view-checkout').classList.add('hidden');
             document.getElementById('view-checkout').classList.remove('block');
-            
+
             document.getElementById('view-success').classList.add('hidden');
             document.getElementById('view-success').classList.remove('flex');
-            
+
             document.getElementById('view-failed').classList.remove('hidden');
             document.getElementById('view-failed').classList.add('flex');
-            
+
             document.getElementById('step-1').classList.remove('is-active');
             document.getElementById('step-2').classList.add('is-active');
             document.getElementById('step-3').classList.remove('is-active');
         }
 
-        function showPaymentSuccess(orderId) {
+        function showPaymentSuccess(orderId, paymentId, amount, method) {
             document.getElementById('view-checkout').classList.add('hidden');
             document.getElementById('view-checkout').classList.remove('block');
-            
+
             document.getElementById('view-failed').classList.add('hidden');
             document.getElementById('view-failed').classList.remove('flex');
-            
+
             document.getElementById('view-success').classList.remove('hidden');
             document.getElementById('view-success').classList.add('flex');
-            
+
+            // Setup Victory Sound (7-second Epic Fanfares!)
+            let audioPlayed = false;
+            let currentSoundIndex = 0;
+            let waitingForClick = false;
+
+            // A bulletproof list of long, epic victory sounds. 
+            // If one is blocked by CORS/404, it instantly falls back to the next one!
+            const soundUrls = [
+                'https://www.myinstants.com/media/sounds/gta-san-andreas-mission-passed.mp3', // 6s Epic
+                'https://www.myinstants.com/media/sounds/level-up.mp3', // 5s Epic
+                'https://cdn.freesound.org/previews/273/273702_4068345-lq.mp3', // 6s Orchestral
+                'https://www.myinstants.com/media/sounds/tada.mp3' // 1s Fallback we KNOW works
+            ];
+
+            const playSound = () => {
+                if (audioPlayed || currentSoundIndex >= soundUrls.length) return;
+
+                const victorySound = new Audio(soundUrls[currentSoundIndex]);
+                victorySound.volume = 1.0;
+
+                // If the URL is 404/blocked, instantly try the next URL in the array
+                victorySound.onerror = () => {
+                    currentSoundIndex++;
+                    playSound();
+                };
+
+                const playPromise = victorySound.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        audioPlayed = true;
+                    }).catch(e => {
+                        // If it's an autoplay block (not a network error), we wait for the user to click
+                        if (!waitingForClick && e.name !== 'NotSupportedError') {
+                            waitingForClick = true;
+                            document.addEventListener('click', playSound, { once: true });
+                            document.addEventListener('touchstart', playSound, { once: true });
+                        }
+                    });
+                }
+            };
+
+            // =========================================================
+            // BOMB COUNTDOWN ANIMATION (BEFORE SUCCESS REVEAL)
+            // =========================================================
+            const playSynthesizedTick = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.05);
+                    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+                    osc.start(); osc.stop(ctx.currentTime + 0.05);
+                } catch (e) { }
+            };
+            const playSynthesizedBoom = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const bufferSize = ctx.sampleRate * 2;
+                    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(1000, ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 1);
+                    const gain = ctx.createGain();
+                    gain.gain.setValueAtTime(1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+                    noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+                    noise.start();
+                } catch (e) { }
+            };
+            const bombOverlay = document.createElement('div');
+            bombOverlay.style.position = 'fixed';
+            bombOverlay.style.top = '0';
+            bombOverlay.style.left = '0';
+            bombOverlay.style.width = '100vw';
+            bombOverlay.style.height = '100vh';
+            bombOverlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
+            bombOverlay.style.zIndex = '20000'; // Absolute highest
+            bombOverlay.style.display = 'flex';
+            bombOverlay.style.flexDirection = 'column';
+            bombOverlay.style.justifyContent = 'center';
+            bombOverlay.style.alignItems = 'center';
+            bombOverlay.style.transition = 'all 0.3s ease';
+
+            const bombContainer = document.createElement('div');
+            bombContainer.style.position = 'relative';
+            bombContainer.style.display = 'inline-block';
+            bombContainer.style.transition = 'transform 0.1s';
+
+            const bombIcon = document.createElement('div');
+            bombIcon.style.fontSize = '120px';
+            bombIcon.innerText = '💣';
+
+            // Add a burning fuse spark (CSS animated!)
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes fuseBurn {
+                    0% { transform: scale(0.8) rotate(0deg); opacity: 0.8; filter: drop-shadow(0 0 5px #ff0); }
+                    100% { transform: scale(1.3) rotate(20deg); opacity: 1; filter: drop-shadow(0 0 15px #f00); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            const sparkIcon = document.createElement('div');
+            sparkIcon.innerText = '✨';
+            sparkIcon.style.position = 'absolute';
+            sparkIcon.style.top = '-15px';
+            sparkIcon.style.right = '0px';
+            sparkIcon.style.fontSize = '55px';
+            sparkIcon.style.animation = 'fuseBurn 0.05s infinite alternate';
+
+            bombContainer.appendChild(bombIcon);
+            bombContainer.appendChild(sparkIcon);
+
+            const countdownText = document.createElement('div');
+            countdownText.style.fontSize = '80px';
+            countdownText.style.fontWeight = '900';
+            countdownText.style.color = '#fff';
+            countdownText.style.fontFamily = 'Impact, sans-serif';
+            countdownText.innerText = '3';
+
+            bombOverlay.appendChild(bombContainer);
+            bombOverlay.appendChild(countdownText);
+            document.body.appendChild(bombOverlay);
+
+            const triggerActualSuccess = () => {
+                // Try to autoplay immediately
+                playSound();
+
+                // =========================================================
+                // GTA "MISSION PASSED" STYLE BANNER
+                // =========================================================
+                const banner = document.createElement('div');
+                banner.innerHTML = `
+                    <div style="font-family: 'Space Grotesk', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(2.5rem, 6vw, 5rem); color: #fbbf24; text-transform: uppercase; letter-spacing: 4px; text-shadow: 4px 4px 0 #000; -webkit-text-stroke: 2px #000; text-align: center; line-height: 1.1; white-space: nowrap;">
+                        MISSION PASSED<br>
+                        <span style="color: white; font-size: 0.5em; letter-spacing: 2px; -webkit-text-stroke: 1px #000; text-shadow: 2px 2px 0 #000;">ORDER SUCCESSFULLY PLACED</span>
+                    </div>
+                `;
+                banner.style.position = 'fixed';
+                banner.style.top = '50%';
+                banner.style.left = '50%';
+                banner.style.width = '100%';
+                banner.style.display = 'flex';
+                banner.style.justifyContent = 'center';
+                banner.style.transform = 'translate(-50%, -50%) scale(0)';
+                banner.style.zIndex = '10000'; // Above everything!
+                banner.style.pointerEvents = 'none';
+                banner.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'; // Super bouncy scale up
+                banner.style.opacity = '0';
+                document.body.appendChild(banner);
+
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        banner.style.transform = 'translate(-50%, -50%) scale(1)';
+                        banner.style.opacity = '1';
+                    }, 100);
+                });
+
+                setTimeout(() => {
+                    banner.style.transition = 'all 0.5s ease-in';
+                    banner.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                    banner.style.opacity = '0';
+                    setTimeout(() => banner.remove(), 500);
+                }, 6000);
+
+                if (typeof confetti === 'function') {
+                    const duration = 7000; // Extended to 7 seconds!
+                    const end = Date.now() + duration;
+
+                    // =========================================================
+                    // NEW ANIMATION (TRUE 3D MONEY RAIN - EPIC VIBE)
+                    // =========================================================
+                    const gtaEmojis = ['💵', '💸', '💰', '💎', '⭐'];
+                    const gtaParticles = [];
+                    const w = window.innerWidth;
+                    const h = window.innerHeight;
+
+                    const spawnGtaEmoji = () => {
+                        const el = document.createElement('div');
+                        el.innerText = gtaEmojis[Math.floor(Math.random() * gtaEmojis.length)];
+                        el.style.position = 'fixed';
+                        el.style.zIndex = '9999';
+                        el.style.fontSize = (Math.random() * 20 + 35) + 'px'; // Huge money!
+                        el.style.pointerEvents = 'none';
+                        el.style.left = '0px';
+                        el.style.top = '0px';
+                        el.style.filter = 'drop-shadow(0px 8px 12px rgba(0,0,0,0.4))'; // Premium 3D shadow!
+                        document.body.appendChild(el);
+
+                        gtaParticles.push({
+                            el,
+                            x: Math.random() * w, // Spawn anywhere across the full width!
+                            y: -100 - (Math.random() * 100), // Start above screen
+                            vy: Math.random() * 4 + 3, // MEDIUM SPEED!
+                            swaySpeed: Math.random() * 0.02 + 0.01,
+                            swayAmount: Math.random() * 40 + 20, // Slightly tighter sway
+                            swayOffset: Math.random() * Math.PI * 2,
+                            rotZ: Math.random() * 360,
+                            rotSpeedZ: (Math.random() - 0.5) * 4 // Gentle 2D spin
+                        });
+
+                        // Less notes floating (limit to 50)
+                        if (gtaParticles.length > 50) {
+                            const old = gtaParticles.shift();
+                            if (old.el) old.el.remove();
+                        }
+                    };
+
+                    let time = 0;
+                    const animateGtaEmojis = () => {
+                        time++;
+                        let stillAlive = false;
+                        gtaParticles.forEach((p, i) => {
+                            if (!p.el) return;
+
+                            // Downward fall
+                            p.vy += 0.1; // GENTLE GRAVITY (so they don't accelerate too fast)
+                            p.y += p.vy;
+
+                            // Beautiful wavy left/right sway
+                            const currentX = p.x + Math.sin(time * p.swaySpeed + p.swayOffset) * p.swayAmount;
+
+                            // 2D Gentle Spin only (3D flipping looks fake on flat emojis)
+                            p.rotZ += p.rotSpeedZ;
+
+                            p.el.style.transform = `translate3d(${currentX}px, ${p.y}px, 0) rotate(${p.rotZ}deg)`;
+
+                            if (p.y > window.innerHeight + 150) {
+                                p.el.remove();
+                                p.el = null;
+                            } else {
+                                stillAlive = true;
+                            }
+                        });
+
+                        for (let i = gtaParticles.length - 1; i >= 0; i--) {
+                            if (!gtaParticles[i].el) gtaParticles.splice(i, 1);
+                        }
+
+                        if (stillAlive || Date.now() < end) {
+                            requestAnimationFrame(animateGtaEmojis);
+                        }
+                    };
+                    requestAnimationFrame(animateGtaEmojis);
+
+                    let frameCount = 0;
+                    (function frame() {
+                        frameCount++;
+
+                        // Rain money continuously across the whole screen!
+                        if (frameCount % 12 === 0) { // Spawn less frequently!
+                            spawnGtaEmoji();
+                            spawnGtaEmoji();
+                        }
+
+                        // Green & Gold confetti for the Hustler vibe
+                        const moneyColors = ['#10b981', '#059669', '#f59e0b', '#fbbf24'];
+
+                        // HEAVY continuous party poppers from 4 Corners + Center!
+                        confetti({ particleCount: 6, angle: 60, spread: 60, origin: { x: 0, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Left
+                        confetti({ particleCount: 6, angle: 120, spread: 60, origin: { x: 1, y: 1 }, gravity: 0.7, colors: moneyColors }); // Bottom Right
+                        confetti({ particleCount: 5, angle: 315, spread: 60, origin: { x: 0, y: 0 }, gravity: 0.7, colors: moneyColors }); // Top Left
+                        confetti({ particleCount: 5, angle: 225, spread: 60, origin: { x: 1, y: 0 }, gravity: 0.7, colors: moneyColors }); // Top Right
+                        confetti({ particleCount: 4, angle: 90, spread: 100, origin: { x: 0.5, y: 0.5 }, gravity: 0.7, colors: moneyColors }); // Center
+
+                        if (Date.now() < end) {
+                            requestAnimationFrame(frame);
+                        }
+                    }());
+                }
+            };
+
+            let count = 3;
+            const countInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownText.innerText = count;
+                    bombContainer.style.transform = `scale(${1 + (3 - count) * 0.5})`; // Bomb gets bigger!
+                    playSynthesizedTick();
+                } else {
+                    clearInterval(countInterval);
+                    // BOOM! White flash, Shake, and Boom sound!
+                    playSynthesizedBoom();
+                    document.body.classList.add('shake-active');
+
+                    bombOverlay.style.backgroundColor = '#fff';
+                    bombContainer.style.display = 'none';
+                    countdownText.style.display = 'none';
+
+                    setTimeout(() => {
+                        bombOverlay.style.opacity = '0';
+                        setTimeout(() => {
+                            bombOverlay.remove();
+                            document.body.classList.remove('shake-active');
+                        }, 500);
+
+                        // NOW trigger the actual success logic!
+                        triggerActualSuccess();
+                        
+                        // Scroll to the top so mobile users see the success message immediately!
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                        // Trigger Receipt Printing Animation!
+                        setTimeout(() => {
+                            const receipt = document.getElementById('receipt-card');
+                            if (receipt) {
+                                receipt.classList.remove('receipt-hidden');
+                                receipt.classList.add('receipt-printing');
+                            }
+                        }, 800); // Slight delay so banner pops first
+                    }, 150);
+                }
+            }, 400); // 400ms per tick (MUCH FASTER!)
+
             if (orderId) {
-                document.getElementById('success-order-id').innerText = orderId;
+                const el = document.getElementById('success-order-id');
+                if (el) el.innerText = orderId;
             }
-            
+            if (paymentId) {
+                const el = document.getElementById('success-txn-id');
+                if (el) el.innerText = paymentId;
+            }
+            if (amount) {
+                const el = document.getElementById('success-amount');
+                if (el) el.innerText = `₹${parseFloat(amount).toFixed(2)}`;
+            }
+            if (method) {
+                const el = document.getElementById('success-method');
+                if (el) {
+                    const m = method.toLowerCase();
+                    if (m === 'wallet') el.innerText = 'VibeSphere Wallet';
+                    else if (m === 'razorpay') el.innerText = 'UPI/Card (Razorpay)';
+                    else if (m === 'phonepe') el.innerText = 'UPI (PhonePe)';
+                    else if (m === 'payu') el.innerText = 'UPI/Card (PayU)';
+                    else if (m === 'free') el.innerText = 'Free / Coupon';
+                    else el.innerText = method.toUpperCase();
+                }
+            }
+
             document.getElementById('step-1').classList.remove('is-active');
             document.getElementById('step-2').classList.remove('is-active');
             document.getElementById('step-3').classList.add('is-active');
         }
-        
+
         function resetCheckout() {
             document.getElementById('view-failed').classList.add('hidden');
             document.getElementById('view-failed').classList.remove('flex');
-            
+
             document.getElementById('view-success').classList.add('hidden');
             document.getElementById('view-success').classList.remove('flex');
-            
+
             document.getElementById('view-checkout').classList.remove('hidden');
             document.getElementById('view-checkout').classList.add('block');
-            
+
             document.getElementById('step-1').classList.add('is-active');
             document.getElementById('step-2').classList.remove('is-active');
             document.getElementById('step-3').classList.remove('is-active');
-            
+
             const btn = document.querySelector('.btn-pay');
             if (btn) {
                 btn.disabled = false;

@@ -8598,7 +8598,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                         }
 
                         if (req.isPhonePeWebhook) return res.status(200).send('OK');
-                        return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+                        return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.totalAmount || '')}&method=phonepe`);
                     } else {
                         if (req.isPhonePeWebhook) return res.status(404).send('Order not found');
                         return res.redirect('/checkout.html?status=failed&reason=phonepe_order_not_found');
@@ -8646,7 +8646,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
 
                     dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
 
-                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}`);
+                    return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.totalAmount || '')}&method=payu`);
                 } else {
                     return res.redirect('/checkout.html?status=failed&reason=payu_order_not_found');
                 }
@@ -8858,7 +8858,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                 }
 
                 // IMPORTANT: res.json MUST be here so it waits for PDF generating
-                if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId));
+                if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.totalAmount || '') + '&method=payu');
                 res.json({ success: true, orderId: newOrder.orderId });
             });
 
@@ -8867,7 +8867,7 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
 
         } catch (emailErr) {
             console.log("Failed to process email", emailErr);
-            if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId));
+            if (activeProvider === 'payu') return res.redirect('/checkout.html?step=3&status=success&orderId=' + encodeURIComponent(newOrder.orderId) + '&paymentId=' + encodeURIComponent(newOrder.paymentId || '') + '&amount=' + encodeURIComponent(newOrder.totalAmount || '') + '&method=payu');
             res.json({ success: true, orderId: newOrder.orderId }); // Fallback response if PDF generation completely fails
         }
     } else {
