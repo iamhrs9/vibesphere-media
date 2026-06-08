@@ -8417,7 +8417,7 @@ async function dispatchWhatsAppInvoice(existingOrder) {
     }
 }
 
-app.post('/api/verify-payment', optionalAuth, async (req, res) => {
+app.all('/api/verify-payment', optionalAuth, async (req, res) => {
     let { provider, internalOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature, orderDetails, isSmm, serviceId, quantity, targetLink, orderType: incomingOrderType } = req.body;
 
     let activeProvider = req.body.provider || req.query.provider;
