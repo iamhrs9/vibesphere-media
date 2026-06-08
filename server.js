@@ -8201,7 +8201,7 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                     const checkoutResponse = await axios.post(`${pgBaseUrl}/checkout/v2/pay`, checkoutPayload, {
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
+                            'Authorization': `O-Bearer ${accessToken}`
                         }
                     });
 
@@ -8521,7 +8521,7 @@ app.post('/api/verify-payment', optionalAuth, async (req, res) => {
             try {
                 const statusResponse = await axios.get(`${pgBaseUrl}/checkout/v2/order/${merchantOrderId}/status`, {
                     headers: {
-                        'Authorization': `Bearer ${accessToken}`
+                        'Authorization': `O-Bearer ${accessToken}`
                     }
                 });
 

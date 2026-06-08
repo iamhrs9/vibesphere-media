@@ -249,7 +249,7 @@
             margin: 0 0 12px;
             font-size: clamp(2.2rem, 3.8vw, 3.95rem);
             line-height: 0.98;
-            letter-spacing: -0.06em;
+            letter-spacing: -0.02em;
             font-weight: 800;
         }
 
@@ -937,12 +937,11 @@
             }
 
             .stepper {
-                overflow-x: auto;
                 padding-bottom: 4px;
             }
 
             .step {
-                flex: 0 0 240px;
+                flex: 1 1 0;
             }
 
             .step:not(:last-child)::after {
@@ -975,7 +974,11 @@
             }
 
             .hero-copy h1 {
-                font-size: clamp(1.95rem, 9vw, 2.7rem);
+                font-size: clamp(1.75rem, 7vw, 2.2rem);
+            }
+
+            .hero-copy p {
+                display: none;
             }
 
             .payment-method-card,
@@ -1859,13 +1862,12 @@
             }
 
             .stepper {
-                overflow-x: auto !important;
-                justify-content: flex-start !important;
+                justify-content: center !important;
                 padding-bottom: 2px !important;
             }
 
             .step {
-                flex: 0 0 180px !important;
+                flex: 1 1 0 !important;
             }
 
             .payment-method-card,
@@ -2017,7 +2019,7 @@
                     </div>
 
                     <div class="summary-meta">
-                        <div class="summary-meta__row">
+                        <div class="summary-meta__row" style="display:none;" id="pkgMetaRow">
                             <span>Package</span>
                             <strong id="dispPkg">Loading...</strong>
                         </div>

@@ -433,11 +433,13 @@
             flex-direction: column;
             gap: 12px;
             position: relative;
+            min-width: 0;
         }
 
         .variant-dropdown-wrapper {
             position: relative;
             width: 100%;
+            min-width: 0;
         }
 
         .variant-dropdown-trigger {
@@ -454,6 +456,7 @@
             cursor: pointer;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
             transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+            min-width: 0;
         }
 
         .variant-dropdown-trigger:hover {
@@ -586,6 +589,7 @@
             gap: 16px;
             text-align: left;
             border: 1px solid #e2e8f0;
+            min-width: 0;
             border-radius: 18px;
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             padding: 16px 18px;
@@ -627,9 +631,11 @@
 
         .variant-option-top {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            min-width: 0;
+            width: 100%;
         }
 
         .variant-option-name {
@@ -637,7 +643,11 @@
             font-weight: 800;
             color: #0f172a;
             line-height: 1.25;
+            white-space: normal;
             word-break: break-word;
+            overflow-wrap: anywhere;
+            flex: 1;
+            min-width: 0;
         }
 
         .variant-pill {
@@ -723,6 +733,43 @@
             color: #64748b;
             font-size: 0.9rem;
             font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .variant-dropdown-trigger {
+                padding: 8px 10px;
+            }
+            .variant-option-card {
+                padding: 8px 10px;
+                gap: 8px;
+            }
+            .variant-option-copy, .variant-dropdown-selected-copy {
+                gap: 4px;
+            }
+            .variant-option-name {
+                font-size: 0.85rem;
+                line-height: 1.1;
+            }
+            .variant-pill {
+                padding: 2px 6px;
+                font-size: 0.6rem;
+            }
+            .variant-option-price {
+                min-width: 65px;
+                font-size: 0.95rem;
+            }
+            .variant-dropdown-selected-price {
+                min-width: 65px;
+                font-size: 0.9rem;
+            }
+            .variant-option-price .variant-price-old,
+            .variant-dropdown-selected-price .variant-price-old {
+                font-size: 0.75rem;
+            }
+            .variant-option-price span,
+            .variant-dropdown-selected-price span {
+                font-size: 0.6rem;
+                margin-top: 2px;
+            }
         }
     </style>
 </head>
@@ -885,7 +932,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
                                 <div>
                                     <p style="margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; font-weight: 700; color: #6c63ff;">Service Details</p>
-                                    <h4 id="serviceDetailsTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;"></h4>
+                                    <h4 id="serviceDetailsTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; word-break: break-word; overflow-wrap: anywhere;"></h4>
                                 </div>
                                 <span id="serviceDetailsBadge" style="display: none; align-self: center; padding: 6px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.08); color: #334155; font-size: 0.75rem; font-weight: 700;"></span>
                             </div>
