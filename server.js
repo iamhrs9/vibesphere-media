@@ -8529,10 +8529,11 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
             let accessToken = '';
 
             try {
+                const envClientVersion = process.env.PHONEPE_CLIENT_VERSION || '1';
                 const tokenParams = new URLSearchParams({
                     client_id: clientId,
                     client_secret: clientSecret,
-                    client_version: envClientVersion || '1',
+                    client_version: envClientVersion,
                     grant_type: 'client_credentials'
                 });
                 
