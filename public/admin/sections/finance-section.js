@@ -78,6 +78,34 @@
                     </div>
                 </div>
 
+                <div class="modern-table-shell" style="margin-bottom: 24px;">
+                    <div class="table-head" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 0;">
+                        <div>
+                            <h3 style="margin:0;font-size:1.02rem;color:#b45309;display:flex;align-items:center;gap:8px;">
+                                <i class="ri-time-line"></i> Pending Manual Payments
+                            </h3>
+                            <p class="section-subtitle" style="margin-top:6px;">Review and approve uploaded manual payment proofs (UTR/Screenshots).</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="overflow-x:auto;width:100%;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order ID & User</th>
+                                    <th>Amount</th>
+                                    <th>UTR</th>
+                                    <th>Proof</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financePendingPaymentsTable">
+                                <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px;">Loading pending payments...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="modern-table-shell">
                     <div class="table-head">
                         <div>
@@ -229,6 +257,9 @@
                         adminUiState.financeTransactions = Array.isArray(data.transactions) ? data.transactions : [];
                         renderFinanceTransactions();
 
+                        // Fetch Pending Manual Payments
+                        fetchPendingManualPayments();
+
                         const canvas = document.getElementById('financeTrendChart');
                         if (canvas) {
                             if (financeTrendChart) financeTrendChart.destroy();
@@ -338,6 +369,107 @@
         adminUiState.financeTransactionFilter = filter || 'all';
         renderFinanceTransactions();
     };
+
+    async function fetchPendingManualPayments() {
+        try {
+            const tbody = document.getElementById('financePendingPaymentsTable');
+            if (!tbody) return;
+            const res = await fetch('/api/admin/manual-payments', { credentials: 'include' });
+            const data = await res.json();
+            
+            if (!data.success || !data.orders || data.orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px;">No pending manual payments.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.orders.map(order => `
+                <tr>
+                    <td>
+                        <strong>${escapeHtml(order.orderId)}</strong><br>
+                        <small style="color:#64748b;">${escapeHtml(order.customerName || 'User')} (${escapeHtml(order.phone || 'No Phone')})</small>
+                    </td>
+                    <td style="font-weight:700; color:#15803d;">₹${order.finalAmount || order.orderAmount || 0}</td>
+                    <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(order.paymentId || 'N/A')}</code></td>
+                    <td>
+                        <a href="${escapeHtml(order.manualPaymentProof)}" target="_blank" style="color:#2563eb;text-decoration:underline;font-size:12px;font-weight:600;">View Proof ↗</a>
+                    </td>
+                    <td><small style="color:#64748b;">${order.date}</small></td>
+                    <td style="display: flex; gap: 6px;">
+                        <button onclick="approveManualPayment('${order.orderId}')" style="background:#16a34a;color:white;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Approve</button>
+                        <button onclick="rejectManualPayment('${order.orderId}')" style="background:#dc2626;color:white;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Reject</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('Failed to load pending payments:', e);
+        }
+    }
+
+    async function approveManualPayment(orderId) {
+        if (!confirm('Are you sure you want to approve this payment? The order will be marked as Paid and the user will be notified.')) return;
+        try {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Approving...";
+            btn.disabled = true;
+
+            const res = await fetch(`/api/admin/manual-payments/${encodeURIComponent(orderId)}/approve`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast('Payment approved successfully!', 'success');
+                fetchFinanceData(); // Reload both tables
+            } else {
+                throw new Error(data.error || 'Failed to approve payment');
+            }
+        } catch (e) {
+            showToast(e.message, 'error');
+            if (event && event.target) {
+                event.target.innerText = "Approve & Mark Paid";
+                event.target.disabled = false;
+            }
+        }
+    }
+
+    async function rejectManualPayment(orderId) {
+        const reason = prompt('Please enter the reason for rejection (this will be sent to the user):');
+        if (reason === null) return; // User cancelled the prompt
+        
+        try {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Rejecting...";
+            btn.disabled = true;
+
+            const res = await fetch(`/api/admin/manual-payments/${encodeURIComponent(orderId)}/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason.trim() }),
+                credentials: 'include'
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast('Payment rejected and user notified!', 'success');
+                fetchFinanceData(); // Reload both tables
+            } else {
+                throw new Error(data.error || 'Failed to reject payment');
+            }
+        } catch (e) {
+            showToast(e.message, 'error');
+            if (event && event.target) {
+                event.target.innerText = "Reject";
+                event.target.disabled = false;
+            }
+        }
+    }
+
+    window.fetchPendingManualPayments = fetchPendingManualPayments;
+    window.approveManualPayment = approveManualPayment;
+    window.rejectManualPayment = rejectManualPayment;
 
     window.fetchFinanceData = fetchFinanceData;
     window.handleFinanceFilterChange = handleFinanceFilterChange;

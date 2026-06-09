@@ -1025,7 +1025,6 @@
 
         body {
             min-height: 100svh !important;
-            overflow: hidden !important;
             display: flex !important;
             flex-direction: column !important;
             padding: 0 !important;
@@ -1415,7 +1414,6 @@
 
         body {
             min-height: 100svh !important;
-            overflow: hidden !important;
         }
 
         body::before,
@@ -1425,7 +1423,8 @@
 
         .checkout-shell {
             width: min(1512px, calc(100% - 24px)) !important;
-            height: calc(100svh - 24px) !important;
+            min-height: calc(100svh - 24px) !important;
+            height: auto !important;
             margin: 12px auto !important;
             padding: 0 !important;
             display: grid !important;
@@ -2186,10 +2185,8 @@
                             <div id="onlinePaymentWarn" class="wallet-note" style="display:none; color: #ef4444;">
                                 Minimum ₹1 required for online payments.</div>
 
-                            <label class="payment-method-card opacity-50 cursor-not-allowed" data-method-card="manual"
-                                style="pointer-events: none;">
-                                <input type="radio" class="payment-method-card__input" name="payment_method"
-                                    value="manual" disabled>
+                            <label class="payment-method-card" data-method-card="manual">
+                                <input type="radio" class="payment-method-card__input" name="payment_method" value="manual">
                                 <div class="payment-method-card__radio" aria-hidden="true"></div>
                                 <div class="payment-method-card__icon" aria-hidden="true">
                                     <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
@@ -2198,14 +2195,49 @@
                                 </div>
                                 <div class="payment-method-card__copy">
                                     <strong>Manual Payment</strong>
-                                    <span>Direct bank transfer / NEFT / RTGS</span>
+                                    <span>Direct UPI / Bank transfer (Verification required)</span>
                                 </div>
                                 <div class="payment-method-card__right">
-                                    <span
-                                        class="bg-gray-200 text-gray-500 text-[10px] uppercase font-bold px-2 py-1 rounded">Under
-                                        Testing</span>
+                                    <span class="bg-blue-100 text-blue-600 text-[10px] uppercase font-bold px-2 py-1 rounded">No Fees</span>
                                 </div>
                             </label>
+                        </div>
+
+                        <!-- MANUAL PAYMENT DETAILS (Hidden by default) -->
+                        <div id="manualPaymentDetails" class="hidden mt-4 p-5 rounded-2xl border border-[#6d3ef4]/20" style="background: rgba(109, 62, 244, 0.03); backdrop-filter: blur(10px);">
+                            <h3 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                Scan to Pay
+                            </h3>
+                            <div class="flex flex-col md:flex-row gap-5 items-center md:items-start">
+                                <!-- QR Code Area -->
+                                <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex-shrink-0 w-40 h-40 flex items-center justify-center relative overflow-hidden">
+                                    <div id="manualQrLoader" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                                        <div class="w-6 h-6 border-2 border-[#6d3ef4] border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                    <img id="manualQrImage" src="" alt="UPI QR Code" class="w-full h-full object-contain hidden" />
+                                </div>
+                                
+                                <!-- Inputs -->
+                                <div class="flex-1 w-full space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Amount</label>
+                                        <div id="manualPaymentAmount" class="text-2xl font-black text-[#6d3ef4]">₹0.00</div>
+                                        <div class="text-[10px] text-gray-400 mt-0.5">Please pay exactly this amount to avoid delays.</div>
+                                    </div>
+                                    
+                                    <div class="space-y-3 pt-2 border-t border-gray-200/50">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-600 mb-1">Transaction ID (UTR) <span class="text-red-500">*</span></label>
+                                            <input type="text" id="manualUtrInput" placeholder="e.g. 312345678901" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#6d3ef4] focus:ring-1 focus:ring-[#6d3ef4] transition-all">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-600 mb-1">Payment Screenshot <span class="text-red-500">*</span></label>
+                                            <input type="file" id="manualScreenshotInput" accept="image/*" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#6d3ef4] file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#6d3ef4]/10 file:text-[#6d3ef4] hover:file:bg-[#6d3ef4]/20 transition-all">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="trust-strip" aria-label="Checkout trust indicators">
@@ -3253,6 +3285,56 @@
                 const input = card.querySelector('input[name="payment_method"]');
                 card.classList.toggle('is-active', Boolean(input && input.checked));
             });
+            
+            // Manual Payment Toggle
+            const isManual = document.querySelector('input[name="payment_method"]:checked')?.value === 'manual';
+            const manualDetails = document.getElementById('manualPaymentDetails');
+            if (manualDetails) {
+                if (isManual) {
+                    manualDetails.classList.remove('hidden');
+                    setupManualPaymentView();
+                } else {
+                    manualDetails.classList.add('hidden');
+                }
+            }
+        }
+        
+        async function setupManualPaymentView() {
+            try {
+                // Get current total
+                const finalAmount = checkoutPayableTotal > 0 ? checkoutPayableTotal : Number(price.replace(/[^0-9.-]+/g, ''));
+                if (finalAmount <= 0) return;
+                
+                // Get UPI ID
+                const res = await fetch('/api/config/manual-payment');
+                const data = await res.json();
+                const upiId = data.upiId || 'yourname@upi';
+                
+                const amountEl = document.getElementById('manualPaymentAmount');
+                const qrImage = document.getElementById('manualQrImage');
+                const qrLoader = document.getElementById('manualQrLoader');
+                
+                amountEl.textContent = '₹' + finalAmount.toFixed(2);
+                
+                // Generate QR Code dynamically using a reliable API
+                const upiString = `upi://pay?pa=${upiId}&pn=VibeSphere&am=${finalAmount.toFixed(2)}&cu=INR`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiString)}`;
+                
+                qrImage.onload = () => {
+                    qrLoader.classList.add('hidden');
+                    qrImage.classList.remove('hidden');
+                };
+                qrImage.onerror = () => {
+                    qrLoader.classList.add('hidden');
+                    qrImage.alt = "Failed to load QR code. Please use UPI ID directly.";
+                    qrImage.classList.remove('hidden');
+                };
+                qrImage.src = qrUrl;
+            } catch (e) {
+                console.error("Failed to setup manual payment", e);
+                const qrLoader = document.getElementById('manualQrLoader');
+                if (qrLoader) qrLoader.classList.add('hidden');
+            }
         }
 
         function toggleUpiQrPreview(forceVisible = null) {
@@ -3725,7 +3807,106 @@
                 return;
             }
 
-            // RAZORPAY GATEWAY CHECKOUT FLOW
+            // MANUAL CHECKOUT FLOW
+            if (paymentMethod === 'manual') {
+                const utrInput = document.getElementById('manualUtrInput');
+                const screenshotInput = document.getElementById('manualScreenshotInput');
+                
+                if (!utrInput || !utrInput.value.trim()) {
+                    alert("Please enter the Transaction ID (UTR) to submit your payment proof.");
+                    resetCheckout();
+                    return;
+                }
+                if (!screenshotInput || !screenshotInput.files || screenshotInput.files.length === 0) {
+                    alert("Please upload the payment screenshot to submit your payment proof.");
+                    resetCheckout();
+                    return;
+                }
+
+                try {
+                    const createPayload = {
+                        provider: 'manual', // Force manual provider
+                        currency: currencyFromURL,
+                        items: isCartCheckout ? cartItems : [],
+                        baseAmount: originalBaseAmount,
+                        couponCode: appliedCoupon?.code || '',
+                        couponModule: checkoutModule,
+                        orderDetails: {
+                            ...sharedOrderDetails
+                        }
+                    };
+
+                    if (isSmmCheckout) {
+                        createPayload.isSmm = true;
+                        createPayload.quantity = smmQty;
+                        createPayload.orderType = 'smm';
+                        createPayload.variantId = smmVariantId;
+                        createPayload.serviceId = smmServiceId;
+                        createPayload.isDripFeed = isDripFeed;
+                        createPayload.runs = dripRuns;
+                        createPayload.interval = dripInterval;
+                        createPayload.extraInput = extraInput;
+                        createPayload.extraInputType = extraInputType;
+                    } else {
+                        createPayload.amount = finalAmount;
+                        createPayload.orderType = 'agency';
+                    }
+
+                    console.log("Submitting manual checkout payload:", createPayload);
+                    const orderResponse = await fetch('/api/create-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(createPayload),
+                        credentials: 'include'
+                    });
+
+                    const orderData = await orderResponse.json();
+                    
+                    if (!orderResponse.ok || orderData.success === false) {
+                        throw new Error(orderData.message || orderData.error || "Server Error");
+                    }
+
+                    // Upload screenshot via manual verify endpoint
+                    const formData = new FormData();
+                    formData.append('orderId', orderData.internalOrderId);
+                    formData.append('utr', utrInput.value.trim());
+                    formData.append('screenshot', screenshotInput.files[0]);
+
+                    const verifyResponse = await fetch('/api/checkout/manual/verify', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const verifyData = await verifyResponse.json();
+                    
+                    if (verifyData.success) {
+                        if (isCartCheckout) {
+                            if (isGuestCartCheckout) {
+                                try {
+                                    window.VibeGuestCart?.clear?.();
+                                    localStorage.removeItem('vibeGuestCart');
+                                    localStorage.removeItem('vibeCart');
+                                    window.VibeUI?.updateCartCount?.();
+                                } catch (e) { }
+                            } else {
+                                try { await fetch('/api/cart', { method: 'DELETE', credentials: 'include' }); } catch (e) { }
+                            }
+                        }
+
+                        // Seamlessly transition to the success bomb!
+                        showPaymentSuccess(verifyData.orderId, utrInput.value.trim(), checkoutPayableTotal || finalAmount, 'manual');
+                    } else {
+                        throw new Error(verifyData.error || 'Failed to submit payment proof.');
+                    }
+                } catch (err) {
+                    console.error('Manual Checkout Error:', err);
+                    alert("Verification Failed: " + err.message);
+                    showPaymentFailed(err.message);
+                }
+                return;
+            }
+
+            // RAZORPAY & OTHER GATEWAY CHECKOUT FLOW
             if (finalAmount > 0 && finalAmount < 1) {
                 alert("Minimum payment amount is ₹1.00. Please increase your order quantity.");
                 resetCheckout();
@@ -4230,11 +4411,19 @@
                 // =========================================================
                 // GTA "MISSION PASSED" STYLE BANNER
                 // =========================================================
+                let bannerMainText = 'MISSION PASSED';
+                let bannerSubText = 'ORDER SUCCESSFULLY PLACED';
+                
+                if (method && method.toLowerCase() === 'manual') {
+                    bannerMainText = 'PAYMENT PENDING';
+                    bannerSubText = 'AWAITING ADMIN VERIFICATION';
+                }
+
                 const banner = document.createElement('div');
                 banner.innerHTML = `
                     <div style="font-family: 'Space Grotesk', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(2.5rem, 6vw, 5rem); color: #fbbf24; text-transform: uppercase; letter-spacing: 4px; text-shadow: 4px 4px 0 #000; -webkit-text-stroke: 2px #000; text-align: center; line-height: 1.1; white-space: nowrap;">
-                        MISSION PASSED<br>
-                        <span style="color: white; font-size: 0.5em; letter-spacing: 2px; -webkit-text-stroke: 1px #000; text-shadow: 2px 2px 0 #000;">ORDER SUCCESSFULLY PLACED</span>
+                        ${bannerMainText}<br>
+                        <span style="color: white; font-size: 0.5em; letter-spacing: 2px; -webkit-text-stroke: 1px #000; text-shadow: 2px 2px 0 #000;">${bannerSubText}</span>
                     </div>
                 `;
                 banner.style.position = 'fixed';
@@ -4447,6 +4636,13 @@
                     else if (m === 'phonepe') el.innerText = 'UPI (PhonePe)';
                     else if (m === 'payu') el.innerText = 'UPI/Card (PayU)';
                     else if (m === 'free') el.innerText = 'Free / Coupon';
+                    else if (m === 'manual') {
+                        el.innerText = 'Manual Payment (Pending)';
+                        const titleEl = document.querySelector('#view-success h2');
+                        const subtitleEl = document.querySelector('#view-success p');
+                        if (titleEl) titleEl.innerText = 'Payment Submitted!';
+                        if (subtitleEl) subtitleEl.innerText = 'Thank you for your payment. We will verify your screenshot and approve your order shortly.';
+                    }
                     else el.innerText = method.toUpperCase();
                 }
             }

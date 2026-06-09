@@ -3588,8 +3588,8 @@ app.post('/api/auth/change-password', loginLimiter, async (req, res) => {
 app.post('/api/client/my-orders', checkAuth, async (req, res) => {
     try {
         const email = req.user.email;
-        // Us email se jude saare orders dhoondo
-        const myOrders = await Order.find({ email: email }).sort({ _id: -1 });
+        // Us email se jude saare orders dhoondo (excluding wallet topups)
+        const myOrders = await Order.find({ email: email, orderType: { $ne: 'wallet_topup' } }).sort({ _id: -1 });
         res.json({ success: true, orders: myOrders });
     } catch (e) { res.status(500).json({ success: false, error: "Fetch Error" }); }
 });
@@ -3689,9 +3689,10 @@ const orderSchema = new mongoose.Schema({
     workStatus: { type: String, default: 'Work Pending' },
     status: { type: String, default: 'Work Pending' },
     finalAmount: { type: Number, default: 0 },
+    manualPaymentProof: { type: String, default: '' },
 
     // SMM specific fields
-    orderType: { type: String, enum: ['agency', 'smm'], default: 'agency' },
+    orderType: { type: String, enum: ['agency', 'smm', 'wallet_topup'], default: 'agency' },
     targetLink: { type: String, default: '' },
     quantity: { type: Number, default: 0 },
     serviceId: { type: String, default: '' },
@@ -7841,6 +7842,154 @@ app.delete('/api/cart', checkAuth, async (req, res) => {
 // 💳 PAYMENT & ADMIN ROUTES (UPDATED)
 // ==========================================
 
+// ✅ FETCH MANUAL PAYMENT CONFIG
+app.get('/api/config/manual-payment', (req, res) => {
+    res.json({
+        success: true,
+        upiId: process.env.MANUAL_UPI_ID || 'yourname@upi' // Fallback
+    });
+});
+
+// ✅ MANUAL PAYMENT SCREENSHOT UPLOAD & VERIFY
+app.post('/api/checkout/manual/verify', upload.single('screenshot'), async (req, res) => {
+    try {
+        const { orderId, utr } = req.body;
+        if (!orderId || !utr || !req.file) {
+            return res.status(400).json({ success: false, error: 'Order ID, UTR, and Screenshot are required' });
+        }
+
+        const existingOrder = await Order.findOne({ orderId });
+        if (!existingOrder) return res.status(404).json({ success: false, error: 'Order not found' });
+
+        // Upload screenshot
+        let screenshotUrl = '';
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+            screenshotUrl = await uploadToCloudinary(req.file.buffer, req.file.originalname, req.file.mimetype);
+        } else if (process.env.IMGBB_API_KEY) {
+            screenshotUrl = await uploadToImgBB(req.file.buffer.toString('base64'));
+        }
+
+        if (!screenshotUrl) return res.status(500).json({ success: false, error: 'Failed to upload screenshot' });
+
+        existingOrder.paymentId = utr;
+        existingOrder.manualPaymentProof = screenshotUrl;
+        existingOrder.paymentStatus = 'Pending Verification';
+        existingOrder.status = 'Pending Verification';
+        await existingOrder.save();
+
+        // Admin Notification
+        const adminNumber = process.env.ADMIN_WHATSAPP_NUMBER;
+        if (adminNumber) {
+            const cleanNumber = adminNumber.toString().replace(/\D/g, '');
+            const adminJid = `${cleanNumber.length === 10 ? '91' + cleanNumber : cleanNumber}@s.whatsapp.net`;
+            const msg = `⚠️ *Manual Payment Received*\n\n*Order ID:* ${existingOrder.orderId}\n*Customer:* ${existingOrder.customerName || 'N/A'}\n*Amount:* ₹${existingOrder.finalAmount || existingOrder.orderAmount || existingOrder.price || 0}\n*UTR:* ${utr}\n\nUser used manual payment mode. Please verify the payment authenticity in the Admin Panel.`;
+            whatsappApi.sendTextMessage(adminJid, msg).catch(e => console.error("Admin Manual WA Error:", e));
+        }
+
+        res.json({ success: true, message: 'Proof submitted successfully', orderId: existingOrder.orderId });
+    } catch (e) {
+        console.error("Manual Verify Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ✅ FETCH PENDING MANUAL PAYMENTS (ADMIN)
+app.get('/api/admin/manual-payments', checkAuth, checkAdmin, async (req, res) => {
+    try {
+        const orders = await Order.find({ paymentStatus: 'Pending Verification' }).sort({ _id: -1 }).lean();
+        res.json({ success: true, orders });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ✅ APPROVE MANUAL PAYMENT (ADMIN)
+app.post('/api/admin/manual-payments/:orderId/approve', checkAuth, checkAdmin, async (req, res) => {
+    try {
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+
+        if (order.paymentStatus !== 'Pending Verification') {
+            return res.status(400).json({ success: false, error: 'Order is not pending verification' });
+        }
+
+        order.paymentStatus = 'Paid';
+        if (order.orderType === 'smm') {
+            order.status = 'Active';
+        } else if (order.orderType === 'wallet_topup') {
+            order.status = 'Success';
+            const user = await User.findById(order.userId);
+            if (user && user.walletStatus !== 'Frozen' && user.walletStatus !== 'Hold') {
+                user.walletBalance = (user.walletBalance || 0) + (order.finalAmount || order.orderAmount);
+                await user.save();
+                // Transaction model is already defined globally in server.js
+                const transaction = new Transaction({
+                    userId: user._id, 
+                    type: 'Credit', 
+                    amount: (order.finalAmount || order.orderAmount), 
+                    description: 'Wallet Top-up via Manual Payment', 
+                    transactionId: order.paymentId, 
+                    status: 'Success'
+                });
+                await transaction.save();
+
+                // Notification to customer
+                if (order.phone && whatsappApi) {
+                    let cleanNumber = order.phone.toString().replace(/\D/g, '');
+                    if (cleanNumber.length === 10) cleanNumber = '91' + cleanNumber;
+                    const clientJid = `${cleanNumber}@s.whatsapp.net`;
+                    const msg = `🎉 *Wallet Top-up Approved*\n\nHi ${order.customerName || 'User'},\nYour manual payment of ₹${order.finalAmount || order.orderAmount} has been verified and added to your wallet!\n\nCheck your dashboard balance now.`;
+                    whatsappApi.sendTextMessage(clientJid, msg).catch(e => console.error("Wallet WA Error:", e));
+                }
+            }
+        } else {
+            order.status = 'Pending';
+        }
+        await order.save();
+
+        if (order.orderType !== 'wallet_topup') {
+            dispatchWhatsAppInvoice(order);
+        }
+
+        res.json({ success: true, message: 'Payment approved successfully' });
+    } catch (e) {
+        console.error("Manual Approve Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ✅ Reject Manual Payment
+app.post('/api/admin/manual-payments/:orderId/reject', checkAuth, checkAdmin, async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+
+        if (order.paymentStatus !== 'Pending Verification') {
+            return res.status(400).json({ success: false, error: 'Order is not pending verification' });
+        }
+
+        order.paymentStatus = 'Failed';
+        order.status = 'Cancelled';
+        await order.save();
+
+        // 📱 WhatsApp Notification to Customer
+        if (order.phone && whatsappApi) {
+            let cleanNumber = order.phone.toString().replace(/\D/g, '');
+            if (cleanNumber.length === 10) cleanNumber = '91' + cleanNumber;
+            const clientJid = `${cleanNumber}@s.whatsapp.net`;
+            
+            const msg = `❌ *Payment Verification Failed*\n\nHi ${order.customerName || 'User'},\nYour manual payment of ₹${order.finalAmount || order.orderAmount} for Order *${order.orderId}* has been rejected.\n\n*Reason:* ${reason || 'Screenshot verification failed'}\n\nPlease try paying again or contact support for assistance.`;
+            whatsappApi.sendTextMessage(clientJid, msg).catch(e => console.error("Reject WA Error:", e));
+        }
+
+        res.json({ success: true, message: 'Payment rejected successfully' });
+    } catch (e) {
+        console.error("Manual Reject Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // ✅ SMART PAYMENT CREATION (Isme MAGIC kiya hai)
 app.post('/api/create-payment', optionalAuth, async (req, res) => {
     try {
@@ -7913,6 +8062,12 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
             }
             cleanCurrency = "INR";
             console.log(`🔒 SMM Secure Payment calculated: ${finalPrice} INR for service ${service.serviceId}`);
+        } else if (orderType === 'wallet_topup') {
+            finalPrice = numericAmount;
+            if (finalPrice <= 0 || !Number.isFinite(finalPrice)) {
+                return res.status(400).json({ success: false, error: 'Invalid topup amount' });
+            }
+            globalVariant = { name: 'Wallet Top-up' };
         } else {
             // Normal agency orders
             if (normalizedCouponCode) {
@@ -7989,14 +8144,21 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
         }
 
         // 🚀 SMART ROUTING DECISION ENGINE
-        const activeGateways = await PaymentGateway.find({ isActive: true }).lean();
-        const selectedGateway = activeGateways.find(g => finalPrice >= g.minOrder && finalPrice <= g.maxOrder);
+        let providerId = req.body.provider;
+        let selectedGateway = null;
+        
+        if (!providerId) {
+            const activeGateways = await PaymentGateway.find({ isActive: true }).lean();
+            selectedGateway = activeGateways.find(g => finalPrice >= g.minOrder && finalPrice <= g.maxOrder);
 
-        if (!selectedGateway) {
-            return res.status(400).json({ success: false, message: 'No payment gateway available for this amount.' });
+            if (!selectedGateway) {
+                return res.status(400).json({ success: false, message: 'No payment gateway available for this amount.' });
+            }
+            providerId = selectedGateway.gatewayId.toLowerCase();
+        } else {
+            // For explicitly requested providers, mock a selectedGateway if needed by subsequent code
+            selectedGateway = await PaymentGateway.findOne({ gatewayId: providerId, isActive: true }).lean();
         }
-
-        const providerId = selectedGateway.gatewayId.toLowerCase();
 
         switch (providerId) {
             case 'razorpay': {
@@ -8275,6 +8437,59 @@ app.post('/api/create-payment', optionalAuth, async (req, res) => {
                 });
             }
 
+            case 'manual': {
+                const generatedOrderId = "#ORD-" + Math.floor(100000 + Math.random() * 900000);
+                const merchantTransactionId = "MANUAL_" + Date.now();
+                
+                let resolvedTargetLink = req.body.targetLink || (orderDetails && orderDetails.targetLink) || (orderDetails && orderDetails.instaLink) || '';
+                if (typeof resolvedTargetLink === 'string' && resolvedTargetLink.includes(' (Target Country:')) {
+                    resolvedTargetLink = resolvedTargetLink.split(' (Target Country:')[0];
+                }
+
+                const pendingOrder = new Order({
+                    orderId: generatedOrderId,
+                    paymentId: merchantTransactionId, // Will be replaced by UTR later
+                    paymentStatus: 'Pending',
+                    workStatus: 'Work Pending',
+                    status: 'Pending',
+                    userId: req.user?._id || null,
+                    ...(orderDetails && typeof orderDetails === 'object' ? orderDetails : {}),
+                    customerName,
+                    email: customerEmail,
+                    phone: customerPhone,
+                    orderAmount: finalPrice,
+                    orderItems: Array.isArray(orderDetails?.orderItems) ? orderDetails.orderItems : (Array.isArray(req.body.items) ? req.body.items : []),
+                    orderType: (orderType === 'wallet_topup') ? 'wallet_topup' : ((isSmm || orderType === 'smm') ? 'smm' : 'agency'),
+                    serviceId: (isSmm || orderType === 'smm') ? (serviceId || orderDetails?.serviceId || '') : '',
+                    quantity: (isSmm || orderType === 'smm') ? Number(quantity || orderDetails?.quantity || 0) : 0,
+                    targetLink: resolvedTargetLink,
+                    instaLink: resolvedTargetLink,
+                    selectedVariantName: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedCountry: globalVariant && globalVariant.country ? globalVariant.country.trim() : '',
+                    selectedQuality: globalVariant && globalVariant.name ? globalVariant.name.trim() : '',
+                    selectedSpeed: globalVariant && globalVariant.speed ? globalVariant.speed.trim() : '',
+                    selectedRefill: globalVariant && globalVariant.refill ? globalVariant.refill.trim() : '',
+                    isDripFeed: orderDetails?.isDripFeed === true || orderDetails?.isDripFeed === 'true',
+                    runs: Number(orderDetails?.runs || 1),
+                    interval: Number(orderDetails?.interval || 0) * 60,
+                    extraInput: req.body.extraInput || orderDetails?.extraInput || '',
+                    extraInputType: req.body.extraInputType || orderDetails?.extraInputType || 'none',
+                    date: new Date().toLocaleString()
+                });
+
+                if (mongoose.connection.readyState === 1) {
+                    await pendingOrder.save().catch(e => console.error("Manual Pending Order Save Error:", e));
+                }
+
+                return res.json({
+                    success: true,
+                    provider: 'manual',
+                    internalOrderId: generatedOrderId,
+                    amount: finalPrice,
+                    message: 'Pending manual verification'
+                });
+            }
+
             default: {
                 return res.status(400).json({ success: false, message: 'Unsupported payment provider selected.' });
             }
@@ -8548,6 +8763,20 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                             dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook (WhatsApp & Email)
                         }
 
+                        if (existingOrder.orderType === 'wallet_topup') {
+                            const user = await User.findById(existingOrder.userId);
+                            if (user && user.walletStatus !== 'Frozen' && user.walletStatus !== 'Hold') {
+                                user.walletBalance = (user.walletBalance || 0) + (existingOrder.finalAmount || existingOrder.orderAmount);
+                                await user.save();
+                                const transaction = new Transaction({
+                                    userId: user._id, type: 'Credit', amount: (existingOrder.finalAmount || existingOrder.orderAmount), description: 'Wallet Top-up via PhonePe', transactionId: existingOrder.paymentId, status: 'Success'
+                                });
+                                await transaction.save();
+                            }
+                            if (req.isPhonePeWebhook) return res.status(200).send('OK');
+                            return res.redirect('/dashboard.html?tab=wallet&topup_success=true');
+                        }
+
                         if (req.isPhonePeWebhook) return res.status(200).send('OK');
                         return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.finalAmount || existingOrder.price || '')}&method=phonepe`);
                     } else {
@@ -8596,6 +8825,19 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
                     await existingOrder.save();
 
                     dispatchWhatsAppInvoice(existingOrder); // Fire-and-forget notification hook
+
+                    if (existingOrder.orderType === 'wallet_topup') {
+                        const user = await User.findById(existingOrder.userId);
+                        if (user && user.walletStatus !== 'Frozen' && user.walletStatus !== 'Hold') {
+                            user.walletBalance = (user.walletBalance || 0) + (existingOrder.finalAmount || existingOrder.orderAmount);
+                            await user.save();
+                            const transaction = new Transaction({
+                                userId: user._id, type: 'Credit', amount: (existingOrder.finalAmount || existingOrder.orderAmount), description: 'Wallet Top-up via PayU', transactionId: existingOrder.paymentId, status: 'Success'
+                            });
+                            await transaction.save();
+                        }
+                        return res.redirect('/dashboard.html?tab=wallet&topup_success=true');
+                    }
 
                     return res.redirect(`/checkout.html?step=3&status=success&orderId=${encodeURIComponent(existingOrder.orderId)}&paymentId=${encodeURIComponent(existingOrder.paymentId || '')}&amount=${encodeURIComponent(existingOrder.finalAmount || existingOrder.price || '')}&method=payu`);
                 } else {
@@ -8774,6 +9016,19 @@ app.all('/api/verify-payment', optionalAuth, async (req, res) => {
         });
 
         try { if (mongoose.connection.readyState === 1) await newOrder.save(); } catch (e) { }
+
+        if (orderType === 'wallet_topup') {
+            const user = await User.findById(resolvedUserId);
+            if (user && user.walletStatus !== 'Frozen' && user.walletStatus !== 'Hold') {
+                user.walletBalance = (user.walletBalance || 0) + normalizedOrderAmount;
+                await user.save();
+                const transaction = new Transaction({
+                    userId: user._id, type: 'Credit', amount: normalizedOrderAmount, description: 'Wallet Top-up via Razorpay', transactionId: razorpay_payment_id, status: 'Success'
+                });
+                await transaction.save();
+            }
+            return res.json({ success: true, message: 'Wallet topped up successfully.', walletBalance: user ? user.walletBalance : 0 });
+        }
 
         if (req.user && normalizeCouponCode(orderDetails?.couponCode)) {
             try {
@@ -10133,7 +10388,7 @@ async function buildFinanceDashboardPayload({ year, month }) {
     const selectedMonth = selectedMonthRaw === 'all' ? 0 : parsePositiveInt(selectedMonthRaw, 0);
 
     const [orders, staffRows, paidPayouts, expenses, financeTransactions] = await Promise.all([
-        Order.find().lean(),
+        Order.find({ orderType: { $ne: 'wallet_topup' } }).lean(),
         Staff.find({}, 'pendingPayout').lean(),
         Payout.find({ status: 'Paid' }).lean(),
         Expense.find().lean(),

@@ -1060,8 +1060,39 @@
                     <button class="quick-amt-btn" onclick="setTopupAmount(5000)">+₹5k</button>
                 </div>
 
+                <!-- Manual Payment Toggle -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; background: rgba(108, 99, 255, 0.05); border-radius: 10px; border: 1px solid rgba(108, 99, 255, 0.1);">
+                        <input type="checkbox" id="useManualTopup" onchange="toggleManualTopup()" style="width: 18px; height: 18px; accent-color: #6c63ff;">
+                        <span style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">Use Manual Payment (QR Code)</span>
+                    </label>
+                </div>
+
+                <!-- Manual Payment Details (Hidden by default) -->
+                <div id="manualTopupDetails" style="display: none; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 8px;">Scan to pay <strong id="manualTopupDisplayAmount" style="color: #6c63ff;">₹0.00</strong></p>
+                        <div style="width: 180px; height: 180px; margin: 0 auto; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative;">
+                            <div id="manualTopupQrLoader" style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; border-radius: 12px;">
+                                <i class="ri-loader-4-line ri-spin" style="font-size: 24px; color: #6c63ff;"></i>
+                            </div>
+                            <img id="manualTopupQrImage" src="" alt="UPI QR" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 4px;">12-Digit UTR / Ref No. <span style="color:red;">*</span></label>
+                        <input type="text" id="manualTopupUtr" placeholder="e.g. 312345678901" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none;">
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 4px;">Payment Screenshot <span style="color:red;">*</span></label>
+                        <input type="file" id="manualTopupScreenshot" accept="image/*" style="width: 100%; font-size: 0.85rem; padding: 6px; background: white; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                </div>
+
                 <!-- Action Button -->
-                <button id="btnTopupSubmit" onclick="initiateRazorpayTopup()"
+                <button id="btnTopupSubmit" onclick="initiateTopup()"
                     style="width: 100%; background: linear-gradient(135deg, #6c63ff, #4f46e5); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(108, 99, 255, 0.25);"
                     onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 12px 25px rgba(108, 99, 255, 0.35)'"
                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(108, 99, 255, 0.25)'">
@@ -1752,7 +1783,48 @@
                 });
             }
 
-            async function initiateRazorpayTopup() {
+            async function toggleManualTopup() {
+                const isChecked = document.getElementById('useManualTopup').checked;
+                const detailsDiv = document.getElementById('manualTopupDetails');
+                const btn = document.getElementById('btnTopupSubmit');
+                const amtVal = document.getElementById('topupAmount').value || 0;
+                
+                if (isChecked) {
+                    detailsDiv.style.display = 'block';
+                    document.getElementById('manualTopupDisplayAmount').innerText = '₹' + Number(amtVal).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    btn.innerHTML = 'Submit Verification <i class="ri-check-line" style="margin-left: 4px;"></i>';
+                    
+                    // Fetch QR
+                    try {
+                        const res = await fetch('/api/config/manual-payment');
+                        const data = await res.json();
+                        if (data.success && data.upiId) {
+                            const upiString = `upi://pay?pa=${data.upiId}&pn=VibeSphere&am=${amtVal}&cu=INR`;
+                            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+                            const img = document.getElementById('manualTopupQrImage');
+                            img.src = qrUrl;
+                            img.onload = () => {
+                                document.getElementById('manualTopupQrLoader').style.display = 'none';
+                                img.style.display = 'block';
+                            };
+                        }
+                    } catch (e) {
+                        console.error('Failed to load manual QR', e);
+                    }
+                } else {
+                    detailsDiv.style.display = 'none';
+                    btn.innerHTML = 'Proceed to Add Money <i class="ri-arrow-right-line" style="margin-left: 4px;"></i>';
+                }
+            }
+
+            // Also update amount dynamically when typing if manual is checked
+            document.getElementById('topupAmount').addEventListener('input', function() {
+                if (document.getElementById('useManualTopup').checked) {
+                    toggleManualTopup();
+                }
+            });
+
+            async function initiateTopup() {
                 const amountInput = document.getElementById('topupAmount');
                 const amount = Number(amountInput.value);
                 if (isNaN(amount) || amount < 10) {
@@ -1764,86 +1836,160 @@
                     return;
                 }
 
+                const isManual = document.getElementById('useManualTopup')?.checked;
+                if (isManual) {
+                    const utr = document.getElementById('manualTopupUtr').value.trim();
+                    const fileInput = document.getElementById('manualTopupScreenshot');
+                    if (!utr || utr.length < 8) {
+                        alert('Please enter a valid UTR/Reference number.');
+                        return;
+                    }
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        alert('Please upload a payment screenshot.');
+                        return;
+                    }
+                }
+
                 const btn = document.getElementById('btnTopupSubmit');
                 const originalText = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = 'Creating Order... <i class="ri-loader-4-line ri-spin"></i>';
+                btn.innerHTML = 'Initiating Top-up... <i class="ri-loader-4-line ri-spin"></i>';
 
                 try {
-                    const res = await fetch('/api/payment/create-order', {
+                    const reqBody = { 
+                        amount: amount,
+                        baseAmount: amount,
+                        orderType: 'wallet_topup'
+                    };
+                    if (isManual) reqBody.provider = 'manual';
+
+                    const res = await fetch('/api/create-payment', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ amount }),
+                        body: JSON.stringify(reqBody),
                         credentials: 'include'
                     });
 
                     const data = await res.json();
                     if (!data.success) {
-                        throw new Error(data.error || 'Failed to initiate top-up.');
+                        throw new Error(data.error || data.message || 'Failed to initiate top-up.');
                     }
 
-                    const sdkLoaded = await loadRazorpaySDK();
-                    if (!sdkLoaded) {
-                        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
-                    }
+                    if (data.provider === 'manual') {
+                        btn.innerHTML = 'Uploading Proof... <i class="ri-loader-4-line ri-spin"></i>';
+                        const utr = document.getElementById('manualTopupUtr').value.trim();
+                        const fileInput = document.getElementById('manualTopupScreenshot');
+                        const formData = new FormData();
+                        formData.append('orderId', data.internalOrderId);
+                        formData.append('utr', utr);
+                        formData.append('screenshot', fileInput.files[0]);
 
-                    const options = {
-                        key: data.razorpayKeyId,
-                        amount: data.order.amount,
-                        currency: data.order.currency,
-                        name: 'VibeSphere Media',
-                        description: 'Wallet Balance Top-up',
-                        image: '/logo.webp',
-                        order_id: data.order_id,
-                        handler: async function (response) {
-                            btn.innerHTML = 'Verifying... <i class="ri-loader-4-line ri-spin"></i>';
-                            try {
-                                const verifyRes = await fetch('/api/payment/verify', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        razorpay_order_id: response.razorpay_order_id,
-                                        razorpay_payment_id: response.razorpay_payment_id,
-                                        razorpay_signature: response.razorpay_signature,
-                                        amount
-                                    }),
-                                    credentials: 'include'
-                                });
+                        const verifyResponse = await fetch('/api/checkout/manual/verify', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                        });
 
-                                const verifyData = await verifyRes.json();
-                                if (!verifyData.success) {
-                                    throw new Error(verifyData.error || 'Payment verification failed.');
-                                }
-
-                                closeTopupModal();
-                                alert('₹' + amount.toLocaleString('en-IN') + ' successfully added to your wallet! 🎉');
-                                fetchWalletData();
-                            } catch (err) {
-                                console.error('Verification Error:', err);
-                                alert('Payment verification failed: ' + err.message);
-                            } finally {
-                                btn.disabled = false;
-                                btn.innerHTML = originalText;
-                            }
-                        },
-                        prefill: {
-                            name: user ? user.name : '',
-                            email: user ? user.email : ''
-                        },
-                        theme: {
-                            color: '#6c63ff'
-                        },
-                        modal: {
-                            ondismiss: function () {
-                                btn.disabled = false;
-                                btn.innerHTML = originalText;
-                            }
+                        const verifyData = await verifyResponse.json();
+                        if (!verifyData.success) {
+                            throw new Error(verifyData.error || 'Failed to upload screenshot.');
                         }
-                    };
 
-                    const rzp = new window.Razorpay(options);
-                    rzp.open();
+                        closeTopupModal();
+                        alert('✅ Verification Pending!\n\nYour top-up of ₹' + amount.toLocaleString('en-IN') + ' has been submitted and is pending verification. Your wallet will be updated once approved.');
+                        fetchWalletData();
+                    } else if (data.status === 'success_phonepe' || data.provider === 'phonepe') {
+                        btn.innerHTML = 'Redirecting to PhonePe... <i class="ri-loader-4-line ri-spin"></i>';
+                        window.location.href = data.paymentUrl || (data.transactionData && data.transactionData.redirectUrl);
+                    } else if (data.status === 'success_payu' || data.provider === 'payu') {
+                        btn.innerHTML = 'Redirecting to PayU... <i class="ri-loader-4-line ri-spin"></i>';
+                        
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = data.payuUrl;
+                        form.style.display = 'none';
 
+                        Object.keys(data.payuParams).forEach(key => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = key;
+                            input.value = data.payuParams[key];
+                            form.appendChild(input);
+                        });
+
+                        document.body.appendChild(form);
+                        form.submit();
+                    } else if (data.status === 'success_razorpay' || data.provider === 'razorpay') {
+                        const sdkLoaded = await loadRazorpaySDK();
+                        if (!sdkLoaded) throw new Error('Failed to load Razorpay SDK. Please check your internet connection.');
+
+                        const rzpOrder = data.order || data.orderData;
+                        const rzpKeyId = data.razorpayKeyId || data.apiKey;
+
+                        const options = {
+                            key: rzpKeyId,
+                            amount: rzpOrder.amount,
+                            currency: rzpOrder.currency,
+                            name: 'VibeSphere Media',
+                            description: 'Wallet Balance Top-up',
+                            image: '/logo.webp',
+                            order_id: rzpOrder.id,
+                            handler: async function (response) {
+                                btn.innerHTML = 'Verifying... <i class="ri-loader-4-line ri-spin"></i>';
+                                try {
+                                    const verifyRes = await fetch('/api/verify-payment', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            razorpay_order_id: response.razorpay_order_id,
+                                            razorpay_payment_id: response.razorpay_payment_id,
+                                            razorpay_signature: response.razorpay_signature,
+                                            internalOrderId: data.order_id || data.internalOrderId || rzpOrder.id,
+                                            provider: 'razorpay'
+                                        }),
+                                        credentials: 'include'
+                                    });
+
+                                    const verifyData = await verifyRes.json();
+                                    if (!verifyData.success) {
+                                        throw new Error(verifyData.error || 'Payment verification failed.');
+                                    }
+
+                                    closeTopupModal();
+                                    alert('₹' + amount.toLocaleString('en-IN') + ' successfully added to your wallet! 🎉');
+                                    fetchWalletData();
+                                } catch (err) {
+                                    console.error('Verification Error:', err);
+                                    alert('Payment verification failed: ' + err.message);
+                                } finally {
+                                    btn.disabled = false;
+                                    btn.innerHTML = originalText;
+                                }
+                            },
+                            prefill: {
+                                name: data.customerName || (user ? user.name : ''),
+                                email: data.customerEmail || (user ? user.email : ''),
+                                contact: data.customerPhone || ''
+                            },
+                            theme: { color: '#6c63ff' },
+                            modal: {
+                                ondismiss: function () {
+                                    btn.disabled = false;
+                                    btn.innerHTML = originalText;
+                                }
+                            }
+                        };
+
+                        const rzp1 = new window.Razorpay(options);
+                        rzp1.on('payment.failed', function (response) {
+                            alert("Payment Failed: " + response.error.description);
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                        });
+                        rzp1.open();
+                    } else {
+                        throw new Error('Unknown payment provider response.');
+                    }
                 } catch (e) {
                     console.error('Wallet Top-up error:', e);
                     alert('Top-up failed: ' + e.message);
@@ -2102,6 +2248,15 @@
                                     if (ledger) ledger.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 }, 600);
                             }
+                        }
+
+                        if (urlParams.get('topup_success') === 'true') {
+                            setTimeout(() => {
+                                alert('🎉 Wallet topped up successfully!');
+                                // Clean up the URL
+                                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?tab=wallet";
+                                window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+                            }, 500);
                         }
 
                     } else {
