@@ -28,11 +28,14 @@ async function fetchReviews() {
         const tbody = document.getElementById('reviewsTable');
         tbody.innerHTML = '';
         (data.reviews || []).forEach(r => {
-            const avatar = r.avatar ? `<img src="${r.avatar}">` : `<div style="width:40px;height:40px;background:#ddd;border-radius:50%;display:flex;align-items:center;justify-content:center;">${r.name[0]}</div>`;
+            const initial = (r.name || 'U')[0].toUpperCase();
+            const avatar = r.avatar 
+                ? `<img src="${r.avatar}" style="width:44px;height:44px;min-width:44px;border-radius:50%;object-fit:cover;border:1.5px solid #e2e8f0;box-shadow:0 2px 4px rgba(0,0,0,0.05);" onerror="this.outerHTML='<div style=\\'width:44px;height:44px;min-width:44px;background:#6c63ff;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;\\'>${initial}</div>'">` 
+                : `<div style="width:44px;height:44px;min-width:44px;background:#6c63ff;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;">${initial}</div>`;
             tbody.innerHTML += `
     <tr>
         <td>${new Date(r.date).toLocaleDateString()}</td>
-        <td style="display:flex; gap:10px; align-items:center;">${avatar}<div><strong>${r.name}</strong><br><small style="color:#6c63ff">${r.instaId}</small></div></td>
+        <td style="display:flex; gap:12px; align-items:center;">${avatar}<div><strong style="color:#1e293b;">${r.name}</strong><br><small style="color:#6c63ff;font-weight:500;">${r.instaId}</small></div></td>
         <td>${'⭐'.repeat(r.rating)}</td>
         <td>${r.message}</td>
         <td><button class="delete-btn" onclick="deleteReview('${r._id}')">Delete</button></td>

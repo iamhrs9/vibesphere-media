@@ -473,7 +473,7 @@
                 </div>
 
                 <input type="text" id="revName" placeholder="Your Name" required>
-                <input type="text" id="revInsta" placeholder="Instagram ID (e.g. @rahul_ok)" required>
+                <input type="text" id="revInsta" placeholder="Role / Business / City (e.g. Founder, D2C Brand)" required>
 
                 <div class="star-rating" id="starContainer">
                     <span onclick="setRating(1)">★</span>
@@ -544,16 +544,8 @@
         </div>
         <div style="border-top: 1px solid #f0f0f0; padding-top: 20px;">
             <p style="font-size: 0.8rem; color: #888;">&copy; 2026 VibeSphere Media. All rights reserved.
-                built with ❤️ by <a href="https://www.harshpanwar.online" target="_blank" rel="noopener noreferrer"
-                    style="color: #101011; text-decoration: none; font-weight: 600; cursor: pointer;">
-                    Harsh
-                </a>
+                Built with ❤️ by <strong style="color: #101011; font-weight: 600;">VibeSphere Creative Lab</strong>
             </p>
-        </div>
-
-    
-        <div class="footer-global-address" style="text-align: center; padding: 15px 5%; font-size: 0.85rem; color: inherit; opacity: 0.8; width: 100%; box-sizing: border-box;">
-            <strong>Office Address:</strong> Ward NO 03, Village 1KLM, Po 4KPD, Rawla Mandi, Sri Ganganagar, Rajasthan 335707
         </div>
     </footer>
 
@@ -634,20 +626,41 @@
                     return;
                 }
 
-                let cardsHTML = reviews.map(review => `
+                const gradients = [
+                    'linear-gradient(135deg, #6c63ff, #3b82f6)',
+                    'linear-gradient(135deg, #ec4899, #f43f5e)',
+                    'linear-gradient(135deg, #10b981, #059669)',
+                    'linear-gradient(135deg, #f59e0b, #d97706)',
+                    'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                    'linear-gradient(135deg, #06b6d4, #0284c7)'
+                ];
+
+                let cardsHTML = reviews.map(review => {
+                    const initial = (review.name || 'U').charAt(0).toUpperCase();
+                    const grad = gradients[initial.charCodeAt(0) % gradients.length];
+                    const avatarHTML = review.avatar 
+                        ? `<img src="${review.avatar}" class="user-avatar-small" alt="${review.name}" onerror="this.outerHTML='<div class=\\'default-avatar\\' style=\\'background:${grad}\\'>${initial}</div>'">`
+                        : `<div class="default-avatar" style="background:${grad}">${initial}</div>`;
+
+                    return `
                     <div class="live-review-card">
                         <div class="live-review-top">
                             <div class="live-user" style="display:flex; gap:10px; align-items:center;">
-                                ${review.avatar ? `<img src="${review.avatar}" class="user-avatar-small">` : `<div class="default-avatar">${review.name.charAt(0).toUpperCase()}</div>`}
+                                ${avatarHTML}
                                 <div><h4>${review.name}</h4><span>${review.instaId}</span></div>
                             </div>
                             <div style="font-size: 0.8rem;">${'⭐'.repeat(review.rating || 5)}</div>
                         </div>
                         <p class="live-msg">"${review.message}"</p>
-                    </div>`).join('');
+                    </div>`;
+                }).join('');
 
-                track.innerHTML = cardsHTML.repeat(reviews.length < 5 ? 10 : 3);
-                track.style.animation = "scroll 40s linear infinite";
+                // Seamless infinite loop (duplicate 2x for translateX -50%)
+                track.innerHTML = cardsHTML + cardsHTML;
+                
+                // Smooth, calm reading speed (~4 seconds per card)
+                const scrollDuration = Math.max(50, Math.round(reviews.length * 4.5));
+                track.style.animation = `scroll ${scrollDuration}s linear infinite`;
             } catch (error) { track.innerHTML = '<div style="color:red; padding:20px;">Loading Reviews...</div>'; }
         }
 

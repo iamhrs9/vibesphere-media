@@ -3162,7 +3162,7 @@ app.post('/api/auth/signup', loginLimiter, async (req, res) => {
                     <br>
                     <p>Best regards,<br>
                     <strong>Harsh Panwar</strong><br>
-                    Founder & Tech Head, VibeSphere<br>
+                    CEO & Tech Head, VibeSphere<br>
                     <a href="https://vibespheremedia.in" style="color: #6c63ff;">vibespheremedia.in</a></p>
                 </div>
             `
@@ -7210,7 +7210,7 @@ app.delete('/api/admin/smm/rates/:serviceId', checkAuth, async (req, res) => {
 // 1. Get Reviews
 app.get('/api/reviews', async (req, res) => {
     try {
-        const reviews = await Review.find().sort({ date: -1 }).limit(50);
+        const reviews = await Review.find().sort({ date: -1 }).limit(200);
 
         const allReviews = await Review.find();
         let totalStars = 0;
